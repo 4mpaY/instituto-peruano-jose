@@ -29,7 +29,7 @@ const bullets = [
 
 export default function EnterpriseCTASection() {
   const configs = useConfig()
-  const waNumber = configs.WHATSAPP_NUMERO_EMPRESAS || configs.WHATSAPP_NUMERO || '51928510125'
+  const waNumber = configs.WHATSAPP_NUMERO_EMPRESAS || configs.WHATSAPP_NUMERO || '51901931739'
   const waLink = `https://wa.me/${waNumber}?text=${WHATSAPP_MSG}`
 
   return (

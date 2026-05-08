@@ -13,7 +13,7 @@ export const metadata = {
 
 export default async function ProyectosPage() {
   const configs = await getConfigs()
-  const waNumero = configs.WHATSAPP_NUMERO || '51959436827'
+  const waNumero = configs.WHATSAPP_NUMERO || '51901931739'
 
   const sections = [
     {

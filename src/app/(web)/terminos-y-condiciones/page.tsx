@@ -75,7 +75,7 @@ export default function TerminosYCondicionesPage() {
 
           <Typography variant="h4">7. Contacto y Libro de Reclamaciones</Typography>
           <Typography paragraph>
-            Para consultas de soporte, envíe sus requerimientos a <strong>arm.confiabilidad@gmail.com</strong>.
+            Para consultas de soporte, envíe sus requerimientos a <strong>ipg.ingenieros.contacto@gmail.com</strong>.
             De acuerdo a la legislación vigente de protección al consumidor peruano, mantenemos un{' '}
             <a href="/libro-de-reclamaciones" style={{ color: 'var(--web-dark, #025E44)', textDecoration: 'underline' }}>Libro de Reclamaciones a disposición pública</a>{' '}
             en nuestra plataforma web.

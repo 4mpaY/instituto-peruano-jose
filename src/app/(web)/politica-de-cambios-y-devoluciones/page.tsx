@@ -73,7 +73,7 @@ export default function PoliticaCambiosYDevolucionesPage() {
             Para iniciar un proceso de devolución (si aplica), el usuario debe:
           </Typography>
           <Typography paragraph>
-            1. Enviar un correo a <strong>arm.confiabilidad@gmail.com</strong> con el asunto:{' '}
+            1. Enviar un correo a <strong>ipg.ingenieros.contacto@gmail.com</strong> con el asunto:{' '}
             <em>&quot;Solicitud de Reembolso — [Nombre del Curso]&quot;</em>.
           </Typography>
           <Typography paragraph>
@@ -98,7 +98,7 @@ export default function PoliticaCambiosYDevolucionesPage() {
           <Typography variant="h4">6. Contacto y Atención al Cliente</Typography>
           <Typography paragraph>
             Para consultas relacionadas con esta política, comuníquese con nosotros a través de{' '}
-            <strong>arm.confiabilidad@gmail.com</strong>. De acuerdo con la legislación de protección
+            <strong>ipg.ingenieros.contacto@gmail.com</strong>. De acuerdo con la legislación de protección
             al consumidor vigente, también ponemos a su disposición nuestro{' '}
             <a href="/libro-de-reclamaciones" style={{ color: 'var(--web-dark, #025E44)', textDecoration: 'underline' }}>
               Libro de Reclamaciones

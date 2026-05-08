@@ -36,7 +36,7 @@ export default function FloatingContactButtons() {
   const [hoveredWa, setHoveredWa] = useState(false)
   const [hoveredPhone, setHoveredPhone] = useState(false)
   const configs = useConfig()
-  const waNumber = configs.WHATSAPP_NUMERO || '51959436827'
+  const waNumber = configs.WHATSAPP_NUMERO || '51901931739'
   const phoneNumber = waNumber.startsWith('+') ? waNumber : `+${waNumber}`
 
   return (

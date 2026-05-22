@@ -19,10 +19,13 @@ export interface Usuario {
     id: string
     inscrito_en: string
     estado: string
+    certificado_habilitado: boolean
     curso: {
       id: string
       titulo: string
       slug: string
+      precio_certificado: number | null
+      moneda: string
     }
   }[]
   cursos_dictados?: {

@@ -53,11 +53,14 @@ export async function GET(request: Request, { params }: { params: { id: string }
             id: true,
             inscrito_en: true,
             estado: true,
+            certificado_habilitado: true,
             curso: {
               select: {
                 id: true,
                 titulo: true,
-                slug: true
+                slug: true,
+                precio_certificado: true,
+                moneda: true
               }
             }
           }

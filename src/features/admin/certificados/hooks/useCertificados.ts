@@ -1,8 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getSession } from 'next-auth/react'
 
 import { AxiosCertificado } from '../http/axiosCertificado'
-import type { CertificadosResponse } from '../entity/Certificado'
+import type { CertificadosResponse, CreateCertificadoPayload } from '../entity/Certificado'
 
 const axiosCertificadoFactory = () => {
   const getAuthToken = async () => {
@@ -29,5 +29,20 @@ export const useCertificados = (
       return await axiosCertificado.getAll(params)
     },
     initialData: isDefault ? initialData : undefined
+  })
+}
+
+export const useCreateCertificado = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (payload: CreateCertificadoPayload) => {
+      const axiosCertificado = axiosCertificadoFactory()
+
+      return await axiosCertificado.create(payload)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-certificados'] })
+    }
   })
 }

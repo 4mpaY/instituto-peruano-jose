@@ -78,25 +78,34 @@ export async function GET(request: Request) {
       prisma.curso.count({ where })
     ])
 
-    // Contar lecciones por curso (Prisma no soporta nested _count directo)
-    const cursosConLecciones = await Promise.all(
+    // Contar lecciones por curso y obtener promedio de valoraciones
+    const cursosConEstadisticas = await Promise.all(
       cursos.map(async curso => {
-        const leccionesCount = await prisma.leccion.count({
-          where: { modulo: { curso_id: curso.id } }
-        })
+        const [leccionesCount, valoracionesStats] = await Promise.all([
+          prisma.leccion.count({
+            where: { modulo: { curso_id: curso.id } }
+          }),
+          prisma.valoracionCurso.aggregate({
+            where: { curso_id: curso.id },
+            _avg: { puntuacion: true },
+            _count: { id: true }
+          })
+        ])
 
         return {
           ...curso,
           _count: {
             ...curso._count,
-            lecciones: leccionesCount
-          }
+            lecciones: leccionesCount,
+            valoraciones: valoracionesStats._count.id
+          },
+          promedio_valoracion: valoracionesStats._avg.puntuacion || 0
         }
       })
     )
 
     return ApiResponse.success(request, {
-      cursos: cursosConLecciones,
+      cursos: cursosConEstadisticas,
       paginacion: {
         total,
         page,

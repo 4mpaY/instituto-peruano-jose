@@ -4,6 +4,8 @@ import { useMemo, useState, useCallback } from 'react'
 
 import { useRouter } from 'next/navigation'
 
+import { getSession } from 'next-auth/react'
+
 import {
   Card,
   CardHeader,
@@ -15,7 +17,8 @@ import {
   MenuItem,
   IconButton,
   Tooltip,
-  Stack
+  Stack,
+  CircularProgress
 } from '@mui/material'
 import { toast } from 'react-toastify'
 import {
@@ -23,9 +26,9 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
-  getPaginationRowModel,
   getSortedRowModel
 } from '@tanstack/react-table'
+import * as XLSX from 'xlsx'
 
 import classnames from 'classnames'
 
@@ -39,6 +42,7 @@ import CustomTextField from '@core/components/mui/TextField'
 import type { ThemeColor } from '@/@core/types'
 import type { Pedido } from '../entity/Pedido'
 import { usePedidos, useDeletePedido } from '../hooks/usePedidos'
+import { AxiosPedido } from '../http/axiosPedido'
 import TablePaginationComponent from '@/utils/components/others/TablePaginationComponent'
 import HydratedDate from '@/utils/components/HydratedDate'
 import { DebouncedInput } from '@/utils/components/others/DebouncedInput'
@@ -60,9 +64,10 @@ const columnHelper = createColumnHelper<Pedido>()
 
 interface PedidosPageProps {
   initialData?: Pedido[]
+  initialTotal?: number
 }
 
-export function PedidosPage({ initialData }: PedidosPageProps) {
+export function PedidosPage({ initialData, initialTotal = 0 }: PedidosPageProps) {
   const router = useRouter()
   const [estadoFiltro, setEstadoFiltro] = useState('TODOS')
   const [nroPedido, setNroPedido] = useState('')
@@ -70,6 +75,41 @@ export function PedidosPage({ initialData }: PedidosPageProps) {
 
   const { mutateAsync: deletePedido, isPending: isDeleting } = useDeletePedido()
   const [deleteInfo, setDeleteInfo] = useState<{ open: boolean, id: string | null }>({ open: false, id: null })
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExportarExcel = async () => {
+    setIsExporting(true)
+
+    try {
+      const session = await getSession()
+      const token = session?.user?.accessToken ?? null
+      const axiosPedido = new AxiosPedido({ getAuthToken: () => token })
+      const res = await axiosPedido.getAll({ estado: estadoFiltro, nro_pedido: nroPedido, nombre, limit: '5000' })
+      const todos: Pedido[] = res?.pedidos ?? []
+
+      const filas = todos.map(p => ({
+        '# Pedido': `#${String(p.numero_pedido).padStart(6, '0')}`,
+        Estudiante: `${p.usuario?.nombre ?? ''} ${p.usuario?.apellido ?? ''}`.trim(),
+        Correo: p.usuario?.correo ?? '',
+        'Curso(s)': p.detalles?.map(d => d.curso?.titulo).join(' | ') ?? '',
+        Total: `${p.moneda} ${Number(p.total).toFixed(2)}`,
+        Cupón: p.cupon?.codigo ?? '',
+        'Método de pago': p.metodo_pago?.toLowerCase().replace('_', ' ') ?? '',
+        Estado: p.estado,
+        Fecha: p.creado_en ? new Date(p.creado_en).toLocaleDateString('es-PE') : ''
+      }))
+
+      const ws = XLSX.utils.json_to_sheet(filas)
+      const wb = XLSX.utils.book_new()
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Pedidos')
+      XLSX.writeFile(wb, `pedidos_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    } catch {
+      toast.error('Error al exportar los pedidos')
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const handleDelete = useCallback(async () => {
     if (!deleteInfo.id) return
@@ -89,20 +129,33 @@ export function PedidosPage({ initialData }: PedidosPageProps) {
     pageSize: 10
   })
 
-  const { data, isLoading } = usePedidos(
+  const { data: pedidosData, isFetching, isPlaceholderData } = usePedidos(
     {
       estado: estadoFiltro,
       nro_pedido: nroPedido,
       nombre: nombre,
       page: String(pagination.pageIndex + 1),
       limit: String(pagination.pageSize)
-    }
+    },
+    initialData,
+    initialTotal
   )
 
-  const isDefaultQuery = estadoFiltro === 'TODOS' && !nroPedido && !nombre && pagination.pageIndex === 0
+  const pedidos = useMemo(() => {
+    if (pedidosData?.pedidos) return pedidosData.pedidos
 
-  const pedidos = data?.pedidos ?? (isDefaultQuery && initialData ? initialData : [])
-  const total = data?.paginacion?.total ?? (isDefaultQuery && initialData ? initialData.length : 0)
+    if (pagination.pageIndex === 0 && initialData) return initialData
+
+    return []
+  }, [pedidosData, initialData, pagination.pageIndex])
+
+  const total = useMemo(() => {
+    if (pedidosData?.paginacion?.total !== undefined) return pedidosData.paginacion.total
+
+    if (pagination.pageIndex === 0) return initialTotal
+
+    return 0
+  }, [pedidosData, initialTotal, pagination.pageIndex])
 
   const columns = useMemo<ColumnDef<Pedido, any>[]>(
     () => [
@@ -249,19 +302,11 @@ export function PedidosPage({ initialData }: PedidosPageProps) {
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     manualPagination: true,
     rowCount: total
   })
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader title='Pedidos' />
-        <Box p={6}>Cargando pedidos...</Box>
-      </Card>
-    )
-  }
+
 
   return (
     <Card>
@@ -315,6 +360,16 @@ export function PedidosPage({ initialData }: PedidosPageProps) {
 
           <Button
             variant='contained'
+            color='success'
+            startIcon={isExporting ? <CircularProgress size={16} color='inherit' /> : <i className='tabler-file-spreadsheet' />}
+            onClick={handleExportarExcel}
+            disabled={isExporting}
+            className='is-full sm:is-auto'
+          >
+            {isExporting ? 'Exportando...' : 'Exportar Excel'}
+          </Button>
+          <Button
+            variant='contained'
             startIcon={<i className='tabler-plus' />}
             onClick={() => router.push('/admin/pedidos/nuevo')}
             className='is-full sm:is-auto'
@@ -324,8 +379,25 @@ export function PedidosPage({ initialData }: PedidosPageProps) {
         </div>
       </div>
 
-      <div className='overflow-x-auto'>
-        <table className={tableStyles.table}>
+      <div className='overflow-x-auto relative'>
+        {(isFetching && !isPlaceholderData) && (
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(255, 255, 255, 0.3)',
+              backdropFilter: 'blur(2px)',
+              transition: 'opacity 0.2s'
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        )}
+        <table className={tableStyles.table} style={{ opacity: isFetching ? 0.6 : 1, transition: 'opacity 0.2s' }}>
           <thead>
             {table.getHeaderGroups().map(headerGroup => (
               <tr key={headerGroup.id}>
@@ -352,14 +424,14 @@ export function PedidosPage({ initialData }: PedidosPageProps) {
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.length === 0 ? (
+            {table.getCoreRowModel().rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className='text-center p-6'>
                   No se encontraron pedidos
                 </td>
               </tr>
             ) : (
-              table.getRowModel().rows.map(row => (
+              table.getCoreRowModel().rows.map(row => (
                 <tr key={row.id}>
                   {row.getVisibleCells().map(cell => (
                     <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>

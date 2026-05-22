@@ -44,7 +44,8 @@ export async function GET(request: Request, { params }: { params: { slug: string
     const course = await prisma.curso.findUnique({
       where: {
         slug,
-        estado: 'PUBLICADO'
+        estado: 'PUBLICADO',
+        es_privado: false
       },
       include: {
         profesor: {

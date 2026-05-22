@@ -1,13 +1,13 @@
 import { PrismaClient } from '@prisma/client'
 
 const prismaClientSingleton = () => {
-  const baseUrl = process.env.DATABASE_URL || ''
-
-  const datasourceUrl = baseUrl.includes('?')
-    ? `${baseUrl}&connection_limit=2&pool_timeout=10`
-    : `${baseUrl}?connection_limit=2&pool_timeout=10`
-
-  return new PrismaClient({ datasourceUrl })
+  return new PrismaClient({
+    datasources: {
+      db: {
+        url: `${process.env.DATABASE_URL}&connection_limit=10&pool_timeout=30`,
+      },
+    },
+  })
 }
 
 type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>
@@ -16,12 +16,9 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClientSingleton | undefined
 }
 
-if (!globalForPrisma.prisma) {
-  globalForPrisma.prisma = prismaClientSingleton()
-}
+// Reusar la instancia tanto en desarrollo como en producción
+const prisma = globalForPrisma.prisma ?? prismaClientSingleton()
 
-const prisma = globalForPrisma.prisma
+globalForPrisma.prisma = prisma
 
 export default prisma
-
-// Triggering reload to pick up new models

@@ -64,7 +64,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return validation.error
     }
 
-    const { estado, metodo_pago, mensaje } = validation.data
+    const { estado, metodo_pago, mensaje, tipo_comprobante, numero_comprobante } = validation.data
 
     const pedidoAnterior = await prisma.pedido.findUnique({
       where: { id },
@@ -89,6 +89,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           estado,
           metodo_pago,
           mensaje,
+          tipo_comprobante,
+          numero_comprobante,
           pagado_en: estado === 'COMPLETADO' ? pagado_en : null
         }
       })

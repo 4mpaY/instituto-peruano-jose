@@ -25,7 +25,8 @@ export async function GET(
 
     // Validar existencia del curso
     const curso = await prisma.curso.findUnique({
-      where: { id: cursoId }
+      where: { id: cursoId },
+      select: { id: true, precio_certificado: true }
     })
 
     if (!curso) {
@@ -128,6 +129,8 @@ export async function GET(
 
       return {
         id: i.usuario.id,
+        inscripcion_id: i.id,
+        certificado_habilitado: i.certificado_habilitado,
         nombre: i.usuario.nombre,
         apellido: i.usuario.apellido,
         correo: i.usuario.correo,
@@ -144,7 +147,9 @@ export async function GET(
       }
     })
 
-    return ApiResponse.success(request, { alumnos, total: alumnos.length, totalExamenes })
+    const precioCertificado = curso.precio_certificado ? Number(curso.precio_certificado) : null
+
+    return ApiResponse.success(request, { alumnos, total: alumnos.length, totalExamenes, precio_certificado: precioCertificado })
   } catch (error) {
     return handleApiError(error, request)
   }

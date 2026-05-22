@@ -17,15 +17,15 @@ services:
       - ./logs/database:/var/log/postgresql
       - ./data/database:/var/lib/postgresql/data
     command: postgres -c config_file=/etc/postgresql/postgresql.conf -p ${DB_PORT}
-  # web:
-  #   image: peves/legalizaya:aula-v1.0.0
-  #   restart: always
-  #   container_name: aula-virtual-web
-  #   ports:
-  #     - "3000:3000"
-  #   env_file:
-  #     - .env
-  #   volumes:
-  #     - ./public/uploads:/app/public/uploads
-  #   depends_on:
-  #     - database
+  web:
+    image: patrickrios/aula-virtual:latest
+    restart: always
+    container_name: aula-virtual-web
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./public/uploads:/app/public/uploads
+    depends_on:
+      - database

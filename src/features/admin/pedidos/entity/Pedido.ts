@@ -8,6 +8,10 @@ export interface Pedido {
   total: number
   moneda: string
   mensaje: string | null
+  tipo_comprobante: string | null
+  numero_comprobante: string | null
+  comprobante_url: string | null
+  comprobante_subido_en: string | null
   transaccion_id: string | null
   creado_en: string
   pagado_en: string | null
@@ -17,9 +21,15 @@ export interface Pedido {
     nombre: string
     apellido: string
     correo: string
+    avatar: string | null
   }
   cupon?: {
     codigo: string
+  } | null
+  metodo_pago_manual?: {
+    nombre: string
+    numero_cuenta: string | null
+    nombre_cuenta: string | null
   } | null
   detalles: DetallePedido[]
 }

@@ -3,6 +3,8 @@ import prisma from '@/utils/libs/prisma'
 import { ApiResponse } from '@/utils/libs/apiResponse'
 import { requireAuth } from '@/utils/libs/auth-helpers'
 import { handleApiError } from '@/utils/libs/validation'
+import { sendMail } from '@/utils/libs/mailer'
+import { getOrderConfirmationTemplate } from '@/utils/libs/email-templates'
 
 /**
  * POST /api/checkout
@@ -14,7 +16,14 @@ export async function POST(request: Request) {
 
     if (!auth.authorized) return auth.error
 
-    const { cursoIds, codigoCupon, gateway = 'IZIPAY', metodoPagoManualId } = await request.json()
+    const {
+      cursoIds,
+      codigoCupon,
+      gateway = 'IZIPAY',
+      metodoPagoManualId,
+      tipoComprobante,
+      numeroComprobante
+    } = await request.json()
 
     if (!cursoIds || !Array.isArray(cursoIds) || cursoIds.length === 0) {
       return ApiResponse.error(request, 'Se requiere al menos un ID de curso', 400)
@@ -109,6 +118,8 @@ export async function POST(request: Request) {
         total,
         moneda,
         estado: 'PENDIENTE',
+        tipo_comprobante: tipoComprobante,
+        numero_comprobante: numeroComprobante,
         ...(gateway === 'MANUAL' && metodoPagoManualId ? { metodo_pago_manual_id: metodoPagoManualId } : {}),
         detalles: {
           create: cursos.map(c => {
@@ -129,8 +140,40 @@ export async function POST(request: Request) {
           })
         }
       },
-      include: { detalles: { include: { curso: { select: { titulo: true } } } } }
+      include: { detalles: { include: { curso: { select: { titulo: true, precio: true } } } } }
     })
+    
+    // 📧 Enviar correo de confirmación de pedido
+    try {
+      const configs = await getConfigs()
+      const platformName = configs.TEMPLATE_NAME || 'Aula Virtual'
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+      
+      const emailHtml = getOrderConfirmationTemplate({
+        platformName,
+        customerName: auth.user.nombre || auth.user.name || 'Estudiante',
+        orderNumber: pedido.numero_pedido,
+        date: new Date().toLocaleDateString('es-PE'),
+        total: Number(pedido.total),
+        moneda: pedido.moneda,
+        metodoPago: gateway === 'MANUAL' ? 'Transferencia Manual' : gateway,
+        cursos: pedido.detalles.map(d => ({
+          titulo: d.curso.titulo,
+          precio: Number(d.total) // Usamos el total del detalle que ya tiene el descuento aplicado
+        })),
+        appUrl
+      })
+
+      if (auth.user.email) {
+        await sendMail({
+          to: auth.user.email,
+          subject: `Confirmación de Pedido #${pedido.numero_pedido} - ${platformName}`,
+          html: emailHtml
+        })
+      }
+    } catch (mailError) {
+      console.error('[Checkout-Mail] Error al enviar correo de confirmación:', mailError)
+    }
 
     // 5. Si el gateway es MANUAL, retornar datos para el mensaje de WhatsApp
     if (gateway === 'MANUAL') {

@@ -47,18 +47,30 @@ export async function POST(request: Request) {
 
     // Actualizar en lote usando upsert de Prisma
     for (const conf of configuraciones) {
-      await prisma.configuracion.upsert({
-        where: { clave: conf.clave },
-        update: {
-          valor: conf.valor,
-          descripcion: conf.descripcion
-        },
-        create: {
-          clave: conf.clave,
-          valor: conf.valor,
-          descripcion: conf.descripcion
+      try {
+        if (conf.valor === undefined || conf.valor === null) {
+          console.error(`[CONFIG_SAVE_ERROR] Clave ${conf.clave} tiene un valor inválido:`, conf.valor)
+
+          // Forzar a string vacío o saltar
+          conf.valor = ''
         }
-      })
+
+        await prisma.configuracion.upsert({
+          where: { clave: conf.clave },
+          update: {
+            valor: String(conf.valor),
+            descripcion: conf.descripcion || ''
+          },
+          create: {
+            clave: conf.clave,
+            valor: String(conf.valor),
+            descripcion: conf.descripcion || ''
+          }
+        })
+      } catch (err: any) {
+        console.error(`[CONFIG_SAVE_ERROR] Falló al guardar la clave "${conf.clave}":`, err)
+        throw err
+      }
     }
 
     // Limpiar caché después de actualizar
@@ -67,7 +79,9 @@ export async function POST(request: Request) {
     clearConfigCache()
 
     return ApiResponse.success(request, { message: 'Configuraciones actualizadas' })
-  } catch (error) {
-    return handleApiError(error, request)
+  } catch (error: any) {
+    console.error('[CONFIG_ROUTE_ERROR] Error general:', error)
+    
+return handleApiError(error, request)
   }
 }

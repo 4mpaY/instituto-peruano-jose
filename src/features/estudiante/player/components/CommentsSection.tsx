@@ -50,13 +50,13 @@ const CommentsSection = ({ leccionId }: CommentsSectionProps) => {
     const totalComments = countTotalComments(comments)
 
     return (
-        <Box 
-            sx={{ 
-                p: { xs: 0, sm: 3, md: 4 }, 
-                borderRadius: { xs: 0, sm: '16px' }, 
-                border: { xs: 'none', sm: '1px solid' }, 
-                borderColor: 'divider', 
-                mt: { xs: 1, sm: 4 } 
+        <Box
+            sx={{
+                p: { xs: 0, sm: 3, md: 4 },
+                borderRadius: { xs: 0, sm: '16px' },
+                border: { xs: 'none', sm: '1px solid' },
+                borderColor: 'divider',
+                mt: { xs: 1, sm: 4 }
             }}
         >
             <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>

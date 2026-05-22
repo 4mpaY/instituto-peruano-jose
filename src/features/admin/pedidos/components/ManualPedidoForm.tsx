@@ -32,10 +32,10 @@ export function ManualPedidoForm() {
     const { enqueueSnackbar } = useSnackbar()
     const [selectedCoursePrice, setSelectedCoursePrice] = useState<number>(0)
 
-    const { data: usuariosData, isLoading: isLoadingUsuarios } = useUsuarios()
+    const { data: usuariosData, isLoading: isLoadingUsuarios } = useUsuarios({ limit: '1000' })
     const { data: cursosData, isLoading: isLoadingCursos } = useCursos()
 
-    const usuarios = (usuariosData || []).filter(u => u.rol === 'ESTUDIANTE')
+    const usuarios = (usuariosData?.usuarios || []).filter(u => u.rol === 'ESTUDIANTE')
     const cursos = (cursosData?.cursos || []).filter(c => c.estado === 'PUBLICADO')
 
     const {
@@ -235,6 +235,47 @@ export function ManualPedidoForm() {
                                         placeholder='Ej: Beca del 50%, Pago en efectivo...'
                                         error={!!errors.mensaje}
                                         helperText={errors.mensaje?.message}
+                                    />
+                                )}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} md={4}>
+                            <Controller
+                                name='tipo_comprobante'
+                                control={control}
+                                render={({ field }) => (
+                                    <CustomTextField
+                                        {...field}
+                                        select
+                                        fullWidth
+                                        label='Tipo de Comprobante'
+                                        value={field.value || ''}
+                                        error={!!errors.tipo_comprobante}
+                                        helperText={errors.tipo_comprobante?.message}
+                                    >
+                                        <MenuItem value=''>Ninguno</MenuItem>
+                                        <MenuItem value='TICKET'>Ticket</MenuItem>
+                                        <MenuItem value='BOLETA'>Boleta</MenuItem>
+                                        <MenuItem value='FACTURA'>Factura</MenuItem>
+                                    </CustomTextField>
+                                )}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} md={4}>
+                            <Controller
+                                name='numero_comprobante'
+                                control={control}
+                                render={({ field }) => (
+                                    <CustomTextField
+                                        {...field}
+                                        fullWidth
+                                        label='Número de Documento (RUC/DNI)'
+                                        placeholder='Ej: 20601234567'
+                                        value={field.value || ''}
+                                        error={!!errors.numero_comprobante}
+                                        helperText={errors.numero_comprobante?.message}
                                     />
                                 )}
                             />

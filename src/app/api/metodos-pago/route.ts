@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     return ApiResponse.success(request, {
       habilitado: pagoManualHabilitado,
       metodos: pagoManualHabilitado ? metodos : [],
-      whatsapp_numero: configs.PAGO_MANUAL_WHATSAPP_NUMERO || '',
+      whatsapp_numero: configs.PAGO_MANUAL_WHATSAPP_NUMERO || configs.WHATSAPP_NUMERO || '',
       whatsapp_mensaje: configs.PAGO_MANUAL_WHATSAPP_MENSAJE || ''
     })
   } catch (error) {

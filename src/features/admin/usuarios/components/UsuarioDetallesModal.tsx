@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import type { SyntheticEvent } from 'react'
 
+import axios from 'axios'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'react-toastify'
 import {
   Box,
   Typography,
@@ -14,7 +17,9 @@ import {
   ListItemIcon,
   Divider,
   CircularProgress,
-  Button
+  Button,
+  IconButton,
+  Tooltip
 } from '@mui/material'
 import type { Rol } from '@prisma/client'
 
@@ -36,12 +41,41 @@ const rolLabels: { [key in Rol]: string } = {
   ESTUDIANTE: 'Estudiante'
 }
 
+interface CertConfirm {
+  inscripcionId: string
+  cursoTitulo: string
+  habilitadoActual: boolean
+}
+
 const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesModalProps) => {
   const [activeTab, setActiveTab] = useState(0)
+  const [certConfirm, setCertConfirm] = useState<CertConfirm | null>(null)
+  const [certLoading, setCertLoading] = useState(false)
+
+  const queryClient = useQueryClient()
   const { data: usuario, isLoading } = useUsuario(usuarioId || '')
 
   const handleTabChange = (_: SyntheticEvent, newValue: number) => {
     setActiveTab(newValue)
+  }
+
+  const handleToggleCert = async () => {
+    if (!certConfirm) return
+
+    setCertLoading(true)
+
+    try {
+      await axios.patch(`/api/admin/inscripciones/${certConfirm.inscripcionId}/certificado`, {
+        habilitado: !certConfirm.habilitadoActual
+      })
+      queryClient.invalidateQueries({ queryKey: ['usuarios', usuarioId] })
+      toast.success(certConfirm.habilitadoActual ? 'Certificado deshabilitado' : 'Certificado habilitado correctamente')
+      setCertConfirm(null)
+    } catch {
+      toast.error('Error al actualizar el certificado')
+    } finally {
+      setCertLoading(false)
+    }
   }
 
   if (isLoading) {
@@ -58,6 +92,7 @@ const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesM
   if (!usuario) return null
 
   return (
+    <>
     <AppModal open={open} handleClose={handleClose}>
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
         <UserAvatar
@@ -133,27 +168,79 @@ const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesM
           <Box>
             {usuario.inscripciones && usuario.inscripciones.length > 0 ? (
               <List sx={{ pt: 0 }}>
-                {usuario.inscripciones.map((insc, index) => (
-                  <Box key={insc.id}>
-                    {index > 0 && <Divider variant='inset' component='li' />}
-                    <ListItem alignItems='flex-start' sx={{ px: 0 }}>
-                      <ListItemIcon sx={{ minWidth: 40, mt: 1 }}>
-                        <i className='tabler-book text-2xl text-primary' />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={insc.curso.titulo}
-                        secondary={
-                          <>
-                            <Typography component='span' variant='body2' color='text.primary'>
-                              Estado: {insc.estado}
-                            </Typography>
-                            {` — Inscrito el `} <HydratedDate date={insc.inscrito_en} format="date" />
-                          </>
+                {usuario.inscripciones.map((insc, index) => {
+                  const tieneCertPago = insc.curso.precio_certificado && Number(insc.curso.precio_certificado) > 0
+
+                  const precioFmt = tieneCertPago
+                    ? `${insc.curso.moneda} ${Number(insc.curso.precio_certificado).toFixed(2)}`
+                    : null
+
+                  return (
+                    <Box key={insc.id}>
+                      {index > 0 && <Divider component='li' />}
+                      <ListItem
+                        alignItems='flex-start'
+                        sx={{ px: 0, gap: 1 }}
+                        secondaryAction={
+                          tieneCertPago ? (
+                            <Tooltip title={insc.certificado_habilitado ? 'Deshabilitar certificado' : 'Habilitar certificado'}>
+                              <IconButton
+                                size='small'
+                                onClick={() => setCertConfirm({
+                                  inscripcionId: insc.id,
+                                  cursoTitulo: insc.curso.titulo,
+                                  habilitadoActual: insc.certificado_habilitado
+                                })}
+                                sx={{
+                                  bgcolor: insc.certificado_habilitado
+                                    ? 'rgba(22,163,74,0.1)'
+                                    : 'rgba(245,158,11,0.1)',
+                                  color: insc.certificado_habilitado ? 'success.main' : 'warning.main',
+                                  '&:hover': {
+                                    bgcolor: insc.certificado_habilitado
+                                      ? 'rgba(22,163,74,0.2)'
+                                      : 'rgba(245,158,11,0.2)'
+                                  }
+                                }}
+                              >
+                                <i className={insc.certificado_habilitado
+                                  ? 'tabler-certificate text-[18px]'
+                                  : 'tabler-lock text-[18px]'
+                                } />
+                              </IconButton>
+                            </Tooltip>
+                          ) : undefined
                         }
-                      />
-                    </ListItem>
-                  </Box>
-                ))}
+                      >
+                        <ListItemIcon sx={{ minWidth: 40, mt: 1 }}>
+                          <i className='tabler-book text-2xl text-primary' />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', pr: tieneCertPago ? 4 : 0 }}>
+                              <Typography variant='body2' fontWeight={600}>{insc.curso.titulo}</Typography>
+                              {tieneCertPago && (
+                                <Chip
+                                  size='small'
+                                  icon={<i className={insc.certificado_habilitado ? 'tabler-certificate' : 'tabler-lock'} style={{ fontSize: '0.75rem' }} />}
+                                  label={insc.certificado_habilitado ? `Cert. habilitado` : `Cert. ${precioFmt}`}
+                                  color={insc.certificado_habilitado ? 'success' : 'warning'}
+                                  variant='tonal'
+                                  sx={{ fontSize: '0.68rem', height: 20 }}
+                                />
+                              )}
+                            </Box>
+                          }
+                          secondary={
+                            <Typography component='span' variant='caption' color='text.secondary'>
+                              Estado: {insc.estado} — Inscrito el <HydratedDate date={insc.inscrito_en} format='date' />
+                            </Typography>
+                          }
+                        />
+                      </ListItem>
+                    </Box>
+                  )
+                })}
               </List>
             ) : (
               <Box sx={{ mt: 4, textAlign: 'center' }}>
@@ -207,6 +294,61 @@ const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesM
         </Button>
       </Box>
     </AppModal>
+
+    {/* Modal de confirmación para habilitar/deshabilitar certificado */}
+    {certConfirm && (
+      <AppModal open={!!certConfirm} handleClose={() => !certLoading && setCertConfirm(null)}>
+        <Box sx={{ textAlign: 'center' }}>
+          <Box sx={{
+            width: 64, height: 64, borderRadius: '50%', mx: 'auto', mb: 3,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            bgcolor: certConfirm.habilitadoActual ? 'rgba(220,38,38,0.1)' : 'rgba(22,163,74,0.1)'
+          }}>
+            <i
+              className={certConfirm.habilitadoActual ? 'tabler-lock text-4xl' : 'tabler-certificate text-4xl'}
+              style={{ color: certConfirm.habilitadoActual ? '#dc2626' : '#16a34a' }}
+            />
+          </Box>
+          <Typography variant='h5' fontWeight={700} sx={{ mb: 1 }}>
+            {certConfirm.habilitadoActual ? 'Deshabilitar certificado' : 'Habilitar certificado'}
+          </Typography>
+          <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5 }}>
+            {certConfirm.habilitadoActual
+              ? 'El estudiante ya no podrá descargar el certificado de:'
+              : 'El estudiante podrá descargar el certificado de:'}
+          </Typography>
+          <Typography variant='body1' fontWeight={600} sx={{ mb: 4 }}>
+            {certConfirm.cursoTitulo}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+            <Button
+              variant='tonal'
+              color='secondary'
+              onClick={() => setCertConfirm(null)}
+              disabled={certLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant='contained'
+              color={certConfirm.habilitadoActual ? 'error' : 'success'}
+              onClick={handleToggleCert}
+              disabled={certLoading}
+              startIcon={certLoading
+                ? <CircularProgress size={16} color='inherit' />
+                : <i className={certConfirm.habilitadoActual ? 'tabler-lock' : 'tabler-circle-check'} />
+              }
+            >
+              {certLoading
+                ? 'Guardando...'
+                : certConfirm.habilitadoActual ? 'Sí, deshabilitar' : 'Sí, habilitar'
+              }
+            </Button>
+          </Box>
+        </Box>
+      </AppModal>
+    )}
+    </>
   )
 }
 

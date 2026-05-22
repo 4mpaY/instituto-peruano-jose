@@ -4,6 +4,7 @@ import { ApiResponse } from '@/utils/libs/apiResponse'
 import { handleApiError } from '@/utils/libs/validation'
 import { sendMail } from '@/utils/libs/mailer'
 import { getConfigs } from '@/utils/libs/config'
+import { getOTPTemplate } from '@/utils/libs/email-templates'
 
 /**
  * POST /api/auth/forgot-password
@@ -54,24 +55,12 @@ export async function POST(request: Request) {
     const configs = await getConfigs()
     const platformName = configs.TEMPLATE_NAME || 'Aula Virtual'
 
-    const emailHtml = `
-      <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-        <h2 style="color: #131FF2;">Recuperación de Contraseña</h2>
-        <p>Hola, <strong>${usuario.nombre}</strong>.</p>
-        <p>Has solicitado restablecer tu contraseña. Utiliza el siguiente código de verificación (OTP) para continuar:</p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-            <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #131FF2; background: #f0f0f0; padding: 10px 20px; border-radius: 5px;">
-                ${codigo}
-            </span>
-        </div>
-        
-        <p style="font-size: 14px; color: #666;">Este código expirará en <strong>15 minutos</strong>. Si no solicitaste este cambio, puedes ignorar este correo de forma segura.</p>
-        
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="font-size: 12px; color: #999; text-align: center;">© ${new Date().getFullYear()} ${platformName}</p>
-      </div>
-    `
+    const emailHtml = getOTPTemplate({
+      platformName,
+      customerName: usuario.nombre || 'Estudiante',
+      codigo,
+      appUrl: process.env.NEXT_PUBLIC_APP_URL || ''
+    })
 
     const mailSent = await sendMail({
       to: correo,

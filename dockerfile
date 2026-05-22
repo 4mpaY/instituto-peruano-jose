@@ -4,8 +4,8 @@ FROM node:20-alpine AS base
 # Dependencias necesarias para Prisma y Alpine
 RUN apk add --no-cache libc6-compat openssl
 
-# Habilitar pnpm de forma estricta instalándolo de manera global
-RUN npm install -g pnpm@9.0.0
+# Habilitar pnpm
+RUN corepack enable pnpm
 
 # Fase 2: Dependencias
 FROM base AS deps
@@ -64,9 +64,6 @@ ENV NEXT_PUBLIC_PAYPAL_CLIENT_ID=$NEXT_PUBLIC_PAYPAL_CLIENT_ID
 # Generar el cliente de Prisma para producción
 RUN pnpm run db:client:generate
 
-# Limpiar artefactos previos para evitar errores de caché corrupta
-RUN rm -rf .next
-
 # Compilar Next.js (esto generará .next/standalone si next.config.js está bien configurado)
 RUN pnpm run build
 
@@ -81,7 +78,6 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Definir puerto por defecto (Coolify lo usará)
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-
 # URL interna para que los Server Components puedan hacer HTTP al propio servidor
 ENV INTERNAL_API_URL="http://web:3000"
 
@@ -92,9 +88,8 @@ RUN adduser --system --uid 1001 nextjs
 # Copiar carpeta public entera (para que Coolify la mantenga a salvo)
 COPY --from=builder /app/public ./public
 
-# Crear el directorio uploads y subcarpetas necesarias para cursos, perfiles y firmas
-RUN mkdir -p /app/public/uploads/cursos /app/public/uploads/perfil /app/public/uploads/firmas && \
-    chown -R nextjs:nodejs /app/public/uploads
+# Crear el directorio uploads y asignar permisos para subir imgs y pdfs
+RUN mkdir -p /app/public/uploads && chown nextjs:nodejs /app/public/uploads
 
 # Configurar permisos para la caché de pre-renderizado de Next.js
 RUN mkdir .next
@@ -104,6 +99,12 @@ RUN chown nextjs:nodejs .next
 # standalone contiene el propio motor de Node.js minimizado y solo los paquetes estrictamente necesarios.
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# -- COPIAR SHARP (pnpm: los .so de libvips están en .pnpm, no en symlinks) --
+# Next.js standalone traza el .node binario pero omite los .so bundled (libvips-cpp.so.8.x).
+# Con pnpm los archivos reales están en node_modules/.pnpm/, no en los symlinks de node_modules/.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.pnpm/sharp@0.34.5 ./node_modules/.pnpm/sharp@0.34.5
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.pnpm/@img+sharp-linuxmusl-x64@0.34.5 ./node_modules/.pnpm/@img+sharp-linuxmusl-x64@0.34.5
 
 # Copiar la carpeta Prisma por si se necesitan ejecutar comandos como migeraciones desde bash en el VPS
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma

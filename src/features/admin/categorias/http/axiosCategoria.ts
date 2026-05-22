@@ -24,11 +24,20 @@ export class AxiosCategoria extends AxiosInternalHttpClient {
     })
   }
 
-  async searchAll(): Promise<Categoria[]> {
+  async searchAll(query?: Record<string, string | number | boolean | undefined | null>): Promise<{ categorias: Categoria[]; paginacion: any }> {
     try {
-      const payload = await this.iGet<{ categorias: Categoria[]; paginacion: any }>()
+      // Limpiamos los parámetros para evitar campos vacíos o undefined
+      const cleanQuery = query 
+        ? Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined && v !== null && v !== ''))
+        : {}
 
-      return payload?.categorias || []
+      const queryString = Object.keys(cleanQuery).length > 0 
+        ? '?' + new URLSearchParams(cleanQuery as any).toString() 
+        : ''
+
+      const payload = await this.iGet<{ categorias: Categoria[]; paginacion: any }>(queryString)
+
+      return payload || { categorias: [], paginacion: {} }
     } catch (err: any) {
       throw err?.response?.data ?? err
     }

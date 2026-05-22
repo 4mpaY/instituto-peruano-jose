@@ -78,12 +78,114 @@ function SectionLabel({ children }: { children: string }) {
   )
 }
 
+const PLANTILLAS_CERTIFICADO = [
+  {
+    id: 'clasico',
+    nombre: 'Clásico',
+    descripcion: 'Panel lateral con gradiente. Ideal para institutos y academias.',
+    thumbnail: '/images/plantillas-certificado/clasico.png',
+  },
+  {
+    id: 'clasico_resumido',
+    nombre: 'Clásico (Resumido)',
+    descripcion: 'Temario a dos columnas sin cuadro de notas para ahorrar espacio.',
+    thumbnail: '/images/plantillas-certificado/clasico_resumido.png',
+  },
+  {
+    id: 'corporativo',
+    nombre: 'Corporativo',
+    descripcion: 'Diseño formal con borde y detalles dorados. Empresas B2B.',
+    thumbnail: '/images/plantillas-certificado/corporativo.png',
+  },
+  {
+    id: 'moderno',
+    nombre: 'Moderno',
+    descripcion: 'Fondo oscuro con acentos de color. Academias tech y startups.',
+    thumbnail: '/images/plantillas-certificado/moderno.png',
+  },
+  {
+    id: 'elegante',
+    nombre: 'Elegante',
+    descripcion: 'Fondo crema con bordes ornamentales. Estilo universitario.',
+    thumbnail: '/images/plantillas-certificado/elegante.png',
+  },
+]
+
 function CertificadosSettings({ config, onInputChange }: { config: any; onInputChange: (clave: string, valor: string) => void }) {
-  const { data: usuarios, isLoading } = useUsuarios()
-  const candidatos = (usuarios || []).filter(u => u.rol === Rol.ADMIN || u.rol === Rol.PROFESOR)
+  const { data: usuariosData, isLoading } = useUsuarios({ limit: '1000' })
+  const candidatos = (usuariosData?.usuarios || []).filter(u => u.rol === Rol.ADMIN || u.rol === Rol.PROFESOR)
+  const plantillaActiva = config.CERTIFICADO_PLANTILLA || 'clasico'
 
   return (
     <Stack spacing={4}>
+
+      {/* ── SELECTOR DE PLANTILLA ─────────────────────────────── */}
+      <Box>
+        <SectionLabel>Plantilla de Certificado</SectionLabel>
+        <Typography variant='body2' color='text.secondary' sx={{ mb: 3 }}>
+          Selecciona el diseño que se usará para todos los certificados generados en la plataforma.
+          Los colores y el logo se aplican automáticamente según el branding configurado.
+        </Typography>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 2 }}>
+          {PLANTILLAS_CERTIFICADO.map((p) => {
+            const isSelected = plantillaActiva === p.id
+
+            
+return (
+              <Box
+                key={p.id}
+                onClick={() => onInputChange('CERTIFICADO_PLANTILLA', p.id)}
+                sx={{
+                  cursor: 'pointer',
+                  borderRadius: 2,
+                  border: '2px solid',
+                  borderColor: isSelected ? 'primary.main' : 'divider',
+                  overflow: 'hidden',
+                  transition: 'all 0.18s',
+                  boxShadow: isSelected ? 4 : 0,
+                  '&:hover': { transform: 'translateY(-2px)', boxShadow: 3 },
+                  position: 'relative',
+                }}
+              >
+                {isSelected && (
+                  <Box
+                    sx={{
+                      position: 'absolute', top: 6, right: 6, zIndex: 1,
+                      bgcolor: 'primary.main', borderRadius: '50%',
+                      width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <i className='tabler-check' style={{ fontSize: 13, color: '#fff' }} />
+                  </Box>
+                )}
+                <Box
+                  component='img'
+                  src={p.thumbnail}
+                  alt={p.nombre}
+                  sx={{ width: '100%', aspectRatio: '297/210', objectFit: 'cover', display: 'block' }}
+                />
+                <Box sx={{ p: 1.5, bgcolor: isSelected ? 'primary.main' : 'background.paper' }}>
+                  <Typography
+                    variant='body2'
+                    fontWeight={700}
+                    sx={{ color: isSelected ? '#fff' : 'text.primary', mb: 0.3 }}
+                  >
+                    {p.nombre}
+                  </Typography>
+                  <Typography
+                    variant='caption'
+                    sx={{ color: isSelected ? 'rgba(255,255,255,0.8)' : 'text.secondary', lineHeight: 1.3, display: 'block' }}
+                  >
+                    {p.descripcion}
+                  </Typography>
+                </Box>
+              </Box>
+            )
+          })}
+        </Box>
+      </Box>
+
+      <Divider />
       <Box>
         <SectionLabel>Información de la Institución</SectionLabel>
         <Typography variant='body2' color='text.secondary' sx={{ mb: 3 }}>
@@ -280,7 +382,7 @@ export function ConfiguracionView({ initialData }: ConfiguracionViewProps) {
     CERTIFICADO_INSTITUTION_NAME: '',
     CERTIFICADO_SLOGAN: '',
     CERTIFICADO_INSTITUTION_URL: '',
-    TEMPLATE_LOGO: '/images/logo-arm.png',
+    TEMPLATE_LOGO: '',
     SETTINGS_COOKIE_NAME: 'arm',
     PRIMARY_COLOR_MAIN: '#131FF2',
     PRIMARY_COLOR_LIGHT: '#242CBF',
@@ -305,12 +407,14 @@ export function ConfiguracionView({ initialData }: ConfiguracionViewProps) {
     CULQI_RSA_ID: '',
     CULQI_RSA_PUBLIC_KEY: '',
     CERTIFICADO_GERENTE_GENERAL_ID: '',
+    CERTIFICADO_PLANTILLA: 'clasico',
     PAGO_MANUAL_ENABLED: 'false',
     PAGO_MANUAL_WHATSAPP_NUMERO: '',
     PAGO_MANUAL_WHATSAPP_MENSAJE: '',
     MP_ENABLED: 'true',
     MP_ACCESS_TOKEN: '',
     MP_PUBLIC_KEY: '',
+    PEDIDOS_SOLICITAR_COMPROBANTE: 'true',
     ...initialMapped
   })
 
@@ -511,6 +615,27 @@ export function ConfiguracionView({ initialData }: ConfiguracionViewProps) {
               </Stack>
             </Paper>
           </Box>
+
+          <Divider />
+
+          {/* Facturación */}
+          <Box>
+            <Typography variant='h6' gutterBottom>Facturación y Comprobantes</Typography>
+            <Typography variant='body2' color='text.secondary' sx={{ mb: 3 }}>
+              Controla si los alumnos pueden solicitar comprobantes de pago (Boleta/Factura) durante el checkout.
+            </Typography>
+            <Paper variant='outlined' sx={{ p: 2, bgcolor: 'background.default' }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={config.PEDIDOS_SOLICITAR_COMPROBANTE === 'true'}
+                    onChange={(e) => handleInputChange('PEDIDOS_SOLICITAR_COMPROBANTE', e.target.checked ? 'true' : 'false')}
+                  />
+                }
+                label='Habilitar solicitud de comprobantes en el Checkout'
+              />
+            </Paper>
+          </Box>
         </Stack>
       )
     },
@@ -565,7 +690,12 @@ export function ConfiguracionView({ initialData }: ConfiguracionViewProps) {
                   }}
                 >
                   {config.TEMPLATE_LOGO ? (
-                    <img src={config.TEMPLATE_LOGO} alt='Logo' style={{ maxHeight: 80, maxWidth: '100%', objectFit: 'contain' }} />
+                    <img
+                      src={config.TEMPLATE_LOGO}
+                      alt='Logo'
+                      style={{ maxHeight: 80, maxWidth: '100%', objectFit: 'contain' }}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                    />
                   ) : (
                     <Typography variant='caption' color='text.disabled'>Sin logo</Typography>
                   )}
@@ -595,11 +725,68 @@ export function ConfiguracionView({ initialData }: ConfiguracionViewProps) {
 
           <Box>
             <SectionLabel>Colores del Tema</SectionLabel>
+
+            {/* Paletas predefinidas */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant='body2' color='text.secondary' sx={{ mb: 1.5 }}>Paletas Predefinidas</Typography>
+              <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mb: 2 }}>
+                Haz clic en una paleta para aplicar los colores automáticamente.
+              </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 110px)', gap: 1.5 }}>
+                {[
+                  { label: 'Teal & Lima', main: '#25927F', light: '#BDD962', dark: '#025E44' },
+                  { label: 'Índigo & Lima', main: '#4F46E5', light: '#A3E635', dark: '#3730A3' },
+                  { label: 'Océano Profundo', main: '#0369A1', light: '#38BDF8', dark: '#082F49' },
+                  { label: 'Índigo & Dorado', main: '#7C3AED', light: '#FCD34D', dark: '#4C1D95' },
+                  { label: 'Esmeralda', main: '#059669', light: '#A7F3D0', dark: '#064E3B' },
+                  { label: 'Pizarra & Coral', main: '#475569', light: '#FB923C', dark: '#1E293B' },
+                  { label: 'Granate & Champán', main: '#9F1239', light: '#FBCFE8', dark: '#4C0519' },
+                  { label: 'Cian Tecnológico', main: '#0891B2', light: '#67E8F9', dark: '#164E63' },
+                  { label: 'Naranja Fuego', main: '#EA580C', light: '#FED7AA', dark: '#7C2D12' },
+                  { label: 'Naranja & Negro', main: '#F97316', light: '#FFEDD5', dark: '#1C1917' },
+                  { label: 'Ámbar Dorado', main: '#D97706', light: '#FDE68A', dark: '#78350F' },
+                  { label: 'Azul Presidencial', main: '#1D4ED8', light: '#93C5FD', dark: '#1E3A8A' },
+                  { label: 'Azul & Oro', main: '#2563EB', light: '#FCD34D', dark: '#1E3A8A' },
+                  { label: 'Marino Oficial', main: '#0F4C81', light: '#BAE6FD', dark: '#0C2340' },
+                ].map((palette) => (
+                  <Box
+                    key={palette.label}
+                    onClick={() => {
+                      handleInputChange('PRIMARY_COLOR_MAIN', palette.main)
+                      handleInputChange('PRIMARY_COLOR_LIGHT', palette.light)
+                      handleInputChange('PRIMARY_COLOR_DARK', palette.dark)
+                    }}
+                    sx={{
+                      width: 110,
+                      cursor: 'pointer',
+                      borderRadius: 2,
+                      border: '2px solid',
+                      borderColor: config.PRIMARY_COLOR_MAIN === palette.main ? 'primary.main' : 'divider',
+                      overflow: 'hidden',
+                      transition: 'transform 0.15s, box-shadow 0.15s',
+                      '&:hover': { transform: 'scale(1.04)', boxShadow: 3 },
+                    }}
+                  >
+                    <Stack direction='row' sx={{ height: 32 }}>
+                      <Box sx={{ flex: 1, bgcolor: palette.dark }} />
+                      <Box sx={{ flex: 1, bgcolor: palette.main }} />
+                      <Box sx={{ flex: 1, bgcolor: palette.light }} />
+                    </Stack>
+                    <Box sx={{ px: 1, py: 0.5, bgcolor: 'background.paper', width: '100%' }}>
+                      <Typography variant='caption' sx={{ fontSize: '0.65rem', fontWeight: 600, display: 'block', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {palette.label}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+
             <Grid container spacing={3}>
               {[
-                { label: 'Color Principal', key: 'PRIMARY_COLOR_MAIN' },
-                { label: 'Color Claro', key: 'PRIMARY_COLOR_LIGHT' },
-                { label: 'Color Oscuro', key: 'PRIMARY_COLOR_DARK' }
+                { label: 'Color Primario Principal', key: 'PRIMARY_COLOR_MAIN' },
+                { label: 'Color Primario Claro (Light)', key: 'PRIMARY_COLOR_LIGHT' },
+                { label: 'Color Primario Oscuro (Dark)', key: 'PRIMARY_COLOR_DARK' }
               ].map(({ label, key }) => (
                 <Grid item xs={12} md={4} key={key}>
                   <Typography variant='body2' fontWeight={500} sx={{ mb: 1 }}>{label}</Typography>
@@ -622,7 +809,7 @@ export function ConfiguracionView({ initialData }: ConfiguracionViewProps) {
                     >
                       <input
                         type='color'
-                        value={config[key]}
+                        value={/^#[0-9A-Fa-f]{6}$/.test(config[key]) ? config[key] : '#000000'}
                         onChange={(e) => handleInputChange(key, e.target.value)}
                         style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
                       />

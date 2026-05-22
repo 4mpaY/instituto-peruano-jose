@@ -47,7 +47,7 @@ export async function GET(request: Request) {
 
     const [courses, categories] = await Promise.all([
       prisma.curso.findMany({
-        where: { estado: 'PUBLICADO' },
+        where: { estado: 'PUBLICADO', es_privado: false },
         include: {
           profesor: { select: { id: true, slug: true, nombre: true, apellido: true, avatar: true } },
           categoria: { select: { id: true, nombre: true, slug: true } },

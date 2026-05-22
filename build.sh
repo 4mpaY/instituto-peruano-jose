@@ -19,7 +19,9 @@ echo ""
 echo "🔨 Construyendo imagen..."
 echo ""
 
+# SOLUCIÓN: Agregamos --no-cache para obligar a Docker a leer el Dockerfile actualizado
 docker build \
+  --no-cache \
   -f Dockerfile \
   -t $IMAGE_NAME \
   .

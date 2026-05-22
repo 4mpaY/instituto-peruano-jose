@@ -182,6 +182,9 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
   const [confirmedOrder, setConfirmedOrder] = useState<{ pedidoId: string; numeroPedido: number; total: number; cursos: string[] } | null>(null)
 
   const [formData, setFormData] = useState({ nombres: '', apellidos: '', correo: '' })
+  const [tipoComprobante, setTipoComprobante] = useState<'TICKET' | 'BOLETA' | 'FACTURA'>('TICKET')
+  const [numeroComprobante, setNumeroComprobante] = useState('')
+  const [comprobanteError, setComprobanteError] = useState<string | null>(null)
 
   const subtotal = courses.reduce((acc, c) => acc + Number(c.precio), 0)
   const displayTotal = finalTotal !== undefined ? finalTotal : subtotal
@@ -232,6 +235,34 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
     setTimeout(() => router.push('/estudiante/mis-cursos'), 2000)
   }, [router, clearCart])
 
+  const validateComprobante = useCallback(() => {
+    if (configs.PEDIDOS_SOLICITAR_COMPROBANTE === 'false') return true
+
+    setComprobanteError(null)
+
+    if (tipoComprobante === 'FACTURA') {
+      if (!/^\d{11}$/.test(numeroComprobante)) {
+        setComprobanteError('El RUC para factura debe tener 11 dígitos')
+
+        return false
+      }
+    } else if (tipoComprobante === 'BOLETA') {
+      if (!/^\d{8}$|^\d{11}$/.test(numeroComprobante)) {
+        setComprobanteError('El documento para boleta debe tener 8 u 11 dígitos')
+
+        return false
+      }
+    } else if (tipoComprobante === 'TICKET') {
+      if (numeroComprobante && !/^\d{8}$|^\d{11}$/.test(numeroComprobante)) {
+        setComprobanteError('Si ingresas un documento, debe tener 8 u 11 dígitos')
+
+        return false
+      }
+    }
+
+    return true
+  }, [configs.PEDIDOS_SOLICITAR_COMPROBANTE, tipoComprobante, numeroComprobante])
+
   const handlePaymentResponse = useCallback(async (response: any, pedidoId: string) => {
     try {
       const confirmRes = await fetch('/api/izipay/confirm', {
@@ -280,6 +311,8 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
       return
     }
 
+    if (!validateComprobante()) return
+
     setPaymentError(null)
 
     try {
@@ -288,7 +321,13 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cursoIds: courses.map(c => c.id), codigoCupon: appliedCouponCode, gateway: 'IZIPAY' })
+        body: JSON.stringify({
+          cursoIds: courses.map(c => c.id),
+          codigoCupon: appliedCouponCode,
+          gateway: 'IZIPAY',
+          tipoComprobante,
+          numeroComprobante
+        })
       })
 
       const dataRaw = await response.json()
@@ -316,6 +355,8 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
       return
     }
 
+    if (!validateComprobante()) return
+
     setPaymentError(null)
 
     try {
@@ -324,7 +365,13 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cursoIds: courses.map(c => c.id), codigoCupon: appliedCouponCode, gateway: 'CULQI' })
+        body: JSON.stringify({
+          cursoIds: courses.map(c => c.id),
+          codigoCupon: appliedCouponCode,
+          gateway: 'CULQI',
+          tipoComprobante,
+          numeroComprobante
+        })
       })
 
       const dataRaw = await response.json()
@@ -361,6 +408,8 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
       return
     }
 
+    if (!validateComprobante()) return
+
     setPaymentError(null)
 
     try {
@@ -373,7 +422,9 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
           cursoIds: courses.map(c => c.id),
           codigoCupon: appliedCouponCode,
           gateway: 'MANUAL',
-          metodoPagoManualId: selectedMetodoManualId
+          metodoPagoManualId: selectedMetodoManualId,
+          tipoComprobante,
+          numeroComprobante
         })
       })
 
@@ -404,30 +455,16 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
         const totalFormateado = `${currencySymbol} ${Number(total).toFixed(2)}`
 
         const mensaje = [
-          `🎓 *NUEVO PEDIDO REGISTRADO*`,
-          `━━━━━━━━━━━━━━━━━`,
-          ``,
-          `👤 *Estudiante:* ${nombre}`,
-          `🔖 *N° Pedido:* #${numeroPedido}`,
-          ``,
-          `📚 *Cursos:*`,
+          `Pedido #${numeroPedido} - ${nombre}`,
           cursosFormateados,
-          ``,
-          `💳 *Método:* ${selectedMetodo?.nombre || ''}`,
-          `💰 *Total pagado:* ${totalFormateado}`,
-          ``,
-          `📎 Adjunto el comprobante de pago para su verificación.`,
-          ``,
-          `_Quedo atento a la confirmación. ¡Gracias!_ 🙏`,
+          `Total: ${totalFormateado}`,
+          `Adjunto comprobante.`,
         ].join('\n')
 
         const url = `https://wa.me/${whatsappNumero}?text=${encodeURIComponent(mensaje)}`
 
-        // El QR solo lleva el número (URL corta) para que sea simple y escaneable
-        const urlCorta = `https://wa.me/${whatsappNumero}`
-
         try {
-          const qrDataUrl = await toDataURL(urlCorta, { width: 300, margin: 3, errorCorrectionLevel: 'L', color: { dark: '#000000', light: '#FFFFFF' } })
+          const qrDataUrl = await toDataURL(url, { width: 400, margin: 2, errorCorrectionLevel: 'L', color: { dark: '#000000', light: '#FFFFFF' } })
 
           setWhatsappUrl(url)
           setWhatsappQr(qrDataUrl)
@@ -459,6 +496,8 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
       return
     }
 
+    if (!validateComprobante()) return
+
     setPaymentError(null)
 
     try {
@@ -467,7 +506,13 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cursoIds: courses.map(c => c.id), codigoCupon: appliedCouponCode, gateway: 'MERCADOPAGO' })
+        body: JSON.stringify({
+          cursoIds: courses.map(c => c.id),
+          codigoCupon: appliedCouponCode,
+          gateway: 'MERCADOPAGO',
+          tipoComprobante,
+          numeroComprobante
+        })
       })
 
       const dataRaw = await response.json()
@@ -585,6 +630,48 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
               </Grid>
             </Grid>
           </Box>
+
+          {/* ─── Voucher selection (Comprobante) ─── */}
+          {configs.PEDIDOS_SOLICITAR_COMPROBANTE !== 'false' && (
+            <Box>
+              <Stack direction='row' alignItems='center' spacing={1} sx={{ mb: 2 }}>
+                <Box sx={{ width: 28, height: 28, borderRadius: 1.5, bgcolor: 'primary.50', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className='tabler-file-invoice' style={{ fontSize: 15, color: 'var(--mui-palette-primary-main)' }} />
+                </Box>
+                <Typography variant='subtitle1' fontWeight={700} color='text.primary'>Datos de Facturación (Opcional)</Typography>
+              </Stack>
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    select
+                    fullWidth
+                    size='small'
+                    label='Tipo de Comprobante'
+                    value={tipoComprobante}
+                    onChange={e => setTipoComprobante(e.target.value as any)}
+                    SelectProps={{ native: true }}
+                  >
+                    <option value='TICKET'>Ticket</option>
+                    <option value='BOLETA'>Boleta</option>
+                    <option value='FACTURA'>Factura</option>
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} sm={8}>
+                  <TextField
+                    fullWidth
+                    size='small'
+                    label={tipoComprobante === 'FACTURA' ? 'RUC (11 dígitos)' : 'DNI/RUC (8 u 11 dígitos)'}
+                    value={numeroComprobante}
+                    onChange={e => setNumeroComprobante(e.target.value.replace(/\D/g, '').substring(0, 11))}
+                    error={!!comprobanteError}
+                    helperText={comprobanteError}
+                    placeholder={tipoComprobante === 'FACTURA' ? 'Ingrese RUC' : 'Ingrese documento'}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          )}
 
           {/* ─── Payment method selector ─── */}
           <Box>
@@ -955,26 +1042,26 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
       <AppModal
         open={confirmModalOpen}
         handleClose={() => { setConfirmModalOpen(false); router.push('/cursos') }}
-        sx={{ p: 0, maxWidth: 500, width: 'calc(100% - 24px)', mx: 'auto', overflow: 'hidden' }}
+        sx={{ p: 0, maxWidth: 780, width: 'calc(100% - 24px)', mx: 'auto', overflow: 'hidden' }}
       >
         {/* Header verde */}
         <Box sx={{ bgcolor: 'success.main', px: 4, pt: 4, pb: 3, textAlign: 'center' }}>
           <Box sx={{
-            width: 64, height: 64, borderRadius: '50%',
+            width: 72, height: 72, borderRadius: '50%',
             bgcolor: 'rgba(255,255,255,0.2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             mx: 'auto', mb: 1.5,
             border: '3px solid rgba(255,255,255,0.35)'
           }}>
-            <i className='tabler-circle-check' style={{ fontSize: 38, color: 'white' }} />
+            <i className='tabler-circle-check' style={{ fontSize: 44, color: 'white' }} />
           </Box>
-          <Typography variant='h5' fontWeight={900} color='white' letterSpacing={0.3}>
+          <Typography variant='h4' fontWeight={900} color='white' letterSpacing={0.3}>
             ¡Pedido Registrado!
           </Typography>
           {confirmedOrder && (
-            <Box sx={{ mt: 1, display: 'inline-flex', alignItems: 'center', gap: 0.75, bgcolor: 'rgba(255,255,255,0.18)', borderRadius: 6, px: 2, py: 0.5 }}>
-              <i className='tabler-hash' style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)' }} />
-              <Typography variant='body2' color='white' fontWeight={700} letterSpacing={1}>
+            <Box sx={{ mt: 1, display: 'inline-flex', alignItems: 'center', gap: 0.75, bgcolor: 'rgba(255,255,255,0.18)', borderRadius: 6, px: 2.5, py: 0.75 }}>
+              <i className='tabler-hash' style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }} />
+              <Typography variant='body1' color='white' fontWeight={700} letterSpacing={1}>
                 {String(confirmedOrder.numeroPedido).padStart(6, '0')}
               </Typography>
             </Box>
@@ -982,92 +1069,128 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
         </Box>
 
         <Box sx={{ pt: 3, pb: 3, px: 3 }}>
-          {/* Resumen del pedido */}
-          {confirmedOrder && (
-            <Box sx={{ mb: 2.5, p: 2, borderRadius: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
-              <Stack spacing={0.75}>
-                {confirmedOrder.cursos.map((curso, i) => (
-                  <Stack key={i} direction='row' alignItems='flex-start' spacing={1}>
-                    <i className='tabler-book' style={{ fontSize: 14, color: '#25927F', marginTop: 2, flexShrink: 0 }} />
-                    <Typography variant='body2' fontWeight={500} lineHeight={1.4}>{curso}</Typography>
-                  </Stack>
-                ))}
-                <Divider sx={{ my: 0.5 }} />
-                <Stack direction='row' justifyContent='space-between' alignItems='center'>
-                  <Typography variant='body2' color='text.secondary'>Total pagado</Typography>
-                  <Typography variant='subtitle1' fontWeight={800} color='success.main'>
-                    {currencySymbol} {confirmedOrder.total.toFixed(2)}
+          {/* Layout de dos columnas cuando hay QR */}
+          <Stack direction={{ xs: 'column', sm: whatsappQr ? 'row' : 'column' }} spacing={3} alignItems='flex-start'>
+
+            {/* Columna izquierda: resumen + comprobante + aviso + botones */}
+            <Box sx={{ flex: 1, minWidth: 0, width: '100%' }}>
+              {/* Resumen del pedido */}
+              {confirmedOrder && (
+                <Box sx={{ mb: 2.5, p: 2.5, borderRadius: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
+                  <Typography variant='subtitle2' fontWeight={700} sx={{ mb: 1.5, color: 'text.secondary', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: 0.8 }}>
+                    Cursos adquiridos
                   </Typography>
-                </Stack>
-              </Stack>
-            </Box>
-          )}
+                  <Stack spacing={1}>
+                    {confirmedOrder.cursos.map((curso, i) => (
+                      <Stack key={i} direction='row' alignItems='flex-start' spacing={1.25}>
+                        <Box sx={{ width: 28, height: 28, borderRadius: 1.5, bgcolor: 'success.lighterOpacity', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <i className='tabler-book' style={{ fontSize: 15, color: '#25927F' }} />
+                        </Box>
+                        <Typography variant='body2' fontWeight={600} lineHeight={1.45} sx={{ pt: 0.4 }}>{curso}</Typography>
+                      </Stack>
+                    ))}
+                  </Stack>
+                  <Divider sx={{ my: 1.5 }} />
+                  <Stack direction='row' justifyContent='space-between' alignItems='center'>
+                    <Typography variant='body2' color='text.secondary'>Total pagado</Typography>
+                    <Typography variant='h6' fontWeight={800} color='success.main'>
+                      {currencySymbol} {confirmedOrder.total.toFixed(2)}
+                    </Typography>
+                  </Stack>
+                </Box>
+              )}
 
-          {/* Comprobante subido */}
-          {voucherPreview && (
-            <Box sx={{ mb: 2.5 }}>
-              <Stack direction='row' alignItems='center' spacing={1} sx={{ mb: 1.25 }}>
-                <i className='tabler-photo-check' style={{ fontSize: 16, color: '#25927F' }} />
-                <Typography variant='subtitle2' fontWeight={700}>Comprobante subido</Typography>
-                <Chip label='✓ Recibido' size='small' color='success' variant='tonal' sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.7rem' }} />
-              </Stack>
-              <Box
-                component='img'
-                src={voucherPreview}
-                alt='Comprobante'
-                sx={{
-                  width: '100%', maxHeight: 200, objectFit: 'contain',
-                  borderRadius: 2, border: '1.5px solid', borderColor: 'divider',
-                  bgcolor: '#f8fafc', cursor: 'zoom-in'
-                }}
-                onClick={() => window.open(voucherPreview!, '_blank')}
-              />
-            </Box>
-          )}
+              {/* Comprobante subido */}
+              {voucherPreview && (
+                <Box sx={{ mb: 2.5 }}>
+                  <Stack direction='row' alignItems='center' spacing={1} sx={{ mb: 1.25 }}>
+                    <i className='tabler-photo-check' style={{ fontSize: 16, color: '#25927F' }} />
+                    <Typography variant='subtitle2' fontWeight={700}>Comprobante subido</Typography>
+                    <Chip label='✓ Recibido' size='small' color='success' variant='tonal' sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.7rem' }} />
+                  </Stack>
+                  <Box
+                    component='img'
+                    src={voucherPreview}
+                    alt='Comprobante'
+                    sx={{
+                      width: '100%', maxHeight: 180, objectFit: 'contain',
+                      borderRadius: 2, border: '1.5px solid', borderColor: 'divider',
+                      bgcolor: '#f8fafc', cursor: 'zoom-in'
+                    }}
+                    onClick={() => window.open(voucherPreview!, '_blank')}
+                  />
+                </Box>
+              )}
 
-          {/* Aviso */}
-          <Alert
-            severity='info'
-            icon={<i className='tabler-clock' style={{ fontSize: 18 }} />}
-            sx={{ mb: 2.5, borderRadius: 2, fontSize: '0.8125rem' }}
-          >
-            Tu pedido está en revisión. El acceso al curso se activa una vez verificado el pago.
-          </Alert>
+              {/* Aviso */}
+              <Alert
+                severity='info'
+                icon={<i className='tabler-clock' style={{ fontSize: 18 }} />}
+                sx={{ mb: 2.5, borderRadius: 2, fontSize: '0.8125rem' }}
+              >
+                Tu pedido está en revisión. El acceso al curso se activa una vez verificado el pago.
+              </Alert>
 
-          {/* Botones */}
-          <Stack spacing={1.5}>
-            {whatsappUrl && (
-              <>
+              {/* Botones */}
+              <Stack spacing={1.5}>
+                {whatsappUrl && (
+                  <Button
+                    fullWidth
+                    variant='contained'
+                    size='large'
+                    sx={{ bgcolor: '#25D366', '&:hover': { bgcolor: '#1ebe5d' }, borderRadius: 2.5, fontWeight: 800, py: 1.5, fontSize: '0.95rem', boxShadow: '0 4px 14px rgba(37,211,102,0.3)' }}
+                    startIcon={<i className='tabler-brand-whatsapp' style={{ fontSize: 22 }} />}
+                    onClick={() => window.open(whatsappUrl, '_blank')}
+                  >
+                    Enviar comprobante por WhatsApp
+                  </Button>
+                )}
                 <Button
                   fullWidth
-                  variant='contained'
+                  variant='outlined'
                   size='large'
-                  sx={{ bgcolor: '#25D366', '&:hover': { bgcolor: '#1ebe5d' }, borderRadius: 2.5, fontWeight: 800, py: 1.5, fontSize: '0.95rem', boxShadow: '0 4px 14px rgba(37,211,102,0.3)' }}
-                  startIcon={<i className='tabler-brand-whatsapp' style={{ fontSize: 22 }} />}
-                  onClick={() => window.open(whatsappUrl, '_blank')}
+                  startIcon={<i className='tabler-school' />}
+                  onClick={() => { setConfirmModalOpen(false); router.push('/cursos') }}
+                  sx={{ borderRadius: 2.5, fontWeight: 700, py: 1.4 }}
                 >
-                  Enviar comprobante por WhatsApp
+                  Explorar más cursos
                 </Button>
-                {whatsappQr && (
-                  <Box sx={{ display: { xs: 'none', md: 'block' }, textAlign: 'center', py: 2, px: 2, bgcolor: 'action.hover', borderRadius: 2, border: '1px dashed', borderColor: 'divider' }}>
-                    <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 1.25, fontWeight: 500 }}>
-                      O escanea el QR desde tu celular:
-                    </Typography>
-                    <img src={whatsappQr} alt='QR WhatsApp' style={{ width: 220, height: 220, borderRadius: 10 }} />
-                  </Box>
-                )}
-              </>
+              </Stack>
+            </Box>
+
+            {/* Columna derecha: QR WhatsApp con resumen del pedido */}
+            {whatsappQr && (
+              <Box sx={{
+                width: { xs: '100%', sm: 230 },
+                flexShrink: 0,
+                textAlign: 'center',
+                py: 3, px: 2,
+                bgcolor: '#f0fdf4',
+                borderRadius: 3,
+                border: '1.5px dashed',
+                borderColor: '#86efac',
+                alignSelf: 'stretch',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1.5
+              }}>
+                <i className='tabler-brand-whatsapp' style={{ fontSize: 30, color: '#25D366' }} />
+                <Typography variant='subtitle2' fontWeight={700} sx={{ fontSize: '0.82rem' }}>
+                  Enviar por WhatsApp
+                </Typography>
+                <Typography variant='caption' color='text.secondary' sx={{ fontSize: '0.72rem', lineHeight: 1.5 }}>
+                  Escanea desde tu celular — se abrirá WhatsApp con el resumen del pedido listo para enviar
+                </Typography>
+                <Box sx={{ p: 1.5, bgcolor: 'white', borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+                  <img src={whatsappQr} alt='QR WhatsApp' style={{ width: 170, height: 170, display: 'block' }} />
+                </Box>
+                <Typography variant='caption' color='text.disabled' sx={{ fontSize: '0.68rem' }}>
+                  Abre la cámara y apunta al QR
+                </Typography>
+              </Box>
             )}
-            <Button
-              fullWidth
-              variant='outlined'
-              size='large'
-              startIcon={<i className='tabler-school' />}
-              onClick={() => { setConfirmModalOpen(false); router.push('/cursos') }}
-              sx={{ borderRadius: 2.5, fontWeight: 700, py: 1.4 }}
-            >
-              Explorar más cursos
-            </Button>
           </Stack>
         </Box>
       </AppModal>

@@ -64,7 +64,7 @@ export async function GET(request: Request) {
       return ApiResponse.error(request, 'El ID del curso es requerido', 400)
     }
 
-    const [certificado, elegibilidad] = await Promise.all([
+    const [certificado, elegibilidad, inscripcion, curso] = await Promise.all([
       prisma.certificado.findUnique({
         where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } },
         include: {
@@ -72,8 +72,16 @@ export async function GET(request: Request) {
           usuario: { select: { nombre: true, apellido: true } }
         }
       }),
-      calcularElegibilidad(auth.user.id, cursoId)
+      calcularElegibilidad(auth.user.id, cursoId),
+      prisma.inscripcion.findUnique({
+        where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } },
+        select: { certificado_habilitado: true }
+      }),
+      prisma.curso.findUnique({ where: { id: cursoId }, select: { precio_certificado: true, titulo: true } })
     ])
+
+    const precioCert = curso?.precio_certificado ? Number(curso.precio_certificado) : null
+    const pagoPendiente = precioCert && precioCert > 0 && !inscripcion?.certificado_habilitado
 
     return ApiResponse.success(request, {
       certificado: certificado ? {
@@ -83,7 +91,10 @@ export async function GET(request: Request) {
         cursoTitulo: certificado.curso.titulo,
         nombreCompleto: `${certificado.usuario.nombre} ${certificado.usuario.apellido}`
       } : null,
-      elegibilidad
+      cursoTitulo: curso?.titulo ?? null,
+      elegibilidad,
+      pagoPendiente: pagoPendiente || false,
+      precioCertificado: precioCert
     })
   } catch (error) {
     return handleApiError(error, request)
@@ -108,12 +119,22 @@ export async function POST(request: Request) {
     }
 
     // 1. Verificar inscripción activa
-    const inscripcion = await prisma.inscripcion.findUnique({
-      where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } }
-    })
+    const [inscripcion, curso] = await Promise.all([
+      prisma.inscripcion.findUnique({
+        where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } }
+      }),
+      prisma.curso.findUnique({ where: { id: cursoId }, select: { precio_certificado: true, codigo: true, slug: true } })
+    ])
 
     if (!inscripcion || inscripcion.estado !== 'ACTIVO') {
       return ApiResponse.error(request, 'No estás inscrito en este curso', 403)
+    }
+
+    // 1b. Verificar pago del certificado si aplica
+    const precioCert = curso?.precio_certificado ? Number(curso.precio_certificado) : null
+
+    if (precioCert && precioCert > 0 && !inscripcion.certificado_habilitado) {
+      return ApiResponse.error(request, 'El certificado de este curso requiere un pago previo. Comunícate con nosotros para habilitarlo.', 403)
     }
 
     // 2. Verificar elegibilidad (progreso + promedio de evaluaciones)
@@ -160,7 +181,7 @@ export async function POST(request: Request) {
       }),
       prisma.usuario.findUnique({
         where: { id: auth.user.id },
-        select: { nombre: true, apellido: true }
+        select: { nombre: true, apellido: true, numero_documento: true }
       })
     ])
 
@@ -168,8 +189,12 @@ export async function POST(request: Request) {
       return ApiResponse.error(request, 'Curso no encontrado', 404)
     }
 
-    // 5. Generar código de verificación único
-    const codigoVerificacion = `CERT-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+    // 5. Generar código de verificación único: {CODIGO_CURSO}-{YYYYMMDD}-{DNI}-{NN}
+    const fechaEmision = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    const dni = usuarioData?.numero_documento?.replace(/\D/g, '') || 'SINDNI'
+    const codigoCurso = cursoData?.codigo || cursoData?.slug?.slice(0, 12).toUpperCase() || cursoId.slice(0, 8).toUpperCase()
+    const numeroIntento = 1
+    const codigoVerificacion = `${codigoCurso}-${fechaEmision}-${dni}-${String(numeroIntento).padStart(2, '0')}`
 
     const datosSnapshot = {
       curso: {

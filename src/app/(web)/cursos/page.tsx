@@ -37,7 +37,7 @@ async function getData(token: string | null) {
 }
 
 export const metadata = {
-  title: 'Catálogo de Cursos - Aula Virtual ARM',
+  title: `${process.env.NEXT_PUBLIC_APP_NAME} | Cursos`,
   description: 'Explora nuestra amplia variedad de cursos y comienza a aprender hoy mismo.'
 }
 

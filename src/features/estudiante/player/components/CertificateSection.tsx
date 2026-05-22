@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 import axios from 'axios'
 import { toast } from 'react-toastify'
@@ -84,17 +84,30 @@ const CertificateSection = ({ cursoId }: CertificateSectionProps) => {
     const [certificado, setCertificado] = useState<CertificateData | null>(null)
     const [elegibilidad, setElegibilidad] = useState<Elegibilidad | null>(null)
     const [fetchError, setFetchError] = useState(false)
+    const [pagoPendiente, setPagoPendiente] = useState(false)
+    const [precioCertificado, setPrecioCertificado] = useState<number | null>(null)
+    const [cursoTitulo, setCursoTitulo] = useState<string | null>(null)
+    const [whatsappNumero, setWhatsappNumero] = useState<string | null>(null)
+    const autoGeneradoRef = useRef(false)
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true)
                 setFetchError(false)
-                const res = await axios.get(`/api/estudiante/certificado?cursoId=${cursoId}`)
+
+                const [res, resPago] = await Promise.all([
+                    axios.get(`/api/estudiante/certificado?cursoId=${cursoId}`),
+                    axios.get('/api/metodos-pago').catch(() => null)
+                ])
 
                 if (res.data.status) {
                     setCertificado(res.data.result.certificado ?? null)
                     setElegibilidad(res.data.result.elegibilidad ?? null)
+                    setPagoPendiente(res.data.result.pagoPendiente ?? false)
+                    setPrecioCertificado(res.data.result.precioCertificado ?? null)
+                    setCursoTitulo(res.data.result.cursoTitulo ?? null)
+                    setWhatsappNumero(resPago?.data?.result?.whatsapp_numero || null)
                 } else {
                     setFetchError(true)
                 }
@@ -107,6 +120,27 @@ const CertificateSection = ({ cursoId }: CertificateSectionProps) => {
 
         fetchData()
     }, [cursoId])
+
+    // Auto-generar si no hay evaluaciones, está al 100% y no hay pago pendiente
+    useEffect(() => {
+        if (
+            !loading &&
+            !certificado &&
+            !pagoPendiente &&
+            elegibilidad?.isEligible &&
+            elegibilidad?.totalExamenes === 0 &&
+            !autoGeneradoRef.current
+        ) {
+            autoGeneradoRef.current = true
+            setGenerating(true)
+            axios.post('/api/estudiante/certificado', { cursoId })
+                .then(res => {
+                    if (res.data.status) setCertificado(res.data.result.certificado)
+                })
+                .catch(() => {})
+                .finally(() => setGenerating(false))
+        }
+    }, [loading, certificado, pagoPendiente, elegibilidad, cursoId])
 
     const handleGenerar = async () => {
         setGenerating(true)
@@ -153,70 +187,99 @@ const CertificateSection = ({ cursoId }: CertificateSectionProps) => {
     }
 
     // ── Wrapper visual ──────────────────────────────────────────────
-    const Wrapper = ({ children }: { children: React.ReactNode }) => (
-        <Box sx={{
-            mt: 3,
-            borderRadius: '16px',
-            border: '1.5px solid',
-            borderColor: certificado
-                ? 'success.light'
+    const Wrapper = ({ children }: { children: React.ReactNode }) => {
+        const hasPago = pagoPendiente && !certificado
+
+        const borderColor = certificado
+            ? 'success.light'
+            : hasPago
+                ? '#f59e0b'
                 : elegibilidad?.isEligible
                     ? 'primary.light'
-                    : 'divider',
-            overflow: 'hidden',
-        }}>
-            {/* Header band */}
-            <Box sx={{
-                px: 3, py: 1.5,
-                display: 'flex', alignItems: 'center', gap: 1.5,
-                bgcolor: certificado
-                    ? 'rgba(22,163,74,0.06)'
-                    : elegibilidad?.isEligible
-                        ? 'rgba(2,94,68,0.06)'
-                        : 'rgba(0,0,0,0.02)',
-                borderBottom: '1px solid',
-                borderColor: 'divider'
-            }}>
-                <Box sx={{
-                    width: 36, height: 36, borderRadius: '10px', flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    bgcolor: certificado ? 'rgba(22,163,74,0.12)' : 'rgba(2,94,68,0.1)'
-                }}>
-                    <i className="tabler-certificate" style={{
-                        fontSize: '1.25rem',
-                        color: certificado ? '#16a34a' : '#025E44'
-                    }} />
-                </Box>
-                <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-                        Tu Certificado
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {certificado
-                            ? 'Certificado de finalización obtenido'
-                            : elegibilidad?.isEligible
-                                ? '¡Puedes obtener tu certificado!'
-                                : 'Completa el curso para obtenerlo'
-                        }
-                    </Typography>
-                </Box>
-                {certificado && (
-                    <Chip
-                        size="small"
-                        icon={<i className="tabler-circle-check-filled" style={{ fontSize: '0.85rem' }} />}
-                        label="Obtenido"
-                        color="success"
-                        sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem' }}
-                    />
-                )}
-            </Box>
+                    : 'divider'
 
-            {/* Body */}
-            <Box sx={{ p: 3 }}>
-                {children}
+        const headerBg = certificado
+            ? 'rgba(22,163,74,0.06)'
+            : hasPago
+                ? 'rgba(245,158,11,0.06)'
+                : elegibilidad?.isEligible
+                    ? 'rgba(2,94,68,0.06)'
+                    : 'rgba(0,0,0,0.02)'
+
+        const iconBg = certificado
+            ? 'rgba(22,163,74,0.12)'
+            : hasPago
+                ? 'rgba(245,158,11,0.12)'
+                : 'rgba(2,94,68,0.1)'
+
+        const iconColor = certificado ? '#16a34a' : hasPago ? '#d97706' : '#025E44'
+
+        const subtitle = certificado
+            ? 'Certificado de finalización obtenido'
+            : hasPago
+                ? 'Requiere pago para obtenerlo'
+                : elegibilidad?.isEligible
+                    ? '¡Puedes obtener tu certificado!'
+                    : 'Completa el curso para obtenerlo'
+
+        return (
+            <Box sx={{
+                mt: 3,
+                borderRadius: '16px',
+                border: '1.5px solid',
+                borderColor,
+                overflow: 'hidden',
+            }}>
+                {/* Header band */}
+                <Box sx={{
+                    px: 3, py: 1.5,
+                    display: 'flex', alignItems: 'center', gap: 1.5,
+                    bgcolor: headerBg,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider'
+                }}>
+                    <Box sx={{
+                        width: 36, height: 36, borderRadius: '10px', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        bgcolor: iconBg
+                    }}>
+                        <i className="tabler-certificate" style={{ fontSize: '1.25rem', color: iconColor }} />
+                    </Box>
+                    <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                            Tu Certificado
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            {subtitle}
+                        </Typography>
+                    </Box>
+                    {certificado && (
+                        <Chip
+                            size="small"
+                            icon={<i className="tabler-circle-check-filled" style={{ fontSize: '0.85rem' }} />}
+                            label="Obtenido"
+                            color="success"
+                            sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem' }}
+                        />
+                    )}
+                    {hasPago && (
+                        <Chip
+                            size="small"
+                            icon={<i className="tabler-lock" style={{ fontSize: '0.85rem' }} />}
+                            label="Pago requerido"
+                            color="warning"
+                            sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem' }}
+                        />
+                    )}
+                </Box>
+
+                {/* Body */}
+                <Box sx={{ p: 3 }}>
+                    {children}
+                </Box>
             </Box>
-        </Box>
-    )
+        )
+    }
 
     // ── Loading ─────────────────────────────────────────────────────
     if (loading) {
@@ -301,6 +364,75 @@ const CertificateSection = ({ cursoId }: CertificateSectionProps) => {
         )
     }
 
+    // ── Certificado con costo pendiente de pago ─────────────────────
+    if (pagoPendiente) {
+        const moneda = 'S/'
+        const precioFmt = precioCertificado ? `${moneda} ${Number(precioCertificado).toFixed(2)}` : ''
+
+        const waUrl = whatsappNumero
+            ? `https://wa.me/${whatsappNumero.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, quiero obtener mi certificado del curso "${cursoTitulo || ''}"${precioFmt ? ` (${precioFmt})` : ''}. Por favor, indícame los pasos para realizar el pago.`)}`
+            : null
+
+        return (
+            <Wrapper>
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 3 }}>
+                    <Box sx={{
+                        width: 72, height: 72, borderRadius: '18px', flexShrink: 0,
+                        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <i className="tabler-lock" style={{ fontSize: '2rem', color: '#fff' }} />
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
+                            <Typography variant="h6" sx={{ fontWeight: 800, color: '#d97706' }}>
+                                Certificado disponible
+                            </Typography>
+                            {precioFmt && (
+                                <Chip
+                                    size="small"
+                                    label={precioFmt}
+                                    sx={{
+                                        bgcolor: 'rgba(245,158,11,0.12)',
+                                        color: '#d97706',
+                                        fontWeight: 800,
+                                        fontSize: '0.8rem'
+                                    }}
+                                />
+                            )}
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Has completado el curso. Para obtener tu certificado, realiza el pago
+                            {precioFmt ? ` de ${precioFmt}` : ''} y comunícate con nosotros para que habilitemos tu descarga.
+                        </Typography>
+                        {waUrl && (
+                            <Button
+                                component="a"
+                                href={waUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                variant="contained"
+                                size="small"
+                                startIcon={<i className="tabler-brand-whatsapp" />}
+                                sx={{
+                                    bgcolor: '#d97706',
+                                    color: '#fff',
+                                    borderRadius: '10px',
+                                    textTransform: 'none',
+                                    fontWeight: 700,
+                                    boxShadow: 'none',
+                                    '&:hover': { bgcolor: '#b45309', boxShadow: 'none' }
+                                }}
+                            >
+                                Contactar asesor
+                            </Button>
+                        )}
+                    </Box>
+                </Box>
+            </Wrapper>
+        )
+    }
+
     // ── No tiene certificado — mostrar estado de elegibilidad ───────
     const el = elegibilidad
 
@@ -324,34 +456,43 @@ const CertificateSection = ({ cursoId }: CertificateSectionProps) => {
         <Wrapper>
             {el.isEligible ? (
 
-                /* Elegible → botón para generar */
+                /* Elegible */
                 <Box sx={{ textAlign: 'center' }}>
                     <Box sx={{
                         width: 72, height: 72, borderRadius: '50%', mx: 'auto', mb: 2,
                         background: 'linear-gradient(135deg, #025E44 0%, #3AB079 100%)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
-                        <i className="tabler-award" style={{ fontSize: '2rem', color: '#fff' }} />
+                        {generating
+                            ? <CircularProgress size={32} sx={{ color: '#fff' }} />
+                            : <i className="tabler-award" style={{ fontSize: '2rem', color: '#fff' }} />
+                        }
                     </Box>
                     <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>
-                        ¡Lo lograste! Obtén tu certificado
+                        {generating ? 'Preparando tu certificado...' : '¡Lo lograste! Obtén tu certificado'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        Has completado todas las lecciones y alcanzado el promedio requerido.
+                        {generating
+                            ? 'Estamos generando tu certificado automáticamente.'
+                            : 'Has completado todas las lecciones y alcanzado el promedio requerido.'
+                        }
                     </Typography>
-                    <Button
-                        variant="contained"
-                        onClick={handleGenerar}
-                        disabled={generating}
-                        startIcon={generating ? <CircularProgress size={18} color="inherit" /> : <i className="tabler-certificate" />}
-                        sx={{
-                            bgcolor: '#025E44', borderRadius: '12px', textTransform: 'none',
-                            fontWeight: 700, fontSize: '0.95rem', px: 4, py: 1.25,
-                            boxShadow: 'none', '&:hover': { bgcolor: '#014d36', boxShadow: 'none' }
-                        }}
-                    >
-                        {generating ? 'Generando certificado...' : 'Obtener mi Certificado'}
-                    </Button>
+                    {/* Sin exámenes → auto-generado, no se muestra el botón */}
+                    {el.totalExamenes > 0 && (
+                        <Button
+                            variant="contained"
+                            onClick={handleGenerar}
+                            disabled={generating}
+                            startIcon={generating ? <CircularProgress size={18} color="inherit" /> : <i className="tabler-certificate" />}
+                            sx={{
+                                bgcolor: '#025E44', borderRadius: '12px', textTransform: 'none',
+                                fontWeight: 700, fontSize: '0.95rem', px: 4, py: 1.25,
+                                boxShadow: 'none', '&:hover': { bgcolor: '#014d36', boxShadow: 'none' }
+                            }}
+                        >
+                            {generating ? 'Generando certificado...' : 'Obtener mi Certificado'}
+                        </Button>
+                    )}
                 </Box>
             ) : (
 

@@ -4,7 +4,7 @@ import { createContext, useContext, useState, type ReactNode } from 'react'
 
 import AuthModal from '@/features/shared/components/AuthModal'
 
-type Mode = 'login' | 'register' | 'forgot-password'
+type Mode = 'login' | 'register' | 'forgot-password' | 'reset-password'
 
 type AuthModalContextType = {
   openLogin: (callbackUrl?: string) => void

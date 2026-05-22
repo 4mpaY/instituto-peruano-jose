@@ -1,11 +1,12 @@
+export const dynamic = 'force-dynamic'
+
 import { redirect } from 'next/navigation'
 
 import { Box } from '@mui/material'
 
 import { ConfiguracionView } from '@/features/admin/configuracion/components/ConfiguracionView'
-
-import { AxiosConfiguracion } from '@/features/admin/configuracion/http/axiosConfiguracion'
 import { getAuthSession } from '@/utils/libs/auth-helpers'
+import prisma from '@/utils/libs/prisma'
 
 export const metadata = {
   title: 'Configuración del Sistema | Aula Virtual'
@@ -18,16 +19,10 @@ export default async function Page() {
     redirect('/login')
   }
 
-  const token = session.user?.accessToken ?? null
-
-  const axiosConfig = new AxiosConfiguracion({
-    getAuthToken: () => token
-  })
-
   let initialData: any[] = []
 
   try {
-    initialData = await axiosConfig.getAll()
+    initialData = await prisma.configuracion.findMany({ orderBy: { clave: 'asc' } })
   } catch (error) {
     console.error('Error fetching system config:', error)
   }

@@ -24,12 +24,20 @@ export class AxiosUsuario extends AxiosInternalHttpClient {
     })
   }
 
-  async searchAll(query?: Record<string, string>): Promise<Usuario[]> {
+  async searchAll(query?: Record<string, string | number | undefined | null>): Promise<{ usuarios: Usuario[]; paginacion: any }> {
     try {
-      const queryString = query ? '?' + new URLSearchParams(query).toString() : ''
+      // Limpiamos los parámetros para no enviar campos vacíos o undefined que invaliden el Zod del backend
+      const cleanQuery = query 
+        ? Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined && v !== null && v !== ''))
+        : {}
+
+      const queryString = Object.keys(cleanQuery).length > 0 
+        ? '?' + new URLSearchParams(cleanQuery as any).toString() 
+        : ''
+
       const payload = await this.iGet<{ usuarios: Usuario[]; paginacion: any }>(queryString)
 
-      return payload?.usuarios || []
+      return payload || { usuarios: [], paginacion: {} }
     } catch (err: any) {
       throw err?.response?.data ?? err
     }
@@ -80,6 +88,14 @@ export class AxiosUsuario extends AxiosInternalHttpClient {
       const payload = await this.iPatch<{ usuario: Usuario }>(`/${id}`, { esta_activo })
 
       return payload
+    } catch (err: any) {
+      throw err?.response?.data ?? err
+    }
+  }
+
+  async bulkCreate(usuarios: any[]): Promise<{ exitosos: number; errores: { fila: number; correo: string; mensaje: string }[] }> {
+    try {
+      return await this.iPost<any>('/bulk', { usuarios })
     } catch (err: any) {
       throw err?.response?.data ?? err
     }

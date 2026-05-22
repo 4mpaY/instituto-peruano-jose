@@ -48,7 +48,8 @@ export const CourseCreatePage = ({ profesores }: CourseCreatePageProps) => {
   const { enqueueSnackbar } = useSnackbar()
   const router = useRouter()
   const createMutation = useCreateCurso()
-  const { data: categorias = [] } = useCategorias()
+  const { data: categoriasRes } = useCategorias()
+  const categorias = categoriasRes?.categorias || []
   const [activeTab, setActiveTab] = useState('1')
   const [openMedia, setOpenMedia] = useState(false)
   const [openBrochure, setOpenBrochure] = useState(false)
@@ -61,6 +62,7 @@ export const CourseCreatePage = ({ profesores }: CourseCreatePageProps) => {
     tipo_emision: 'ASINCRONO',
     es_gratis: false,
     precio: 0,
+    precio_falso: 0,
     moneda: 'PEN',
     nivel: 'BASICO',
     duracion: '',
@@ -278,7 +280,11 @@ export const CourseCreatePage = ({ profesores }: CourseCreatePageProps) => {
                               checked={values.es_gratis}
                               onChange={e => {
                                 setFieldValue('es_gratis', e.target.checked)
-                                if (e.target.checked) setFieldValue('precio', 0)
+
+                                if (e.target.checked) {
+                                  setFieldValue('precio', 0)
+                                  setFieldValue('precio_falso', 0)
+                                }
                               }}
                             />
                           }
@@ -291,6 +297,14 @@ export const CourseCreatePage = ({ profesores }: CourseCreatePageProps) => {
                               label='Precio'
                               name='precio'
                               value={values.precio}
+                              onChange={handleChange}
+                              sx={{ width: 200 }}
+                            />
+                            <CustomTextField
+                              type='number'
+                              label='Precio Falso'
+                              name='precio_falso'
+                              value={values.precio_falso}
                               onChange={handleChange}
                               sx={{ width: 200 }}
                             />

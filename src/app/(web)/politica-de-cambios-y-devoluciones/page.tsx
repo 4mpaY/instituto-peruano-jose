@@ -21,9 +21,8 @@ export default function PoliticaCambiosYDevolucionesPage() {
 
           <Typography paragraph>
             La presente política regula las condiciones de reembolso y cambios aplicables a los
-            servicios educativos ofrecidos por <strong>NOMBRE DE TU EMPRESA</strong>,
-            con RUC <strong>20600000000</strong>, con domicilio en [DIRECCIÓN],
-            Urb. Santa Ana, Piura — a través de su Aula Virtual. Al adquirir cualquier curso,
+            servicios educativos ofrecidos por <strong>[NOMBRE DE EMPRESA]</strong>,
+            con RUC <strong>[RUC]</strong>, con domicilio en [DIRECCIÓN] — a través de su Aula Virtual. Al adquirir cualquier curso,
             el usuario declara haber leído y aceptado los términos aquí descritos.
           </Typography>
 
@@ -91,7 +90,7 @@ export default function PoliticaCambiosYDevolucionesPage() {
             entre <strong>15 y 30 días hábiles</strong>.
           </Typography>
           <Typography paragraph>
-            NOMBRE DE TU EMPRESA se reserva el derecho de descontar las comisiones operativas
+            Visiona Perú Safety Solutions S.A.C se reserva el derecho de descontar las comisiones operativas
             cobradas por la pasarela de pago que no sean reembolsables por la misma.
           </Typography>
 

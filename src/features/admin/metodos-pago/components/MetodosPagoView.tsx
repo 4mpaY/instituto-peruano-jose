@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 
+import { useRouter } from 'next/navigation'
+
 import {
   Button,
   Card,
@@ -44,6 +46,7 @@ import MetodoPagoForm from './MetodoPagoForm'
 const columnHelper = createColumnHelper<MetodoPagoManual>()
 
 export default function MetodosPagoView() {
+  const router = useRouter()
   const { data: metodos = [], isLoading } = useMetodosPago()
   const { actualizar, eliminar } = useMetodosPagoMutation()
   const { enqueueSnackbar } = useSnackbar()
@@ -205,7 +208,21 @@ export default function MetodosPagoView() {
   return (
     <>
       <Card>
-        <CardHeader title='Métodos de Pago Manual' className='pbe-4' />
+        <CardHeader
+          title='Métodos de Pago Manual'
+          className='pbe-4'
+          action={
+            <Button
+              variant='tonal'
+              color='secondary'
+              size='small'
+              startIcon={<i className='tabler-arrow-left' />}
+              onClick={() => router.push('/admin/configuracion')}
+            >
+              Retroceder
+            </Button>
+          }
+        />
 
         <div className='flex justify-between flex-col items-start md:flex-row md:items-center p-6 border-bs gap-4'>
           <CustomTextField

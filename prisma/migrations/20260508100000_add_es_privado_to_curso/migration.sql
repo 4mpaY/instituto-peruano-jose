@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "cursos" ADD COLUMN IF NOT EXISTS "es_privado" BOOLEAN NOT NULL DEFAULT false;

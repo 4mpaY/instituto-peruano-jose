@@ -28,12 +28,16 @@ export default async function Page() {
   })
 
   let initialData: Categoria[] = []
+  let total = 0
 
   try {
-    initialData = await axiosCategoria.searchAll()
+    const response = await axiosCategoria.searchAll()
+
+    initialData = response.categorias
+    total = response.paginacion.total
   } catch (error) {
     console.error('Error fetching categorias:', error)
   }
 
-  return <CategoriasPage initialDataCategorias={initialData} />
+  return <CategoriasPage initialDataCategorias={initialData} initialTotal={total} />
 }

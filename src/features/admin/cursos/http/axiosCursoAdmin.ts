@@ -31,10 +31,19 @@ export class AxiosCursoAdmin extends AxiosInternalHttpClient {
     }
   }
 
-  async getAlumnos(cursoId: string, search?: string): Promise<{ alumnos: any[], total: number }> {
+  async getAlumnos(
+    cursoId: string,
+    search?: string
+  ): Promise<{ alumnos: any[]; total: number; totalExamenes?: number; precio_certificado?: number | null }> {
     try {
       const query = search ? `?search=${encodeURIComponent(search)}` : ''
-      const payload = await this.iGet<{ alumnos: any[], total: number }>(`/${cursoId}/alumnos${query}`)
+
+      const payload = await this.iGet<{
+        alumnos: any[]
+        total: number
+        totalExamenes?: number
+        precio_certificado?: number | null
+      }>(`/${cursoId}/alumnos${query}`)
 
       return payload
     } catch (err: any) {

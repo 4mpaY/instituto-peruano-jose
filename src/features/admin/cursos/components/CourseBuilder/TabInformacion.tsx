@@ -32,7 +32,8 @@ interface TabInformacionProps {
 export function TabInformacion({ curso, profesores, onSuccess }: TabInformacionProps) {
   const { enqueueSnackbar } = useSnackbar()
   const editMutation = useEditCurso()
-  const { data: categorias = [] } = useCategorias()
+  const { data: categoriasRes } = useCategorias()
+  const categorias = categoriasRes?.categorias || []
 
   const [openMedia, setOpenMedia] = useState(false)
   const [openBrochure, setOpenBrochure] = useState(false)
@@ -44,6 +45,7 @@ export function TabInformacion({ curso, profesores, onSuccess }: TabInformacionP
     profesor_id: curso.profesor_id,
     tipo_emision: curso.tipo_emision,
     duracion: curso.duracion || '',
+    codigo: curso.codigo || '',
     miniatura: curso.miniatura || '',
     video_presentacion: curso.video_presentacion || '',
     brochure: curso.brochure || '',
@@ -67,6 +69,7 @@ export function TabInformacion({ curso, profesores, onSuccess }: TabInformacionP
           profesor_id: form.profesor_id,
           tipo_emision: form.tipo_emision as 'SINCRONO' | 'ASINCRONO' | 'MIXTO',
           duracion: form.duracion || null,
+          codigo: form.codigo?.trim().toUpperCase() || null,
           miniatura: form.miniatura || null,
           video_presentacion: form.video_presentacion || null,
           brochure: form.brochure || null,
@@ -221,6 +224,21 @@ export function TabInformacion({ curso, profesores, onSuccess }: TabInformacionP
           onChange={handleChange}
           InputProps={{
             startAdornment: <InputAdornment position='start'><i className='tabler-clock text-xl text-textSecondary' /></InputAdornment>
+          }}
+        />
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <CustomTextField
+          fullWidth
+          label='Código del Curso'
+          name='codigo'
+          placeholder='Ej: MKTG01'
+          value={form.codigo}
+          onChange={handleChange}
+          inputProps={{ maxLength: 20 }}
+          helperText='Se usa en el código del certificado. Máx. 20 caracteres.'
+          InputProps={{
+            startAdornment: <InputAdornment position='start'><i className='tabler-certificate text-xl text-textSecondary' /></InputAdornment>
           }}
         />
       </Grid>

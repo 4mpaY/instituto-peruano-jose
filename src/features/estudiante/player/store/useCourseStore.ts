@@ -35,6 +35,7 @@ export interface CourseExamen {
 
 export interface Course {
     id: string
+    slug: string
     titulo: string
     modulos: Module[]
     examenes?: CourseExamen[]

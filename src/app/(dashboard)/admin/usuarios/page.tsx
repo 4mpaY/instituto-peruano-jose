@@ -26,12 +26,16 @@ export default async function Page() {
   })
 
   let initialData: Usuario[] = []
+  let total = 0
 
   try {
-    initialData = await axiosUsuario.searchAll()
+    const response = await axiosUsuario.searchAll()
+
+    initialData = response.usuarios
+    total = response.paginacion.total
   } catch (error) {
     console.error('Error fetching usuarios:', error)
   }
 
-  return <UsuariosPage initialDataUsuarios={initialData} />
+  return <UsuariosPage initialDataUsuarios={initialData} initialTotal={total} />
 }

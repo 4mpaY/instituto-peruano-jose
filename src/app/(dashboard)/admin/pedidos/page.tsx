@@ -26,14 +26,16 @@ export default async function Page() {
   })
 
   let initialData: Pedido[] = []
+  let initialTotal = 0
 
   try {
     const result = await axiosPedido.getAll({ estado: 'TODOS' })
 
     initialData = result.pedidos ?? []
+    initialTotal = result.paginacion?.total ?? 0
   } catch (error) {
     console.error('Error fetching pedidos:', error)
   }
 
-  return <PedidosPage initialData={initialData} />
+  return <PedidosPage initialData={initialData} initialTotal={initialTotal} />
 }

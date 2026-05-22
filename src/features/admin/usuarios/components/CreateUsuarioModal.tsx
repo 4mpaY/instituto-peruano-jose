@@ -95,7 +95,7 @@ const CreateUsuarioModal = ({ open, handleClose, onSuccess }: CreateUsuarioModal
                 <Grid item xs={12} sm={6}>
                   <CustomTextField
                     fullWidth
-                    label='Nombre'
+                    label='Nombres'
                     name='nombre'
                     placeholder='Ej: Juan'
                     value={values.nombre}
@@ -117,7 +117,7 @@ const CreateUsuarioModal = ({ open, handleClose, onSuccess }: CreateUsuarioModal
                 <Grid item xs={12} sm={6}>
                   <CustomTextField
                     fullWidth
-                    label='Apellido'
+                    label='Apellidos'
                     name='apellido'
                     placeholder='Ej: Pérez'
                     value={values.apellido}

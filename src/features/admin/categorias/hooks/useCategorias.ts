@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { getSession } from 'next-auth/react'
 
 import type { Categoria, CategoriaHijo } from '../entity/Categoria'
@@ -22,13 +22,24 @@ const axiosCategoriaFactory = () => {
 /**
  * Hook para obtener todas las categorías (solo padres con hijos incluidos)
  */
-export function useCategorias(initialData?: Categoria[]) {
+export function useCategorias(query?: Record<string, any>, initialData?: Categoria[], initialTotal?: number) {
   const axiosCategoria = axiosCategoriaFactory()
 
-  return useQuery<Categoria[], any>({
-    queryKey: QUERY_KEY.CATEGORIAS,
-    queryFn: async () => await axiosCategoria.searchAll(),
-    initialData,
+  const isInitialQuery = !query || (
+    (query.page === '1' || !query.page) &&
+    (query.limit === '10' || !query.limit) &&
+    (!query.buscar || query.buscar === '') &&
+    (query.esta_activo === undefined)
+  )
+
+  return useQuery<{ categorias: Categoria[]; paginacion: any }, any>({
+    queryKey: [...QUERY_KEY.CATEGORIAS, query],
+    queryFn: async () => await axiosCategoria.searchAll(query),
+    initialData: (isInitialQuery && initialData) ? {
+      categorias: initialData,
+      paginacion: { total: initialTotal || initialData.length, page: 1, limit: 10 }
+    } : undefined,
+    placeholderData: keepPreviousData,
     staleTime: 60_000,
     retry: 1
   })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 
 import { useParams, useRouter } from 'next/navigation'
 
@@ -10,6 +10,7 @@ import {
   Avatar, Stack, Paper, Alert
 } from '@mui/material'
 import { toast } from 'react-toastify'
+import { useForm, Controller } from 'react-hook-form'
 
 import CustomTextField from '@core/components/mui/TextField'
 import HydratedDate from '@/utils/components/HydratedDate'
@@ -49,20 +50,31 @@ export function PedidoEditPage() {
   const { data, isLoading } = usePedido(id as string)
   const { mutateAsync: updatePedido, isPending } = useUpdatePedido()
 
-  const [formData, setFormData] = useState({ estado: '', metodo_pago: '', mensaje: '' })
+  const { control, handleSubmit, reset } = useForm({
+    defaultValues: {
+      estado: '',
+      metodo_pago: '',
+      mensaje: '',
+      tipo_comprobante: '',
+      numero_comprobante: ''
+    }
+  })
 
   useEffect(() => {
     if (data?.data) {
-      setFormData({
-        estado: data.data.estado || 'PENDIENTE',
-        metodo_pago: data.data.metodo_pago || 'TRANSFERENCIA',
-        mensaje: data.data.mensaje || ''
+      const p = data.data as Pedido
+
+      reset({
+        estado: p.estado || 'PENDIENTE',
+        metodo_pago: p.metodo_pago || 'TRANSFERENCIA',
+        mensaje: p.mensaje || '',
+        tipo_comprobante: p.tipo_comprobante || '',
+        numero_comprobante: p.numero_comprobante || ''
       })
     }
-  }, [data])
+  }, [data, reset])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (formData: any) => {
 
     if (!formData.estado || !formData.metodo_pago) {
       return toast.error('El estado y método de pago son requeridos')
@@ -74,7 +86,9 @@ export function PedidoEditPage() {
         data: {
           estado: formData.estado as Pedido['estado'],
           metodo_pago: formData.metodo_pago as Pedido['metodo_pago'],
-          mensaje: formData.mensaje || null
+          mensaje: formData.mensaje || null,
+          tipo_comprobante: formData.tipo_comprobante || null,
+          numero_comprobante: formData.numero_comprobante || null
         } as any
       })
 
@@ -98,7 +112,7 @@ export function PedidoEditPage() {
     )
   }
 
-  const pedido = data?.data as any
+  const pedido = data?.data as Pedido
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -214,7 +228,7 @@ export function PedidoEditPage() {
                     component='img'
                     src={pedido.comprobante_url}
                     alt='Comprobante'
-                    onClick={() => window.open(pedido.comprobante_url, '_blank')}
+                    onClick={() => window.open(pedido.comprobante_url!, '_blank')}
                     sx={{
                       width: '100%', maxHeight: 340, objectFit: 'contain',
                       borderRadius: 2, border: '1.5px solid', borderColor: 'divider',
@@ -231,7 +245,7 @@ export function PedidoEditPage() {
             )}
 
             {/* Formulario de edición */}
-            <Card component='form' onSubmit={handleSubmit}>
+            <Card component='form' onSubmit={handleSubmit(onSubmit)}>
               <CardContent>
                 <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ letterSpacing: 1, mb: 2, display: 'block' }}>
                   Editar Pedido
@@ -248,50 +262,100 @@ export function PedidoEditPage() {
 
                 <Grid container spacing={4}>
                   <Grid item xs={12} sm={6}>
-                    <CustomTextField
-                      select
-                      fullWidth
-                      label='Estado del Pedido'
-                      value={formData.estado}
-                      onChange={e => setFormData({ ...formData, estado: e.target.value })}
-                      required
-                    >
-                      {ESTADOS.map(opt => (
-                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                      ))}
-                    </CustomTextField>
+                    <Controller
+                      name='estado'
+                      control={control}
+                      render={({ field }) => (
+                        <CustomTextField
+                          {...field}
+                          select
+                          fullWidth
+                          label='Estado del Pedido'
+                          required
+                        >
+                          {ESTADOS.map(opt => (
+                            <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                          ))}
+                        </CustomTextField>
+                      )}
+                    />
                   </Grid>
 
                   <Grid item xs={12} sm={6}>
-                    <CustomTextField
-                      select
-                      fullWidth
-                      label='Método de Pago'
-                      value={formData.metodo_pago}
-                      onChange={e => setFormData({ ...formData, metodo_pago: e.target.value })}
-                      required
-                    >
-                      {METODOS_PAGO.map(opt => (
-                        <MenuItem key={opt.value} value={opt.value}>
-                          <Stack direction='row' alignItems='center' spacing={1.5}>
-                            <i className={`${opt.icon} text-textSecondary`} style={{ fontSize: 16 }} />
-                            <span>{opt.label}</span>
-                          </Stack>
-                        </MenuItem>
-                      ))}
-                    </CustomTextField>
+                    <Controller
+                      name='metodo_pago'
+                      control={control}
+                      render={({ field }) => (
+                        <CustomTextField
+                          {...field}
+                          select
+                          fullWidth
+                          label='Método de Pago'
+                          required
+                        >
+                          {METODOS_PAGO.map(opt => (
+                            <MenuItem key={opt.value} value={opt.value}>
+                              <Stack direction='row' alignItems='center' spacing={1.5}>
+                                <i className={`${opt.icon} text-textSecondary`} style={{ fontSize: 16 }} />
+                                <span>{opt.label}</span>
+                              </Stack>
+                            </MenuItem>
+                          ))}
+                        </CustomTextField>
+                      )}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <Controller
+                      name='tipo_comprobante'
+                      control={control}
+                      render={({ field }) => (
+                        <CustomTextField
+                          {...field}
+                          select
+                          fullWidth
+                          label='Tipo de Comprobante'
+                        >
+                          <MenuItem value=''>Ninguno</MenuItem>
+                          <MenuItem value='TICKET'>Ticket</MenuItem>
+                          <MenuItem value='BOLETA'>Boleta</MenuItem>
+                          <MenuItem value='FACTURA'>Factura</MenuItem>
+                        </CustomTextField>
+                      )}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <Controller
+                      name='numero_comprobante'
+                      control={control}
+                      render={({ field }) => (
+                        <CustomTextField
+                          {...field}
+                          fullWidth
+                          label='Número de Documento (RUC/DNI)'
+                          placeholder='Ej. 20601234567'
+                        />
+                      )}
+                    />
                   </Grid>
 
                   <Grid item xs={12}>
-                    <CustomTextField
-                      fullWidth
-                      multiline
-                      rows={3}
-                      label='Notas / Mensaje para el estudiante'
-                      placeholder='Ej. Transferencia verificada el DD/MM/AAAA'
-                      value={formData.mensaje}
-                      onChange={e => setFormData({ ...formData, mensaje: e.target.value })}
-                      helperText='El estudiante podrá ver este mensaje en su panel de pedidos.'
+                    <Controller
+                      name='mensaje'
+                      control={control}
+                      render={({ field }) => (
+                        <CustomTextField
+                          {...field}
+                          fullWidth
+                          multiline
+                          rows={3}
+                          label='Notas / Mensaje para el estudiante'
+                          placeholder='Ej. Transferencia verificada el DD/MM/AAAA'
+                          helperText='El estudiante podrá ver este mensaje en su panel de pedidos.'
+                        />
+                      )}
                     />
                   </Grid>
 

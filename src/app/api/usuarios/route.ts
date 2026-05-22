@@ -7,6 +7,9 @@ import { crearUsuarioSchema, listarUsuariosQuerySchema } from '@/schemas/usuario
 import { validateRequest, handleApiError } from '@/utils/libs/validation'
 import { requireAdmin } from '@/utils/libs/auth-helpers'
 import { ApiResponse } from '@/utils/libs/apiResponse'
+import { sendMail } from '@/utils/libs/mailer'
+import { getConfigs } from '@/utils/libs/config'
+import { getWelcomeTemplate } from '@/utils/libs/email-templates'
 
 /**
  * GET /api/usuarios
@@ -191,6 +194,28 @@ export async function POST(request: Request) {
         creado_en: true
       }
     })
+    
+    // 📧 Enviar correo de bienvenida con credenciales
+    try {
+      const configs = await getConfigs()
+      const platformName = configs.TEMPLATE_NAME || 'Aula Virtual'
+      
+      const emailHtml = getWelcomeTemplate({
+        platformName,
+        customerName: nombre,
+        correo,
+        contrasena,
+        appUrl: process.env.NEXT_PUBLIC_APP_URL || ''
+      })
+
+      await sendMail({
+        to: correo,
+        subject: `Tus credenciales de acceso - ${platformName}`,
+        html: emailHtml
+      })
+    } catch (mailError) {
+      console.error('[Admin-UserCreate] Error al enviar el correo de bienvenida:', mailError)
+    }
 
     return ApiResponse.success(request, { usuario: nuevoUsuario }, 201)
   } catch (error) {

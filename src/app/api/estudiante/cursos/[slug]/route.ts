@@ -151,6 +151,7 @@ export async function GET(request: Request, { params }: { params: { slug: string
 
     const formattedCourse = {
       id: course.id,
+      slug: course.slug,
       titulo: course.titulo,
       descripcion: (course as any).descripcion || null,
       que_aprenderas: (course as any).que_aprenderas || null,

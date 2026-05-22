@@ -196,6 +196,16 @@ export class AxiosCurso extends AxiosInternalHttpClient {
     }
   }
 
+  async getValoraciones(cursoId: string): Promise<{ promedio: number; total: number; valoraciones: any[] }> {
+    try {
+      const payload = await this.iGet<{ promedio: number; total: number; valoraciones: any[] }>(`/${cursoId}/valoraciones`)
+
+      return payload
+    } catch (err: any) {
+      throw err?.response?.data ?? err
+    }
+  }
+
   // ===================== EXÁMENES (plural) =====================
 
   async getExamenes(cursoId: string): Promise<{ examenes: any[] }> {

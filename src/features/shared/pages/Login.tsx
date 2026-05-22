@@ -232,10 +232,6 @@ const LoginV2 = ({ mode }: { mode: SystemMode }) => {
           <div className='flex flex-col gap-1'>
             <Typography variant='h4'>{`Bienvenido! 👋🏻`}</Typography>
             <Typography>Inicia sesión en tu cuenta para continuar</Typography>
-            {/* <div className='mbs-2 p-3 rounded-md' style={{ backgroundColor: '#f1f5f9', fontSize: '0.78rem', color: '#475569' }}>
-              <span><strong>Usuario de prueba:</strong> usuarioprueba@gmail.com</span><br />
-              <span><strong>Contraseña de prueba:</strong> Prueba123@</span>
-            </div> */}
           </div>
 
           {error && (

@@ -24,12 +24,20 @@ export class AxiosPedido extends AxiosInternalHttpClient {
     })
   }
 
-  async getAll(query?: Record<string, string>): Promise<{ pedidos: Pedido[]; paginacion: any }> {
+  async getAll(query?: Record<string, string | number | boolean | undefined | null>): Promise<{ pedidos: Pedido[]; paginacion: any }> {
     try {
-      const queryString = query ? '?' + new URLSearchParams(query).toString() : ''
+      // Limpiamos los parámetros para evitar campos vacíos o undefined
+      const cleanQuery = query 
+        ? Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined && v !== null && v !== ''))
+        : {}
+
+      const queryString = Object.keys(cleanQuery).length > 0 
+        ? '?' + new URLSearchParams(cleanQuery as any).toString() 
+        : ''
+
       const payload = await this.iGet<{ pedidos: Pedido[]; paginacion: any }>(queryString)
 
-      return payload
+      return payload || { pedidos: [], paginacion: {} }
     } catch (err: any) {
       throw err?.response?.data ?? err
     }

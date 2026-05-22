@@ -3,6 +3,9 @@ import { crearPedidoManualSchema } from '@/schemas/pedido.schema'
 import { validateRequest, handleApiError } from '@/utils/libs/validation'
 import { requireAdmin } from '@/utils/libs/auth-helpers'
 import { ApiResponse } from '@/utils/libs/apiResponse'
+import { sendMail } from '@/utils/libs/mailer'
+import { getConfigs } from '@/utils/libs/config'
+import { getOrderConfirmationTemplate } from '@/utils/libs/email-templates'
 
 /**
  * POST /api/pedidos/manual
@@ -27,7 +30,7 @@ export async function POST(request: Request) {
       return validation.error
     }
 
-    const { usuarios_ids, cursos_ids, precio, estado, metodo_pago, mensaje } = validation.data
+    const { usuarios_ids, cursos_ids, precio, estado, metodo_pago, mensaje, tipo_comprobante, numero_comprobante } = validation.data
 
     // 3. Obtener información de los cursos
     const cursos = await prisma.curso.findMany({
@@ -80,6 +83,8 @@ export async function POST(request: Request) {
               estado: estado,
               metodo_pago: metodo_pago,
               mensaje: mensaje || `Pedido masivo generado por administrador`,
+              tipo_comprobante: tipo_comprobante,
+              numero_comprobante: numero_comprobante,
               pagado_en: estado === 'COMPLETADO' ? new Date() : null,
               detalles: {
                 create: cursosParaInscribir.map(c => ({
@@ -110,6 +115,47 @@ export async function POST(request: Request) {
             )
           }
         })
+
+        // 📧 Enviar correo de confirmación de pedido
+        try {
+          // Buscamos el pedido recién creado para tener los detalles
+          const pedidoCompleto = await prisma.pedido.findFirst({
+            where: { usuario_id, total: precio, moneda: firstCourseMoneda },
+            orderBy: { creado_en: 'desc' },
+            include: { detalles: { include: { curso: { select: { titulo: true } } } } }
+          })
+
+          if (pedidoCompleto) {
+            const configs = await getConfigs()
+            const platformName = configs.TEMPLATE_NAME || 'Aula Virtual'
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+            
+            const emailHtml = getOrderConfirmationTemplate({
+              platformName,
+              customerName: `${estudiante.nombre} ${estudiante.apellido}`,
+              orderNumber: pedidoCompleto.numero_pedido,
+              date: new Date().toLocaleDateString('es-PE'),
+              total: Number(pedidoCompleto.total),
+              moneda: pedidoCompleto.moneda,
+              metodoPago: metodo_pago || 'Manual',
+              cursos: pedidoCompleto.detalles.map(d => ({
+                titulo: d.curso.titulo,
+                precio: Number(d.total)
+              })),
+              appUrl
+            })
+
+            if (estudiante.correo) {
+              await sendMail({
+                to: estudiante.correo,
+                subject: `Confirmación de Pedido #${pedidoCompleto.numero_pedido} - ${platformName}`,
+                html: emailHtml
+              })
+            }
+          }
+        } catch (mailError) {
+          console.error(`[Manual-Order-Mail] Error al enviar correo a ${estudiante.correo}:`, mailError)
+        }
 
         resultados.push({ 
           usuario_id, 

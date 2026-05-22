@@ -4,6 +4,8 @@ import { handleApiError } from '@/utils/libs/validation'
 import prisma from '@/utils/libs/prisma'
 import { getConfigs } from '@/utils/libs/config'
 import { createPaypalOrder } from '@/utils/libs/paypal-api'
+import { sendMail } from '@/utils/libs/mailer'
+import { getOrderConfirmationTemplate } from '@/utils/libs/email-templates'
 
 /**
  * POST /api/paypal/create
@@ -121,8 +123,41 @@ export async function POST(request: Request) {
             }
           })
         }
-      }
+      },
+      include: { detalles: { include: { curso: { select: { titulo: true } } } } }
     })
+    
+    // 📧 Enviar correo de confirmación de pedido
+    try {
+      const configs = await getConfigs()
+      const platformName = configs.TEMPLATE_NAME || 'Aula Virtual'
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+      
+      const emailHtml = getOrderConfirmationTemplate({
+        platformName,
+        customerName: auth.user.nombre || auth.user.name || 'Estudiante',
+        orderNumber: pedido.numero_pedido,
+        date: new Date().toLocaleDateString('es-PE'),
+        total: Number(pedido.total),
+        moneda: pedido.moneda,
+        metodoPago: 'PayPal',
+        cursos: pedido.detalles.map(d => ({
+          titulo: d.curso.titulo,
+          precio: Number(d.total)
+        })),
+        appUrl
+      })
+
+      if (auth.user.email) {
+        await sendMail({
+          to: auth.user.email,
+          subject: `Confirmación de Pedido #${pedido.numero_pedido} - ${platformName}`,
+          html: emailHtml
+        })
+      }
+    } catch (mailError) {
+      console.error('[Paypal-Create-Mail] Error al enviar correo de confirmación:', mailError)
+    }
 
     // 5. Crear orden en PayPal usando el monto en USD
     const paypalOrder = await createPaypalOrder(totalUSD, monedaPaypal)

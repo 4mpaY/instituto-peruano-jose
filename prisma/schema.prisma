@@ -35,6 +35,7 @@ model Usuario {
   progreso_cursos    ProgresoCurso[]
   progreso_lecciones ProgresoLeccion[]
   valoraciones       ValoracionCurso[]
+  suscripcions       Suscripcion[]
 
   @@index([rol])
   @@map("usuarios")
@@ -72,46 +73,48 @@ model Categoria {
 }
 
 model Curso {
-  id                 String            @id @default(uuid())
-  titulo             String
-  slug               String            @unique
-  codigo             String?           @unique
-  descripcion        String?
-  miniatura          String?
-  video_presentacion String?
-  duracion           String?
-  tipo_emision       TipoEmision       @default(ASINCRONO)
-  estado             EstadoCurso       @default(BORRADOR)
-  es_gratis          Boolean           @default(false)
-  es_privado         Boolean           @default(false)
-  precio_certificado Decimal?          @db.Decimal(10, 2)
-  precio             Decimal           @default(0) @db.Decimal(10, 2)
-  precio_falso       Decimal           @default(0) @db.Decimal(10, 2)
-  moneda             String            @default("PEN")
-  creado_en          DateTime          @default(now())
-  actualizado_en     DateTime          @updatedAt
-  profesor_id        String
-  categoria_id       String?
-  nivel              NivelCurso        @default(BASICO)
-  beneficios         Json?             @default("[]")
-  incluye            Json?             @default("[]")
-  metodologia        Json?             @default("[]")
-  objetivos          Json?             @default("[]")
-  fecha_inicio       DateTime?
-  fecha_fin          DateTime?
-  precio_oferta      Decimal?          @db.Decimal(10, 2)
-  brochure           String?
-  certificados       Certificado[]
-  categoria          Categoria?        @relation(fields: [categoria_id], references: [id])
-  profesor           Usuario           @relation("ProfesorCursos", fields: [profesor_id], references: [id], onDelete: Cascade)
-  rutas              CursoEnRuta[]
-  detalles_pedido    DetallePedido[]
-  examenes           Examen[]
-  inscripciones      Inscripcion[]
-  modulos            Modulo[]
-  progreso           ProgresoCurso[]
-  cupones            CuponCurso[]
-  valoraciones       ValoracionCurso[]
+  id                   String            @id @default(uuid())
+  titulo               String
+  slug                 String            @unique
+  codigo               String?           @unique
+  descripcion          String?
+  miniatura            String?
+  video_presentacion   String?
+  duracion             String?
+  tipo_emision         TipoEmision       @default(ASINCRONO)
+  estado               EstadoCurso       @default(BORRADOR)
+  es_gratis            Boolean           @default(false)
+  es_privado           Boolean           @default(false)
+  completar_automatico Boolean           @default(false)
+  precio_certificado   Decimal?          @db.Decimal(10, 2)
+  precio               Decimal           @default(0) @db.Decimal(10, 2)
+  precio_falso         Decimal           @default(0) @db.Decimal(10, 2)
+  moneda               String            @default("PEN")
+  creado_en            DateTime          @default(now())
+  actualizado_en       DateTime          @updatedAt
+  profesor_id          String
+  categoria_id         String?
+  nivel                NivelCurso        @default(BASICO)
+  beneficios           Json?             @default("[]")
+  incluye              Json?             @default("[]")
+  metodologia          Json?             @default("[]")
+  objetivos            Json?             @default("[]")
+  fecha_inicio         DateTime?
+  fecha_fin            DateTime?
+  vigencia_meses       Int?
+  precio_oferta        Decimal?          @db.Decimal(10, 2)
+  brochure             String?
+  certificados         Certificado[]
+  categoria            Categoria?        @relation(fields: [categoria_id], references: [id])
+  profesor             Usuario           @relation("ProfesorCursos", fields: [profesor_id], references: [id], onDelete: Cascade)
+  rutas                CursoEnRuta[]
+  detalles_pedido      DetallePedido[]
+  examenes             Examen[]
+  inscripciones        Inscripcion[]
+  modulos              Modulo[]
+  progreso             ProgresoCurso[]
+  cupones              CuponCurso[]
+  valoraciones         ValoracionCurso[]
 
   @@index([profesor_id])
   @@index([categoria_id])
@@ -697,4 +700,45 @@ enum EstadoNota {
   APROBADO
   DESAPROBADO
   EN_PROGRESO
+}
+
+model PlanSuscripcion {
+  id            String        @id @default(uuid())
+  nombre        String
+  precio        Decimal       @db.Decimal(10, 2)
+  intervalo     IntervaloPlan
+  culqi_plan_id String        @unique // créalo una vez en el dashboard de Culqi
+  esta_activo   Boolean       @default(true)
+  suscripciones Suscripcion[]
+
+  @@map("planes_suscripcion")
+}
+
+model Suscripcion {
+  id                   String            @id @default(uuid())
+  culqi_suscripcion_id String?           @unique
+  estado               EstadoSuscripcion @default(PENDIENTE)
+  fecha_fin            DateTime?
+  usuario_id           String
+  plan_id              String
+  usuario              Usuario           @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  plan                 PlanSuscripcion   @relation(fields: [plan_id], references: [id])
+  creado_en            DateTime          @default(now())
+
+  @@unique([usuario_id, plan_id])
+  @@map("suscripciones")
+}
+
+enum IntervaloPlan {
+  MENSUAL
+  TRIMESTRAL
+  SEMESTRAL
+  ANUAL
+}
+
+enum EstadoSuscripcion {
+  PENDIENTE
+  ACTIVO
+  CANCELADO
+  VENCIDO
 }

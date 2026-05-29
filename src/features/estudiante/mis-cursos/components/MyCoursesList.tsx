@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
-import { Grid, Typography, Box, InputAdornment } from '@mui/material'
+import { Box, Grid, InputAdornment, Typography } from '@mui/material'
 
 import CustomTextField from '@core/components/mui/TextField'
 import MyCourseCard from './MyCourseCard'
@@ -19,6 +19,7 @@ interface Course {
     }
     progreso: number
     categoria?: string
+    tieneAcceso: boolean
 }
 
 interface MyCoursesListProps {
@@ -69,8 +70,8 @@ const MyCoursesList = ({ courses }: MyCoursesListProps) => {
                         ),
                         endAdornment: searchQuery ? (
                             <InputAdornment position="end">
-                                <i 
-                                    className="tabler-x text-[22px] cursor-pointer" 
+                                <i
+                                    className="tabler-x text-[22px] cursor-pointer"
                                     onClick={() => setSearchQuery('')}
                                 />
                             </InputAdornment>
@@ -99,6 +100,7 @@ const MyCoursesList = ({ courses }: MyCoursesListProps) => {
                                 profesor={course.profesor}
                                 progreso={course.progreso}
                                 categoria={course.categoria}
+                                tieneAcceso={course.tieneAcceso}
                             />
                         </Grid>
                     ))}

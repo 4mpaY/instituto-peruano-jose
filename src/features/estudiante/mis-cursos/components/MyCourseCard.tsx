@@ -3,19 +3,20 @@
 import { useRouter } from 'next/navigation'
 
 import {
+  Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  Button,
-  Stack,
-  Box,
   Chip,
-  LinearProgress
+  LinearProgress,
+  Stack,
+  Typography
 } from '@mui/material'
+
 import { styled } from '@mui/material/styles'
 
-import UserAvatar from '@/utils/components/UserAvatar'
 import CourseThumbnail from '@/utils/components/CourseThumbnail'
+import UserAvatar from '@/utils/components/UserAvatar'
 
 const StyledCard = styled(Card)(() => ({
   height: '100%',
@@ -45,6 +46,7 @@ interface MyCourseCardProps {
   }
   progreso: number
   categoria?: string
+  tieneAcceso: boolean
 }
 
 const MyCourseCard = ({
@@ -53,12 +55,21 @@ const MyCourseCard = ({
   miniatura,
   profesor,
   progreso,
-  categoria
+  categoria,
+  tieneAcceso
 }: MyCourseCardProps) => {
   const router = useRouter()
 
+  const handleClick = () => {
+    if (!tieneAcceso) return
+    router.push(`/estudiante/aprender/${slug}`)
+  }
+
   return (
-    <StyledCard onClick={() => router.push(`/estudiante/aprender/${slug}`)}>
+    <StyledCard
+      onClick={handleClick}
+      sx={!tieneAcceso ? { cursor: 'not-allowed', '&:hover': { transform: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' } } : {}}
+    >
       <Box sx={{ position: 'relative', overflow: 'hidden' }}>
         <CourseThumbnail
           src={miniatura}
@@ -66,6 +77,30 @@ const MyCourseCard = ({
           aspectRatio="16/9"
           sx={{ display: 'block' }}
         />
+
+        {!tieneAcceso && (
+          <Box sx={{
+            position: 'absolute',
+            inset: 0,
+            bgcolor: 'rgba(0,0,0,0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2
+          }}>
+            <Chip
+              label="Acceso vencido"
+              sx={{
+                bgcolor: '#ef4444',
+                color: 'white',
+                fontWeight: 800,
+                fontSize: '0.75rem',
+                px: 1
+              }}
+            />
+          </Box>
+        )}
+
         {categoria && (
           <Chip
             label={categoria}
@@ -150,20 +185,28 @@ const MyCourseCard = ({
           <Button
             fullWidth
             variant="contained"
+            disabled={!tieneAcceso}
+            onClick={e => e.stopPropagation()}
             sx={{
               borderRadius: '12px',
               textTransform: 'none',
               fontWeight: 700,
               py: 1.5,
-              bgcolor: 'primary.main',
-              boxShadow: '0 4px 12px rgba(var(--mui-palette-primary-mainChannel) / 0.2)',
-              '&:hover': {
-                bgcolor: 'primary.dark',
-                boxShadow: '0 6px 16px rgba(var(--mui-palette-primary-mainChannel) / 0.3)'
-              }
+              ...(!tieneAcceso ? {
+                bgcolor: '#94a3b8 !important',
+                color: 'white !important',
+                boxShadow: 'none'
+              } : {
+                bgcolor: 'primary.main',
+                boxShadow: '0 4px 12px rgba(var(--mui-palette-primary-mainChannel) / 0.2)',
+                '&:hover': {
+                  bgcolor: 'primary.dark',
+                  boxShadow: '0 6px 16px rgba(var(--mui-palette-primary-mainChannel) / 0.3)'
+                }
+              })
             }}
           >
-            Continuar aprendiendo
+            {tieneAcceso ? 'Continuar aprendiendo' : 'Acceso vencido'}
           </Button>
         </Box>
       </CardContent>

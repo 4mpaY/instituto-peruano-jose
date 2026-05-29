@@ -36,10 +36,10 @@ export interface ModuloData {
 export interface CertificadoData {
 
   // ── Branding ──
-  colorPrimario: string          // hex, ej: '#131FF2'
-  pr: number                     // R del color primario (0-255)
-  pg: number                     // G del color primario (0-255)
-  pb: number                     // B del color primario (0-255)
+  colorPrimario: string // hex, ej: '#131FF2'
+  pr: number // R del color primario (0-255)
+  pg: number // G del color primario (0-255)
+  pb: number // B del color primario (0-255)
   logoBuffer: Buffer | null
   logoUrl: string
   base64Logo: string | null
@@ -62,6 +62,7 @@ export interface CertificadoData {
   fechaEmisionVal: Date | string
   fechaInicioVal: Date | string | null
   fechaFinVal: Date | string | null
+  vigenciaHastaVal: Date | string | null
 
   // ── Firmas ──
   gerenteGeneral: SignatarioData | null

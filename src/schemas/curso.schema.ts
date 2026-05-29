@@ -28,6 +28,7 @@ export const crearCursoSchema = z.object({
   brochure: z.string().optional().nullable(),
   fecha_inicio: z.string().optional().nullable(),
   fecha_fin: z.string().optional().nullable(),
+  vigencia_meses: z.coerce.number().int().positive().optional().nullable(),
   nivel: z.enum(['BASICO', 'INTERMEDIO', 'AVANZADO']).default('BASICO')
 })
 
@@ -50,6 +51,7 @@ export const actualizarCursoSchema = z.object({
   nivel: z.enum(['BASICO', 'INTERMEDIO', 'AVANZADO']).optional(),
   es_gratis: z.boolean().optional(),
   es_privado: z.boolean().optional(),
+  completar_automatico: z.boolean().optional(),
   precio_certificado: z.coerce.number().min(0).optional().nullable(),
   precio: z.coerce.number().min(0, 'El precio no puede ser negativo').optional(),
   precio_falso: z.coerce.number().min(0, 'El precio falso no puede ser negativo').optional(),
@@ -61,6 +63,7 @@ export const actualizarCursoSchema = z.object({
   brochure: z.string().optional().nullable(),
   fecha_inicio: z.string().optional().nullable(),
   fecha_fin: z.string().optional().nullable(),
+  vigencia_meses: z.coerce.number().int().positive().optional().nullable(),
   objetivos: z.array(z.string()).optional(),
   metodologia: z.array(z.any()).optional(),
   beneficios: z.array(z.any()).optional(),

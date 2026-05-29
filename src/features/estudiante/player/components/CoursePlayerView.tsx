@@ -215,7 +215,15 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
         if (currentView === 'certificate' && storeCourse) {
             return (
                 <Grid item xs={12} key="certificate-section">
-                    <CertificateSection cursoId={storeCourse.id} />
+                    <CertificateSection
+                                        cursoId={storeCourse.id}
+                                        completarAutomatico={(course as any).completar_automatico ?? false}
+                                        onAllLessonsCompleted={() => {
+                                            const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
+
+                                            allLessons.forEach((l: any) => updateLessonProgress(l.id, true, 100))
+                                        }}
+                                    />
                 </Grid>
             )
         }
@@ -720,7 +728,15 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
 
                     {/* Certificación */}
                     {activeTab === 3 && storeCourse && (
-                        <CertificateSection cursoId={storeCourse.id} />
+                        <CertificateSection
+                                        cursoId={storeCourse.id}
+                                        completarAutomatico={(course as any).completar_automatico ?? false}
+                                        onAllLessonsCompleted={() => {
+                                            const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
+
+                                            allLessons.forEach((l: any) => updateLessonProgress(l.id, true, 100))
+                                        }}
+                                    />
                     )}
 
                     {/* Comentarios */}

@@ -1,9 +1,10 @@
 export const dynamic = 'force-dynamic'
 
-import prisma from '@/utils/libs/prisma'
-import { validateRequest, handleApiError } from '@/utils/libs/validation'
-import { requireAdmin } from '@/utils/libs/auth-helpers'
+import { handleApiError, validateRequest } from '@/utils/libs/validation'
+
 import { ApiResponse } from '@/utils/libs/apiResponse'
+import prisma from '@/utils/libs/prisma'
+import { requireAdmin } from '@/utils/libs/auth-helpers'
 import { updatePedidoSchema } from '@/schemas/pedido.schema'
 
 /**
@@ -68,7 +69,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     const pedidoAnterior = await prisma.pedido.findUnique({
       where: { id },
-      include: { detalles: true }
+      include: {
+        detalles: {
+          include: {
+            curso: {
+              select: { id: true, vigencia_meses: true }
+            }
+          }
+        }
+      }
     })
 
     if (!pedidoAnterior) {
@@ -125,17 +134,19 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
         if (cursosAInscribir.length > 0) {
           await Promise.all(
-            cursosAInscribir.map(cid =>
-              tx.inscripcion.create({
+            cursosAInscribir.map(cid => {
+              const fechaInscripcion = new Date()
+
+              return tx.inscripcion.create({
                 data: {
                   usuario_id: pedidoAnterior.usuario_id,
                   curso_id: cid,
                   pedido_id: id,
                   estado: 'ACTIVO',
-                  inscrito_en: new Date()
+                  inscrito_en: fechaInscripcion
                 }
               })
-            )
+            })
           )
         }
       }

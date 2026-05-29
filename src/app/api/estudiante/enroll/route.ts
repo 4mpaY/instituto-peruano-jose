@@ -1,7 +1,7 @@
-import prisma from '@/utils/libs/prisma'
 import { ApiResponse } from '@/utils/libs/apiResponse'
-import { requireAuth } from '@/utils/libs/auth-helpers'
 import { handleApiError } from '@/utils/libs/validation'
+import prisma from '@/utils/libs/prisma'
+import { requireAuth } from '@/utils/libs/auth-helpers'
 
 /**
  * POST /api/estudiante/enroll
@@ -20,7 +20,8 @@ export async function POST(request: Request) {
     }
 
     const curso = await prisma.curso.findUnique({
-      where: { id: cursoId, estado: 'PUBLICADO' }
+      where: { id: cursoId, estado: 'PUBLICADO' },
+      select: { id: true, slug: true, es_gratis: true, precio: true, vigencia_meses: true }
     })
 
     if (!curso) {
@@ -44,12 +45,14 @@ export async function POST(request: Request) {
       return ApiResponse.error(request, 'Ya estás inscrito en este curso', 400)
     }
 
+    const fechaInscripcion = new Date()
+
     await prisma.inscripcion.create({
       data: {
         usuario_id: auth.user.id,
         curso_id: cursoId,
         estado: 'ACTIVO',
-        inscrito_en: new Date()
+        inscrito_en: fechaInscripcion
       }
     })
 

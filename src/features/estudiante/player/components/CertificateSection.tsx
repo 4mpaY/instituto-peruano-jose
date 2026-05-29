@@ -28,6 +28,8 @@ interface Elegibilidad {
 
 interface CertificateSectionProps {
     cursoId: string
+    completarAutomatico?: boolean
+    onAllLessonsCompleted?: () => void
 }
 
 const ScoreRing = ({ value, min, label }: { value: number; min: number; label: string }) => {
@@ -77,10 +79,11 @@ const ScoreRing = ({ value, min, label }: { value: number; min: number; label: s
     )
 }
 
-const CertificateSection = ({ cursoId }: CertificateSectionProps) => {
+const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsCompleted }: CertificateSectionProps) => {
     const [loading, setLoading] = useState(true)
     const [generating, setGenerating] = useState(false)
     const [downloading, setDownloading] = useState(false)
+    const [completandoTodo, setCompletandoTodo] = useState(false)
     const [certificado, setCertificado] = useState<CertificateData | null>(null)
     const [elegibilidad, setElegibilidad] = useState<Elegibilidad | null>(null)
     const [fetchError, setFetchError] = useState(false)
@@ -141,6 +144,28 @@ const CertificateSection = ({ cursoId }: CertificateSectionProps) => {
                 .finally(() => setGenerating(false))
         }
     }, [loading, certificado, pagoPendiente, elegibilidad, cursoId])
+
+    const handleCompletarTodo = async () => {
+        setCompletandoTodo(true)
+
+        try {
+            await axios.post('/api/estudiante/progreso/completar-todo', { cursoId })
+            toast.success('¡Todas las lecciones completadas!')
+            onAllLessonsCompleted?.()
+            const res = await axios.get(`/api/estudiante/certificado?cursoId=${cursoId}`)
+
+            if (res.data.status) {
+                setElegibilidad(res.data.result.elegibilidad ?? null)
+                setPagoPendiente(res.data.result.pagoPendiente ?? false)
+                setCertificado(res.data.result.certificado ?? null)
+                autoGeneradoRef.current = false
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Error al completar las lecciones')
+        } finally {
+            setCompletandoTodo(false)
+        }
+    }
 
     const handleGenerar = async () => {
         setGenerating(true)
@@ -557,6 +582,29 @@ const CertificateSection = ({ cursoId }: CertificateSectionProps) => {
                                 />
                             </Box>
                         </>
+                    )}
+
+                    {/* Botón de completado automático */}
+                    {completarAutomatico && el.progreso < 100 && (
+                        <Box sx={{ mt: 2.5 }}>
+                            <Button
+                                variant="contained"
+                                fullWidth
+                                onClick={handleCompletarTodo}
+                                disabled={completandoTodo}
+                                startIcon={completandoTodo
+                                    ? <CircularProgress size={18} color="inherit" />
+                                    : <i className="tabler-checks" />
+                                }
+                                sx={{
+                                    bgcolor: '#025E44', borderRadius: '12px', textTransform: 'none',
+                                    fontWeight: 700, boxShadow: 'none',
+                                    '&:hover': { bgcolor: '#014d36', boxShadow: 'none' }
+                                }}
+                            >
+                                {completandoTodo ? 'Completando...' : 'Completar todas las lecciones'}
+                            </Button>
+                        </Box>
                     )}
                 </Box>
             )}

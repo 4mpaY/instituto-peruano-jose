@@ -30,8 +30,8 @@ export default function TerminosYCondicionesPage() {
 
           <Typography variant="h4">1. Generalidades de los Servicios</Typography>
           <Typography paragraph>
-            ARM brinda servicios de capacitación, diseño web, consultoría y soluciones de mantenimiento industrial.
-            Nuestra Aula Virtual contiene cursos y certificaciones dirigidos a profesionales de la confiabilidad.
+            ARM brinda servicios de capacitación, Consultoría en Sistemas de Gestión - ISO, Capacitaciones y entrenamiento, Eventos, activaciones BTL y campañas en SST y Respuesta ante emergencias, Actividades de Trabajos de Alto Riesgo.
+            Nuestra Aula Virtual contiene cursos y certificaciones dirigidos a profesionales de las diferentes especialidades y sectores económicos.
             Al adquirir un curso, está comprando una licencia de acceso individual e intransferible.
           </Typography>
 

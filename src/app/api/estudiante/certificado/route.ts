@@ -1,10 +1,9 @@
 export const dynamic = 'force-dynamic'
 
-import prisma from '@/utils/libs/prisma'
-
 import { ApiResponse } from '@/utils/libs/apiResponse'
-import { requireAuth } from '@/utils/libs/auth-helpers'
 import { handleApiError } from '@/utils/libs/validation'
+import prisma from '@/utils/libs/prisma'
+import { requireAuth } from '@/utils/libs/auth-helpers'
 
 /** Calcula el promedio ponderado de las evaluaciones del estudiante en un curso.
  *  Los exámenes sin intentar cuentan como 0. */
@@ -32,7 +31,7 @@ async function calcularElegibilidad(usuarioId: string, cursoId: string) {
   const totalExamenes = examenes.length
 
   let promedioScore = 0
-  let promedioMinimo = 60  // umbral por defecto si no hay exámenes
+  let promedioMinimo = 60 // umbral por defecto si no hay exámenes
 
   if (totalExamenes > 0) {
     const sumScores = examenes.reduce((acc, ex) => acc + (ex.intentos[0]?.puntaje ?? 0), 0)
@@ -84,13 +83,15 @@ export async function GET(request: Request) {
     const pagoPendiente = precioCert && precioCert > 0 && !inscripcion?.certificado_habilitado
 
     return ApiResponse.success(request, {
-      certificado: certificado ? {
-        id: certificado.id,
-        codigoVerificacion: certificado.codigo_verificacion,
-        emitidoEn: certificado.emitido_en,
-        cursoTitulo: certificado.curso.titulo,
-        nombreCompleto: `${certificado.usuario.nombre} ${certificado.usuario.apellido}`
-      } : null,
+      certificado: certificado
+        ? {
+            id: certificado.id,
+            codigoVerificacion: certificado.codigo_verificacion,
+            emitidoEn: certificado.emitido_en,
+            cursoTitulo: certificado.curso.titulo,
+            nombreCompleto: `${certificado.usuario.nombre} ${certificado.usuario.apellido}`
+          }
+        : null,
       cursoTitulo: curso?.titulo ?? null,
       elegibilidad,
       pagoPendiente: pagoPendiente || false,
@@ -123,7 +124,10 @@ export async function POST(request: Request) {
       prisma.inscripcion.findUnique({
         where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } }
       }),
-      prisma.curso.findUnique({ where: { id: cursoId }, select: { precio_certificado: true, codigo: true, slug: true } })
+      prisma.curso.findUnique({
+        where: { id: cursoId },
+        select: { precio_certificado: true, codigo: true, slug: true }
+      })
     ])
 
     if (!inscripcion || inscripcion.estado !== 'ACTIVO') {
@@ -134,7 +138,11 @@ export async function POST(request: Request) {
     const precioCert = curso?.precio_certificado ? Number(curso.precio_certificado) : null
 
     if (precioCert && precioCert > 0 && !inscripcion.certificado_habilitado) {
-      return ApiResponse.error(request, 'El certificado de este curso requiere un pago previo. Comunícate con nosotros para habilitarlo.', 403)
+      return ApiResponse.error(
+        request,
+        'El certificado de este curso requiere un pago previo. Comunícate con nosotros para habilitarlo.',
+        403
+      )
     }
 
     // 2. Verificar elegibilidad (progreso + promedio de evaluaciones)
@@ -192,7 +200,10 @@ export async function POST(request: Request) {
     // 5. Generar código de verificación único: {CODIGO_CURSO}-{YYYYMMDD}-{DNI}-{NN}
     const fechaEmision = new Date().toISOString().slice(0, 10).replace(/-/g, '')
     const dni = usuarioData?.numero_documento?.replace(/\D/g, '') || 'SINDNI'
-    const codigoCurso = cursoData?.codigo || cursoData?.slug?.slice(0, 12).toUpperCase() || cursoId.slice(0, 8).toUpperCase()
+
+    const codigoCurso =
+      cursoData?.codigo || cursoData?.slug?.slice(0, 12).toUpperCase() || cursoId.slice(0, 8).toUpperCase()
+
     const numeroIntento = 1
     const codigoVerificacion = `${codigoCurso}-${fechaEmision}-${dni}-${String(numeroIntento).padStart(2, '0')}`
 
@@ -202,19 +213,17 @@ export async function POST(request: Request) {
         duracion: cursoData.duracion,
         nivel: cursoData.nivel,
         tipo_emision: cursoData.tipo_emision,
-        fecha_inicio: cursoData.fecha_inicio,
+        fecha_inicio: cursoData.fecha_inicio
       },
       usuario: { nombre: usuarioData?.nombre ?? '', apellido: usuarioData?.apellido ?? '' },
       profesor: {
         nombre: cursoData.profesor.nombre,
         apellido: cursoData.profesor.apellido,
         cargo: cursoData.profesor.cargo,
-        firma: cursoData.profesor.firma,
+        firma: cursoData.profesor.firma
       },
       fechas: {
-        inicio_curso: cursoData.tipo_emision === 'SINCRONO'
-          ? cursoData.fecha_inicio
-          : inscripcion.inscrito_en,
+        inicio_curso: cursoData.tipo_emision === 'SINCRONO' ? cursoData.fecha_inicio : inscripcion.inscrito_en,
         culminacion: inscripcion.completado_en || new Date(),
         emision: new Date()
       }
@@ -233,15 +242,19 @@ export async function POST(request: Request) {
       }
     })
 
-    return ApiResponse.success(request, {
-      certificado: {
-        id: certificado.id,
-        codigoVerificacion: certificado.codigo_verificacion,
-        emitidoEn: certificado.emitido_en,
-        cursoTitulo: certificado.curso.titulo,
-        nombreCompleto: `${certificado.usuario.nombre} ${certificado.usuario.apellido}`
-      }
-    }, 201)
+    return ApiResponse.success(
+      request,
+      {
+        certificado: {
+          id: certificado.id,
+          codigoVerificacion: certificado.codigo_verificacion,
+          emitidoEn: certificado.emitido_en,
+          cursoTitulo: certificado.curso.titulo,
+          nombreCompleto: `${certificado.usuario.nombre} ${certificado.usuario.apellido}`
+        }
+      },
+      201
+    )
   } catch (error) {
     return handleApiError(error, request)
   }

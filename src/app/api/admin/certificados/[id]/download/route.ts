@@ -2,12 +2,12 @@ export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
 
+import { buildCertificadoData } from '@/app/api/_shared/certificados/buildCertificadoData'
+import { getConfigs } from '@/utils/libs/config'
+import { getGenerator } from '@/app/api/_shared/certificados/generators'
+import { handleApiError } from '@/utils/libs/validation'
 import prisma from '@/utils/libs/prisma'
 import { requireAdmin } from '@/utils/libs/auth-helpers'
-import { handleApiError } from '@/utils/libs/validation'
-import { getConfigs } from '@/utils/libs/config'
-import { buildCertificadoData } from '@/app/api/_shared/certificados/buildCertificadoData'
-import { getGenerator } from '@/app/api/_shared/certificados/generators'
 
 /**
  * GET /api/admin/certificados/[id]/download
@@ -35,10 +35,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
               duracion: true,
               nivel: true,
               fecha_inicio: true,
+              vigencia_meses: true,
               tipo_emision: true,
               profesor: {
                 select: { nombre: true, apellido: true, cargo: true, firma: true }
-              },
+              }
             }
           },
           usuario: { select: { nombre: true, apellido: true } }
@@ -79,7 +80,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
         where: { curso_id: certificado.curso_id },
         orderBy: { orden: 'asc' },
         select: {
-          id: true, titulo: true, orden: true,
+          id: true,
+          titulo: true,
+          orden: true,
           lecciones: {
             orderBy: { orden: 'asc' },
             select: { id: true, titulo: true, orden: true, duracion: true }
@@ -114,7 +117,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       intentosExamen,
       cursoFechaFin,
       reqUrl,
-      previewFlag,
+      previewFlag
     })
 
     // Inyectar gerente (requiere query adicional que hacemos aquí)

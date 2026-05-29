@@ -33,10 +33,12 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
 
     const [esGratis, setEsGratis] = useState(curso.es_gratis)
     const [esPrivado, setEsPrivado] = useState(curso.es_privado ?? false)
+    const [completarAutomatico, setCompletarAutomatico] = useState(curso.completar_automatico ?? false)
     const [precio, setPrecio] = useState(curso.precio)
     const [precioFalso, setPrecioFalso] = useState(curso.precio_falso)
     const [moneda, setMoneda] = useState(curso.moneda)
     const [precioCertificado, setPrecioCertificado] = useState<number | ''>(curso.precio_certificado ?? '')
+    const [vigenciaMeses, setVigenciaMeses] = useState<number | ''>((curso as any).vigencia_meses ?? '')
 
     const handleSavePrice = async () => {
         try {
@@ -64,6 +66,17 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
             await editMutation.mutateAsync({ id: curso.id, data: { es_privado: valor } })
             setEsPrivado(valor)
             enqueueSnackbar(valor ? 'Curso marcado como privado' : 'Curso marcado como público', { variant: 'success' })
+            onSuccess()
+        } catch (error: any) {
+            enqueueSnackbar(error?.message || 'Error', { variant: 'error' })
+        }
+    }
+
+    const handleSaveCompletarAutomatico = async (valor: boolean) => {
+        try {
+            await editMutation.mutateAsync({ id: curso.id, data: { completar_automatico: valor } })
+            setCompletarAutomatico(valor)
+            enqueueSnackbar(valor ? 'Completado automático habilitado' : 'Completado automático deshabilitado', { variant: 'success' })
             onSuccess()
         } catch (error: any) {
             enqueueSnackbar(error?.message || 'Error', { variant: 'error' })
@@ -123,7 +136,7 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
                         />
                         <CustomTextField
                             type='number'
-                            label='Precio Falso'
+                            label='Precio Falso (Opcional)'
                             value={precioFalso}
                             onChange={e => setPrecioFalso(Number(e.target.value))}
                             sx={{ width: 200 }}
@@ -150,6 +163,35 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
                         Guardar Precio
                     </Button>
                 </Box>
+                <Box sx={{ mt: 3 }}>
+                    <Typography variant='subtitle2' sx={{ mb: 1 }}>Vigencia de Acceso</Typography>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 1 }}>
+                        <CustomTextField
+                            type='number'
+                            label='Vigencia (meses)'
+                            value={vigenciaMeses}
+                            onChange={e => setVigenciaMeses(e.target.value === '' ? '' : Number(e.target.value))}
+                            sx={{ width: 200 }}
+                            inputProps={{ min: 1 }}
+                            helperText='Dejar vacío para sin caducidad'
+                        />
+                        <Button
+                            variant='outlined'
+                            onClick={async () => {
+                                try {
+                                    await editMutation.mutateAsync({ id: curso.id, data: { vigencia_meses: vigenciaMeses === '' ? null : Number(vigenciaMeses) } })
+                                    enqueueSnackbar('Vigencia actualizada', { variant: 'success' })
+                                    onSuccess()
+                                } catch (error: any) {
+                                    enqueueSnackbar(error?.message || 'Error al actualizar vigencia', { variant: 'error' })
+                                }
+                            }}
+                            disabled={editMutation.isPending}
+                        >
+                            Guardar Vigencia
+                        </Button>
+                    </Box>
+                </Box>
             </Grid>
 
             <Grid item xs={12}><Divider /></Grid>
@@ -169,6 +211,26 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
                         />
                     }
                     label={esPrivado ? 'Curso privado (no visible en catálogo)' : 'Curso público (visible en catálogo)'}
+                />
+            </Grid>
+
+            <Grid item xs={12}><Divider /></Grid>
+
+            {/* Finalización */}
+            <Grid item xs={12}>
+                <Typography variant='h6' sx={{ mb: 1 }}>Finalización</Typography>
+                <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+                    Permite al alumno completar todas las lecciones con un clic para acceder al certificado inmediatamente, sin necesidad de marcarlas una por una.
+                </Typography>
+                <FormControlLabel
+                    control={
+                        <Switch
+                            checked={completarAutomatico}
+                            onChange={e => handleSaveCompletarAutomatico(e.target.checked)}
+                            disabled={editMutation.isPending}
+                        />
+                    }
+                    label={completarAutomatico ? 'Completado automático habilitado' : 'Completado automático deshabilitado'}
                 />
             </Grid>
 

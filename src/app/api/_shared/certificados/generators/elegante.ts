@@ -24,6 +24,7 @@ export const generarElegante: GeneratorFn = async data => {
     fechaEmisionVal,
     fechaInicioVal,
     fechaFinVal,
+    vigenciaHastaVal,
     gerenteGeneral,
     profesorSnapshot,
     mostrarFirmaDocente,
@@ -211,6 +212,7 @@ export const generarElegante: GeneratorFn = async data => {
   doc.setFontSize(8)
   doc.setFont('helvetica', 'italic')
   doc.setTextColor(...MUTED)
+  const vigenciaTxt = vigenciaHastaVal ? formatDateLong(vigenciaHastaVal) : 'sin caducidad'
   const detalle = `Con una duración de ${cursoDuracion || '---'}, impartido desde el ${formatDateLong(fechaInicioVal)} hasta el ${formatDateLong(fechaFinVal)}, obteniendo la calificación de:`
   const detalleLines = doc.splitTextToSize(detalle, W - 80)
 
@@ -264,6 +266,7 @@ export const generarElegante: GeneratorFn = async data => {
   doc.setTextColor(...MUTED)
   doc.text(`Código de Verificación: ${codigoVerificacion}`, 16, H - 10)
   doc.text(`Emisión: ${fechaFirmadaTxt}`, 16, H - 6)
+  doc.text(`Vigencia de acceso: ${vigenciaTxt}`, W - 16, H - 10, { align: 'right' })
   if (institutionUrl) doc.text(institutionUrl, W - qrSz - 20, H - 10, { align: 'right' })
 
   // ── PÁGINA 2 (Rendimiento + Contenido) ───────────────────────────────

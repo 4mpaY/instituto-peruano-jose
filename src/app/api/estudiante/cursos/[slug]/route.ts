@@ -4,12 +4,10 @@ import { NextResponse } from 'next/server'
 
 import { verify } from 'jsonwebtoken'
 
-import { getAuthSession } from '@/utils/libs/auth-helpers'
-
-import prisma from '@/utils/libs/prisma'
-
 import { ApiResponse } from '@/utils/libs/apiResponse'
+import { getAuthSession } from '@/utils/libs/auth-helpers'
 import { handleApiError } from '@/utils/libs/validation'
+import prisma from '@/utils/libs/prisma'
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'dev-secret'
 
@@ -103,12 +101,25 @@ export async function GET(request: Request, { params }: { params: { slug: string
         }
       })
 
-      if (!inscription || inscription.estado !== 'ACTIVO') {
+      const vigenciaMeses = course.vigencia_meses ?? 0
+      let accesoVigente = true
+
+      if (vigenciaMeses > 0 && inscription) {
+        const accesHasta = new Date(inscription.inscrito_en)
+
+        accesHasta.setMonth(accesHasta.getMonth() + vigenciaMeses)
+        accesoVigente = accesHasta > new Date()
+      }
+
+      if (!inscription || inscription.estado !== 'ACTIVO' || !accesoVigente) {
         return NextResponse.json(
           {
             status: false,
             code: 'UNCISCRIBED',
-            message: 'Usuario no matriculado',
+            message:
+              !inscription || inscription.estado !== 'ACTIVO'
+                ? 'Usuario no matriculado'
+                : 'Tu acceso a este curso ha caducado',
             statusCode: 403,
             timestamp: new Date().toISOString()
           },
@@ -127,7 +138,10 @@ export async function GET(request: Request, { params }: { params: { slug: string
       select: { examen_id: true, esta_aprobado: true, puntaje: true }
     })
 
-    const intentosPorExamen: Record<string, { intentos_realizados: number; ya_aprobado: boolean; mejor_puntaje: number | null }> = {}
+    const intentosPorExamen: Record<
+      string,
+      { intentos_realizados: number; ya_aprobado: boolean; mejor_puntaje: number | null }
+    > = {}
 
     intentosUsuario.forEach(intento => {
       if (!intentosPorExamen[intento.examen_id]) {
@@ -182,10 +196,13 @@ export async function GET(request: Request, { params }: { params: { slug: string
         ya_aprobado: intentosPorExamen[ex.id]?.ya_aprobado ?? false,
         mejor_puntaje: intentosPorExamen[ex.id]?.mejor_puntaje ?? null
       })),
-      inscripcion: inscription ? {
-        estado_nota: inscription.estado_nota,
-        nota_final: inscription.nota_final
-      } : null
+      completar_automatico: course.completar_automatico,
+      inscripcion: inscription
+        ? {
+            estado_nota: inscription.estado_nota,
+            nota_final: inscription.nota_final
+          }
+        : null
     }
 
     return ApiResponse.success(request, { course: formattedCourse })

@@ -22,6 +22,7 @@ export const generarModerno: GeneratorFn = async data => {
     fechaEmisionVal,
     fechaInicioVal,
     fechaFinVal,
+    vigenciaHastaVal,
     gerenteGeneral,
     profesorSnapshot,
     mostrarFirmaDocente,
@@ -262,7 +263,14 @@ export const generarModerno: GeneratorFn = async data => {
   doc.setFontSize(6)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(...MUTED)
-  doc.text(`Emitido por ${nombreInstitucion} · ${institutionUrl || ''}`, ccx, H - 6, { align: 'center' })
+  doc.text(`Código: ${codigoVerificacion}`, 16, H - 6)
+  doc.text(
+    `Vigencia de acceso: ${vigenciaHastaVal ? formatDateLong(vigenciaHastaVal) : 'sin caducidad'}`,
+    W - 16,
+    H - 6,
+    { align: 'right' }
+  )
+  doc.text(`Emitido por ${nombreInstitucion} · ${institutionUrl || ''}`, ccx, H - 10, { align: 'center' })
   void disclaimer
 
   // ── PÁGINA 2 (Rendimiento + Contenido) ───────────────────────────────

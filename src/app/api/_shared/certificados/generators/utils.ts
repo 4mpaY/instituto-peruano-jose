@@ -53,6 +53,34 @@ return new Date(date).toLocaleDateString('es-PE', { year: 'numeric', month: '2-d
 }
 
 /**
+ * Redimensiona y comprime un buffer de imagen para embebido en PDF.
+ * - format 'jpeg': ideal para fotos (avatar, fondos). Reduce drásticamente el peso.
+ * - format 'png':  conserva transparencia (logos, firmas).
+ */
+export async function compressImageForPdf(
+  buffer: Buffer,
+  opts: { maxWidth: number; format: 'jpeg' | 'png'; quality?: number }
+): Promise<{ buffer: Buffer; mimeType: string; jsPdfFormat: string }> {
+  try {
+    const { default: sharp } = await import('sharp')
+
+    const pipeline = sharp(buffer).resize(opts.maxWidth, undefined, { withoutEnlargement: true, fit: 'inside' })
+
+    if (opts.format === 'jpeg') {
+      const out = await pipeline.flatten({ background: '#ffffff' }).jpeg({ quality: opts.quality ?? 75, mozjpeg: false }).toBuffer()
+
+      return { buffer: out, mimeType: 'image/jpeg', jsPdfFormat: 'JPEG' }
+    } else {
+      const out = await pipeline.png({ compressionLevel: 9 }).toBuffer()
+
+      return { buffer: out, mimeType: 'image/png', jsPdfFormat: 'PNG' }
+    }
+  } catch {
+    return { buffer, mimeType: 'image/png', jsPdfFormat: 'PNG' }
+  }
+}
+
+/**
  * Resuelve las dimensiones del logo respetando aspect ratio con Sharp.
  * Devuelve { w, h } en mm.
  */

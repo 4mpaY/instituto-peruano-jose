@@ -1,11 +1,12 @@
-import prisma from '@/utils/libs/prisma'
-import { crearPedidoManualSchema } from '@/schemas/pedido.schema'
-import { validateRequest, handleApiError } from '@/utils/libs/validation'
-import { requireAdmin } from '@/utils/libs/auth-helpers'
+import { handleApiError, validateRequest } from '@/utils/libs/validation'
+
 import { ApiResponse } from '@/utils/libs/apiResponse'
-import { sendMail } from '@/utils/libs/mailer'
+import { crearPedidoManualSchema } from '@/schemas/pedido.schema'
 import { getConfigs } from '@/utils/libs/config'
 import { getOrderConfirmationTemplate } from '@/utils/libs/email-templates'
+import prisma from '@/utils/libs/prisma'
+import { requireAdmin } from '@/utils/libs/auth-helpers'
+import { sendMail } from '@/utils/libs/mailer'
 
 /**
  * POST /api/pedidos/manual
@@ -30,11 +31,13 @@ export async function POST(request: Request) {
       return validation.error
     }
 
-    const { usuarios_ids, cursos_ids, precio, estado, metodo_pago, mensaje, tipo_comprobante, numero_comprobante } = validation.data
+    const { usuarios_ids, cursos_ids, precio, estado, metodo_pago, mensaje, tipo_comprobante, numero_comprobante } =
+      validation.data
 
     // 3. Obtener información de los cursos
     const cursos = await prisma.curso.findMany({
-      where: { id: { in: cursos_ids } }
+      where: { id: { in: cursos_ids } },
+      select: { id: true, titulo: true, moneda: true, vigencia_meses: true }
     })
 
     if (cursos.length === 0) {
@@ -58,16 +61,14 @@ export async function POST(request: Request) {
       }
 
       // Filtrar cursos en los que NO está inscrito
-      const cursosParaInscribir = cursos.filter(c => 
-        !estudiante.inscripciones.some(ins => ins.curso_id === c.id)
-      )
+      const cursosParaInscribir = cursos.filter(c => !estudiante.inscripciones.some(ins => ins.curso_id === c.id))
 
       if (cursosParaInscribir.length === 0) {
-        resultados.push({ 
-          usuario_id, 
+        resultados.push({
+          usuario_id,
           nombre: `${estudiante.nombre} ${estudiante.apellido}`,
-          status: 'skipped', 
-          message: 'El estudiante ya está inscrito en todos los cursos seleccionados' 
+          status: 'skipped',
+          message: 'El estudiante ya está inscrito en todos los cursos seleccionados'
         })
         continue
       }
@@ -101,17 +102,19 @@ export async function POST(request: Request) {
           // Solo inscribir al estudiante si el pedido queda COMPLETADO
           if (estado === 'COMPLETADO') {
             await Promise.all(
-              cursosParaInscribir.map(c =>
-                tx.inscripcion.create({
+              cursosParaInscribir.map(c => {
+                const fechaInscripcion = new Date()
+
+                return tx.inscripcion.create({
                   data: {
                     usuario_id: usuario_id,
                     curso_id: c.id,
                     pedido_id: pedido.id,
                     estado: 'ACTIVO',
-                    inscrito_en: new Date()
+                    inscrito_en: fechaInscripcion
                   }
                 })
-              )
+              })
             )
           }
         })
@@ -129,7 +132,7 @@ export async function POST(request: Request) {
             const configs = await getConfigs()
             const platformName = configs.TEMPLATE_NAME || 'Aula Virtual'
             const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
-            
+
             const emailHtml = getOrderConfirmationTemplate({
               platformName,
               customerName: `${estudiante.nombre} ${estudiante.apellido}`,
@@ -157,19 +160,19 @@ export async function POST(request: Request) {
           console.error(`[Manual-Order-Mail] Error al enviar correo a ${estudiante.correo}:`, mailError)
         }
 
-        resultados.push({ 
-          usuario_id, 
+        resultados.push({
+          usuario_id,
           nombre: `${estudiante.nombre} ${estudiante.apellido}`,
-          status: 'success', 
-          cursos: cursosParaInscribir.map(c => c.titulo) 
+          status: 'success',
+          cursos: cursosParaInscribir.map(c => c.titulo)
         })
       } catch (error: any) {
         console.error(`Error procesando estudiante ${usuario_id}:`, error)
-        resultados.push({ 
-          usuario_id, 
+        resultados.push({
+          usuario_id,
           nombre: `${estudiante.nombre} ${estudiante.apellido}`,
-          status: 'error', 
-          message: error.message || 'Error interno' 
+          status: 'error',
+          message: error.message || 'Error interno'
         })
       }
     }

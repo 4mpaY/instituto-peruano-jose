@@ -6,18 +6,31 @@ import { fetchImageBuffer, formatDateLong } from './utils'
  * solo muestra los módulos y lecciones en dos columnas, sin notas,
  * para ahorrar espacio.
  */
-export const generarClasicoResumido: GeneratorFn = async (data) => {
+export const generarClasicoResumido: GeneratorFn = async data => {
   const {
-    pr, pg, pb,
-    logoBuffer, logoUrl, base64Logo,
-    nombreInstitucion, slogan,
-    nombreCompleto, avatarBuffer,
-    cursoTitulo, cursoDuracion,
-    fechaEmisionVal, fechaInicioVal, fechaFinVal,
-    gerenteGeneral, profesorSnapshot, mostrarFirmaDocente,
-    codigoVerificacion, qrDataUrl,
+    pr,
+    pg,
+    pb,
+    logoBuffer,
+    logoUrl,
+    base64Logo,
+    nombreInstitucion,
+    slogan,
+    nombreCompleto,
+    avatarBuffer,
+    cursoTitulo,
+    cursoDuracion,
+    fechaEmisionVal,
+    fechaInicioVal,
+    fechaFinVal,
+    vigenciaHastaVal,
+    gerenteGeneral,
+    profesorSnapshot,
+    mostrarFirmaDocente,
+    codigoVerificacion,
+    qrDataUrl,
     modulos,
-    previewFlag,
+    previewFlag
   } = data
 
   const { jsPDF } = await import('jspdf')
@@ -31,7 +44,10 @@ export const generarClasicoResumido: GeneratorFn = async (data) => {
   const dpB = Math.round(pb * 0.52)
 
   const fechaFirmadaTxt = new Date(fechaEmisionVal).toLocaleDateString('es-PE', {
-    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
   })
 
   const addSignatureBlock = async (x: number, lineY: number, user: any) => {
@@ -46,7 +62,9 @@ export const generarClasicoResumido: GeneratorFn = async (data) => {
 
           doc.addImage(signatureBuffer, sigExt.toUpperCase(), x - 17, lineY - 34, 34, 34)
         }
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
 
     doc.setDrawColor(50, 50, 50)
@@ -94,14 +112,38 @@ export const generarClasicoResumido: GeneratorFn = async (data) => {
   const ribB1 = Math.round(pb + (255 - pb) * 0.28)
 
   doc.setFillColor(ribR1, ribG1, ribB1)
-  doc.lines([[21, 22, 41, 68, 60, 96], [0, 24], [-19, -12, -39, -48, -60, -96], [0, -24]], 237, 0, [1, 1], 'F', true)
+  doc.lines(
+    [
+      [21, 22, 41, 68, 60, 96],
+      [0, 24],
+      [-19, -12, -39, -48, -60, -96],
+      [0, -24]
+    ],
+    237,
+    0,
+    [1, 1],
+    'F',
+    true
+  )
 
   const ribR2 = Math.round(pr + (255 - pr) * 0.14)
   const ribG2 = Math.round(pg + (255 - pg) * 0.14)
   const ribB2 = Math.round(pb + (255 - pb) * 0.14)
 
   doc.setFillColor(ribR2, ribG2, ribB2)
-  doc.lines([[20, 18, 41, 62, 60, 88], [0, 32], [-19, -4, -39, -42, -60, -98], [0, -22]], 237, 90, [1, 1], 'F', true)
+  doc.lines(
+    [
+      [20, 18, 41, 62, 60, 88],
+      [0, 32],
+      [-19, -4, -39, -42, -60, -98],
+      [0, -22]
+    ],
+    237,
+    90,
+    [1, 1],
+    'F',
+    true
+  )
 
   // QR
   const qrSz = 30
@@ -145,7 +187,9 @@ export const generarClasicoResumido: GeneratorFn = async (data) => {
         logoDisplayW = Math.min(logoDisplayH * ratio, maxLogoW)
         if (logoDisplayW === maxLogoW) logoDisplayH = maxLogoW / ratio
       }
-    } catch { /* default */ }
+    } catch {
+      /* default */
+    }
   }
 
   if (base64Logo) {
@@ -153,50 +197,80 @@ export const generarClasicoResumido: GeneratorFn = async (data) => {
       const ext = logoUrl.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'PNG'
 
       doc.addImage(base64Logo, ext, cx - logoDisplayW / 2, y, logoDisplayW, logoDisplayH)
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
 
   y += logoDisplayH + 14
 
   // Título, nombre, curso, descripción
-  doc.setFontSize(20); doc.setTextColor(18, 18, 18); doc.setFont('helvetica', 'bold')
-  doc.text('CERTIFICADO', cx, y, { align: 'center' }); y += 11
+  doc.setFontSize(20)
+  doc.setTextColor(18, 18, 18)
+  doc.setFont('helvetica', 'bold')
+  doc.text('CERTIFICADO', cx, y, { align: 'center' })
+  y += 11
 
-  doc.setFontSize(12); doc.setTextColor(100, 100, 100); doc.setFont('helvetica', 'normal')
-  doc.text('Otorgado a:', cx, y, { align: 'center' }); y += 11
+  doc.setFontSize(12)
+  doc.setTextColor(100, 100, 100)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Otorgado a:', cx, y, { align: 'center' })
+  y += 11
 
-  doc.setFontSize(20); doc.setTextColor(pr, pg, pb); doc.setFont('helvetica', 'bold')
-  doc.text(nombreCompleto.toUpperCase(), cx, y, { align: 'center' }); y += 11
+  doc.setFontSize(20)
+  doc.setTextColor(pr, pg, pb)
+  doc.setFont('helvetica', 'bold')
+  doc.text(nombreCompleto.toUpperCase(), cx, y, { align: 'center' })
+  y += 11
 
-  doc.setFontSize(12); doc.setTextColor(100, 100, 100); doc.setFont('helvetica', 'normal')
-  doc.text('Por haber concluido y aprobado con éxito el curso de:', cx, y, { align: 'center' }); y += 10
+  doc.setFontSize(12)
+  doc.setTextColor(100, 100, 100)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Por haber concluido y aprobado con éxito el curso de:', cx, y, { align: 'center' })
+  y += 10
 
-  doc.setFontSize(20); doc.setTextColor(15, 15, 15); doc.setFont('helvetica', 'bold')
+  doc.setFontSize(20)
+  doc.setTextColor(15, 15, 15)
+  doc.setFont('helvetica', 'bold')
   const cursoLines = doc.splitTextToSize(cursoTitulo, contentW - 34)
 
-  doc.text(cursoLines, cx, y, { align: 'center' }); y += cursoLines.length * 7 + 6
+  doc.text(cursoLines, cx, y, { align: 'center' })
+  y += cursoLines.length * 7 + 6
 
-  doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100)
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(100, 100, 100)
   const descripcionTxt = `Emitido por ${nombreInstitucion}, con una duración de ${cursoDuracion || '---'}, realizado desde el ${formatDateLong(fechaInicioVal)} hasta el ${formatDateLong(fechaFinVal)}.`
   const descripcionLines = doc.splitTextToSize(descripcionTxt, contentW - 40)
 
-  doc.text(descripcionLines, cx, y, { align: 'center' }); y += descripcionLines.length * 6 + 4
+  doc.text(descripcionLines, cx, y, { align: 'center' })
+  y += descripcionLines.length * 6 + 4
 
-  const porcuantoLines = doc.splitTextToSize('Por cuanto: Para que conste y sea reconocido, se otorga el presente certificado en calidad de:', contentW - 40)
+  const porcuantoLines = doc.splitTextToSize(
+    'Por cuanto: Para que conste y sea reconocido, se otorga el presente certificado en calidad de:',
+    contentW - 40
+  )
 
-  doc.text(porcuantoLines, cx, y, { align: 'center' }); y += porcuantoLines.length * 6 + 5
+  doc.text(porcuantoLines, cx, y, { align: 'center' })
+  y += porcuantoLines.length * 6 + 5
 
-  doc.setFontSize(14); doc.setTextColor(pr, pg, pb); doc.setFont('helvetica', 'bold')
+  doc.setFontSize(14)
+  doc.setTextColor(pr, pg, pb)
+  doc.setFont('helvetica', 'bold')
   doc.text('APROBADO', cx, y, { align: 'center' })
   const aprobadoW = doc.getTextWidth('APROBADO')
 
-  doc.setDrawColor(pr, pg, pb); doc.setLineWidth(0.4)
+  doc.setDrawColor(pr, pg, pb)
+  doc.setLineWidth(0.4)
   doc.line(cx - aprobadoW / 2 - 10, y - 1.5, cx - aprobadoW / 2 - 2, y - 1.5)
   doc.line(cx + aprobadoW / 2 + 2, y - 1.5, cx + aprobadoW / 2 + 10, y - 1.5)
   y += 8
 
-  doc.setFontSize(12); doc.setTextColor(100, 100, 100); doc.setFont('helvetica', 'normal')
-  doc.text(`Firmado, el ${fechaFirmadaTxt}.`, cx, y, { align: 'center' }); y += 12
+  doc.setFontSize(12)
+  doc.setTextColor(100, 100, 100)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Firmado, el ${fechaFirmadaTxt}.`, cx, y, { align: 'center' })
+  y += 12
 
   // Firmas
   const hasGerente = gerenteGeneral !== null
@@ -211,8 +285,16 @@ export const generarClasicoResumido: GeneratorFn = async (data) => {
   }
 
   // Footer página 1
-  doc.setFontSize(10); doc.setTextColor(90, 90, 90); doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(90, 90, 90)
+  doc.setFont('helvetica', 'normal')
   doc.text(`Código de Registro: ${codigoVerificacion}`, 16, pageHeight - 12)
+  doc.text(
+    `Vigencia de acceso: ${vigenciaHastaVal ? formatDateLong(vigenciaHastaVal) : 'sin caducidad'}`,
+    pageWidth - 80,
+    pageHeight - 7,
+    { align: 'right' }
+  )
   doc.text(`Fecha de Emisión: ${fechaFirmadaTxt}`, 16, pageHeight - 7)
 
   void previewFlag
@@ -234,7 +316,10 @@ export const generarClasicoResumido: GeneratorFn = async (data) => {
   // Banda superior — esquinas redondeadas que siguen el marco (r=5, kappa=0.5523)
   const bk = 0.5523
   const br = 5
-  const bx = 8, by = 8
+
+  const bx = 8,
+    by = 8
+
   const bRight = pageWidth - 8
   const bandBottom = 24
 
@@ -267,9 +352,15 @@ export const generarClasicoResumido: GeneratorFn = async (data) => {
         logoP2H = maxLogoHP2
         logoP2W = Math.min(logoP2H * ratio, maxLogoWP2)
         if (logoP2W === maxLogoWP2) logoP2H = maxLogoWP2 / ratio
-        if (logoP2H > maxLogoHP2) { logoP2H = maxLogoHP2; logoP2W = logoP2H * ratio }
+
+        if (logoP2H > maxLogoHP2) {
+          logoP2H = maxLogoHP2
+          logoP2W = logoP2H * ratio
+        }
       }
-    } catch { /* default */ }
+    } catch {
+      /* default */
+    }
   }
 
   if (base64Logo) {
@@ -277,18 +368,25 @@ export const generarClasicoResumido: GeneratorFn = async (data) => {
       const ext = logoUrl.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'PNG'
 
       doc.addImage(base64Logo, ext, margin, 8.4 + (bandH - logoP2H) / 2, logoP2W, logoP2H)
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
 
   const logoRightEdge = margin + logoP2W + 4
 
-  doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255)
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(255, 255, 255)
   doc.text(nombreInstitucion.toUpperCase(), logoRightEdge, 14)
-  doc.setFontSize(T.body); doc.setFont('helvetica', 'normal')
+  doc.setFontSize(T.body)
+  doc.setFont('helvetica', 'normal')
   doc.text(slogan, logoRightEdge, 20)
-  doc.setFontSize(T.label); doc.setFont('helvetica', 'bold')
+  doc.setFontSize(T.label)
+  doc.setFont('helvetica', 'bold')
   doc.text(`Código: ${codigoVerificacion}`, pageWidth - margin, 13, { align: 'right' })
-  doc.setFontSize(T.label); doc.setFont('helvetica', 'normal')
+  doc.setFontSize(T.label)
+  doc.setFont('helvetica', 'normal')
   doc.text(`Fecha de emisión: ${fechaFirmadaTxt}`, pageWidth - margin, 19, { align: 'right' })
 
   // Contenido de módulos y lecciones a dos columnas
@@ -306,8 +404,7 @@ export const generarClasicoResumido: GeneratorFn = async (data) => {
     doc.setFont('helvetica', isModule ? 'bold' : 'normal')
     doc.setTextColor(30, 30, 30)
 
-    const prefix = isModule ? '' : '- '
-    const lines = doc.splitTextToSize(prefix + text, colW)
+    const lines = doc.splitTextToSize(text, colW)
     const lineHeight = isModule ? 5 : 4.5
     const requiredSpace = lines.length * lineHeight + (isModule ? 3 : 1)
 
@@ -336,7 +433,9 @@ export const generarClasicoResumido: GeneratorFn = async (data) => {
           { op: 'h', c: [] }
         ])
         doc.fill()
-        doc.setFontSize(T.label); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255)
+        doc.setFontSize(T.label)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(255, 255, 255)
         doc.text('CONTENIDO DEL PROGRAMA ACADÉMICO (continuación)', margin, 14.5)
 
         currentColumn = 1
@@ -352,12 +451,12 @@ export const generarClasicoResumido: GeneratorFn = async (data) => {
   }
 
   for (const modulo of modulos) {
-    const tituloMod = `- ${modulo.titulo}`.toUpperCase()
+    const tituloMod = `${modulo.orden + 1}. ${modulo.titulo}`.toUpperCase()
 
     addLine(tituloMod, true)
 
     for (const leccion of modulo.lecciones) {
-      addLine(leccion.titulo, false)
+      addLine(`${modulo.orden + 1}.${leccion.orden + 1} ${leccion.titulo}`, false)
     }
   }
 

@@ -64,6 +64,8 @@ export default function CourseStudentsModal({
   const [searchTerm, setSearchTerm] = useState('')
   const [certConfirm, setCertConfirm] = useState<CertConfirm | null>(null)
   const [certLoading, setCertLoading] = useState(false)
+  const [completarConfirm, setCompletarConfirm] = useState<{ inscripcionId: string; alumnoNombre: string } | null>(null)
+  const [completarLoading, setCompletarLoading] = useState(false)
 
   const queryClient = useQueryClient()
 
@@ -95,6 +97,23 @@ export default function CourseStudentsModal({
       toast.error('Error al actualizar el certificado')
     } finally {
       setCertLoading(false)
+    }
+  }
+
+  const handleCompletarTodo = async () => {
+    if (!completarConfirm) return
+
+    setCompletarLoading(true)
+
+    try {
+      await axios.post(`/api/admin/inscripciones/${completarConfirm.inscripcionId}/completar-todo`)
+      queryClient.invalidateQueries({ queryKey: CURSO_ALUMNOS_QUERY_KEY(cursoId, searchTerm) })
+      toast.success('Todas las lecciones completadas para el estudiante')
+      setCompletarConfirm(null)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Error al completar las lecciones')
+    } finally {
+      setCompletarLoading(false)
     }
   }
 
@@ -139,7 +158,7 @@ export default function CourseStudentsModal({
     XLSX.writeFile(workbook, `Alumnos_${cursoTitulo?.replace(/[^a-zA-Z0-9]/g, '_') || 'Curso'}.xlsx`)
   }
 
-  const colSpan = tieneCertPago ? 7 : 6
+  const colSpan = tieneCertPago ? 8 : 7
 
   return (
     <>
@@ -199,6 +218,7 @@ export default function CourseStudentsModal({
                   <TableCell>Certificado</TableCell>
                   {tieneCertPago && <TableCell>Cert. Pago</TableCell>}
                   <TableCell>Estado</TableCell>
+                  <TableCell>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -315,6 +335,24 @@ export default function CourseStudentsModal({
                           variant='tonal'
                         />
                       </TableCell>
+                      <TableCell>
+                        <Tooltip title='Completar todas las lecciones'>
+                          <IconButton
+                            size='small'
+                            onClick={() => setCompletarConfirm({
+                              inscripcionId: alumno.inscripcion_id,
+                              alumnoNombre: `${alumno.nombre} ${alumno.apellido}`
+                            })}
+                            sx={{
+                              bgcolor: 'rgba(2,94,68,0.08)',
+                              color: '#025E44',
+                              '&:hover': { bgcolor: 'rgba(2,94,68,0.16)' }
+                            }}
+                          >
+                            <i className='tabler-checks text-[16px]' />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -323,6 +361,52 @@ export default function CourseStudentsModal({
           </TableContainer>
         )}
       </AppModal>
+
+      {/* Modal de confirmación para completar todas las lecciones */}
+      {completarConfirm && (
+        <AppModal open={!!completarConfirm} handleClose={() => !completarLoading && setCompletarConfirm(null)}>
+          <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{
+              width: 64, height: 64, borderRadius: '50%', mx: 'auto', mb: 3,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              bgcolor: 'rgba(2,94,68,0.1)'
+            }}>
+              <i className='tabler-checks text-4xl' style={{ color: '#025E44' }} />
+            </Box>
+            <Typography variant='h5' fontWeight={700} sx={{ mb: 1 }}>
+              Completar todas las lecciones
+            </Typography>
+            <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5 }}>
+              Se marcarán todas las lecciones como completadas para:
+            </Typography>
+            <Typography variant='body1' fontWeight={700} sx={{ mb: 4 }}>
+              {completarConfirm.alumnoNombre}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+              <Button
+                variant='tonal'
+                color='secondary'
+                onClick={() => setCompletarConfirm(null)}
+                disabled={completarLoading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant='contained'
+                color='success'
+                onClick={handleCompletarTodo}
+                disabled={completarLoading}
+                startIcon={completarLoading
+                  ? <CircularProgress size={16} color='inherit' />
+                  : <i className='tabler-checks' />
+                }
+              >
+                {completarLoading ? 'Procesando...' : 'Sí, completar todo'}
+              </Button>
+            </Box>
+          </Box>
+        </AppModal>
+      )}
 
       {/* Modal de confirmación para habilitar/deshabilitar certificado */}
       {certConfirm && (

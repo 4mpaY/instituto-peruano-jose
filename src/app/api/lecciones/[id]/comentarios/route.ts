@@ -79,6 +79,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     // Determinar estado: ADMIN/PROFESOR siempre APROBADO; ESTUDIANTE según config
     const rol = (session.user as any).rol as string
     const requiereAprobacion = await getConfig('COMENTARIOS_REQUIERE_APROBACION', 'false')
+
     const estado =
       rol === 'ADMIN' || rol === 'PROFESOR'
         ? 'APROBADO'

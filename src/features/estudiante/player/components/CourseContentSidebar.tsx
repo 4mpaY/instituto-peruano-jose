@@ -15,11 +15,9 @@ import {
     LinearProgress,
     Divider,
     Button,
-    InputAdornment,
     Tooltip,
 } from '@mui/material'
 
-import CustomTextField from '@core/components/mui/TextField'
 import { useCourseStore } from '../store/useCourseStore'
 
 interface CourseContentSidebarProps {
@@ -39,7 +37,7 @@ const CourseContentSidebar = ({ onLessonSelect }: CourseContentSidebarProps) => 
         openExam
     } = useCourseStore()
 
-    const [searchQuery, setSearchQuery] = useState('')
+    const [searchQuery] = useState('')
 
     const filteredModules = useMemo(() => {
         const modules = course?.modulos || []

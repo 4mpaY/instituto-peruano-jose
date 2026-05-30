@@ -4,11 +4,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 
-import { Phone, Mail, MapPin, BookOpenCheck, Facebook } from 'lucide-react'
+import { Phone, Mail, MapPin, Facebook } from 'lucide-react'
 
 import { getConfigs } from '@/utils/libs/config'
 import HydratedDate from '@/utils/components/HydratedDate'
-import Logo from '@components/layout/shared/Logo'
 
 
 // Simple WhatsApp SVG icon

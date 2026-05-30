@@ -358,9 +358,12 @@ export async function POST(request: Request) {
         return ApiResponse.error(request, 'La pasarela Mercado Pago no está configurada', 500)
       }
 
-      const appUrl = new URL(request.url).origin
+      const rawOrigin = new URL(request.url).origin
+      const appUrl = (process.env.NEXTAUTH_URL || rawOrigin).replace(/\/$/, '')
+      const isLocalhost = appUrl.includes('localhost') || appUrl.includes('127.0.0.1')
+      const isSandbox = accessToken.startsWith('TEST-')
 
-      const preference = {
+      const preference: Record<string, any> = {
         external_reference: pedido.id,
         items: pedido.detalles.map((d: any) => ({
           id: d.curso_id,
@@ -374,8 +377,12 @@ export async function POST(request: Request) {
           failure: `${appUrl}/checkout/mercadopago/failure?pedidoId=${pedido.id}`,
           pending: `${appUrl}/checkout/mercadopago/pending?pedidoId=${pedido.id}`
         },
-        auto_return: 'approved',
-        notification_url: `${appUrl}/api/mercadopago/webhook`
+        ...(!isLocalhost && { auto_return: 'approved' }),
+        ...(!isLocalhost && { notification_url: `${appUrl}/api/mercadopago/webhook` })
+      }
+
+      if (isSandbox) {
+        console.log('[MP_CHECKOUT] Modo sandbox detectado')
       }
 
       const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {

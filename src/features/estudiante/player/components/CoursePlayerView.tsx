@@ -216,14 +216,14 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
             return (
                 <Grid item xs={12} key="certificate-section">
                     <CertificateSection
-                                        cursoId={storeCourse.id}
-                                        completarAutomatico={(course as any).completar_automatico ?? false}
-                                        onAllLessonsCompleted={() => {
-                                            const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
+                        cursoId={storeCourse.id}
+                        completarAutomatico={(course as any).completar_automatico ?? false}
+                        onAllLessonsCompleted={() => {
+                            const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
 
-                                            allLessons.forEach((l: any) => updateLessonProgress(l.id, true, 100))
-                                        }}
-                                    />
+                            allLessons.forEach((l: any) => updateLessonProgress(l.id, true, 100))
+                        }}
+                    />
                 </Grid>
             )
         }
@@ -302,6 +302,33 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                                 </Button>
                             )} */}
                         </Box>
+                    </Grid>
+                )}
+
+                {/* ── Material de clase ── */}
+                {currentLesson?.recursos && currentLesson.recursos.length > 0 && currentLesson.recursos[0]?.url && (
+                    <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center', my: 1 }}>
+                        <Button
+                            variant="contained"
+                            size="large"
+                            href={currentLesson.recursos[0].url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            sx={{
+                                borderRadius: '12px',
+                                textTransform: 'none',
+                                fontWeight: 700,
+                                width: '400px',
+                                fontSize: '1rem',
+                                py: 1.5,
+                                px: 5,
+                                bgcolor: '#025E44',
+                                boxShadow: 'none',
+                                '&:hover': { bgcolor: '#014d36', boxShadow: 'none' }
+                            }}
+                        >
+                            Material de Clase
+                        </Button>
                     </Grid>
                 )}
 
@@ -730,14 +757,14 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                     {/* Certificación */}
                     {activeTab === 3 && storeCourse && (
                         <CertificateSection
-                                        cursoId={storeCourse.id}
-                                        completarAutomatico={(course as any).completar_automatico ?? false}
-                                        onAllLessonsCompleted={() => {
-                                            const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
+                            cursoId={storeCourse.id}
+                            completarAutomatico={(course as any).completar_automatico ?? false}
+                            onAllLessonsCompleted={() => {
+                                const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
 
-                                            allLessons.forEach((l: any) => updateLessonProgress(l.id, true, 100))
-                                        }}
-                                    />
+                                allLessons.forEach((l: any) => updateLessonProgress(l.id, true, 100))
+                            }}
+                        />
                     )}
 
                     {/* Comentarios */}
@@ -767,10 +794,11 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
             height: 'calc(100dvh - 64px)',
             overflow: 'hidden',
             position: 'relative',
-            ml: { xs: 'calc(50% - 50vw)', md: 0 },
-            mr: { xs: 'calc(50% - 50vw)', md: 0 },
+            ml: { xs: 'calc(50% - 50vw)', md: 'auto' },
+            mr: { xs: 'calc(50% - 50vw)', md: 'auto' },
             mt: { xs: -3, md: 0 },
             width: { xs: '100vw', md: '100%' },
+            maxWidth: { md: '1600px' },
             bgcolor: '#f8fafc',
         }}>
             <style>{`footer { display: none !important; }`}</style>
@@ -781,7 +809,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    px: { xs: 2, md: 3 },
+                    px: { xs: 2, sm: 4, lg: 18 },
                     py: { xs: 2, md: 3 }
                 }}>
                     <Typography
@@ -792,38 +820,76 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                         {storeCourse.titulo}
                     </Typography>
 
-                    <Stack direction="row" spacing={1} flexShrink={0}>
-                        <Button
-                            variant="outlined"
-                            onClick={() => setRatingModalOpen(true)}
-                            sx={{
-                                borderRadius: '20px',
-                                textTransform: 'none',
-                                fontWeight: 600,
-                                px: 2,
-                                borderColor: 'divider',
-                                color: 'text.secondary',
-                                '&:hover': { borderColor: 'primary.main', color: 'primary.main', bgcolor: 'rgba(2,94,68,0.04)' }
-                            }}
-                        >
-                            ⭐ Califica este Curso
-                        </Button>
-                        <Button
-                            variant="contained"
-                            href={`https://wa.me/${waNumber}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
-                            target="_blank"
-                            sx={{
-                                borderRadius: '20px',
-                                textTransform: 'none',
-                                fontWeight: 600,
-                                px: 2,
-                                color: 'white',
-                                boxShadow: 'none',
-                            }}
-                        >
-                            <i className="tabler-brand-whatsapp text-base" style={{ color: 'white', fontSize: 20, marginRight: 2 }} />
-                            Contactar al asesor académico
-                        </Button>
+                    <Stack direction="row" spacing={1}>
+                        {(course as any).brochure && (
+                            isMobile ? (
+                                <Box
+                                    component="a"
+                                    href={(course as any).brochure}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={{
+                                        width: 44, height: 44,
+                                        borderRadius: '12px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        bgcolor: 'primary.main',
+                                        color: 'white',
+                                        boxShadow: '0 2px 8px rgba(2,94,68,0.3)',
+                                        flexShrink: 0,
+                                        '&:hover': { bgcolor: '#014d36' }
+                                    }}
+                                >
+                                    <i className="tabler-download" style={{ fontSize: '1.3rem' }} />
+                                </Box>
+                            ) : (
+                                <Button
+                                    variant="outlined"
+                                    href={(course as any).brochure}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    startIcon={<i className="tabler-download" style={{ fontSize: '1rem' }} />}
+                                    sx={{
+                                        borderRadius: '20px', textTransform: 'none', fontWeight: 600, px: 2,
+                                        borderColor: 'primary.main', color: 'primary.main',
+                                        '&:hover': { borderColor: 'primary.main', color: 'primary.main', bgcolor: 'rgba(2,94,68,0.04)' }
+                                    }}
+                                >
+                                    Descargar Brochure
+                                </Button>
+                            )
+                        )}
+                        {isMobile ? (
+                            <Box
+                                component="a"
+                                href={`https://wa.me/${waNumber}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
+                                target="_blank"
+                                sx={{
+                                    width: 44, height: 44,
+                                    borderRadius: '12px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    bgcolor: '#25D366',
+                                    color: 'white',
+                                    boxShadow: '0 2px 8px rgba(37,211,102,0.35)',
+                                    flexShrink: 0,
+                                    '&:hover': { bgcolor: '#1ebe5d' }
+                                }}
+                            >
+                                <i className="tabler-brand-whatsapp" style={{ fontSize: '1.4rem' }} />
+                            </Box>
+                        ) : (
+                            <Button
+                                variant="contained"
+                                href={`https://wa.me/${waNumber}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
+                                target="_blank"
+                                sx={{
+                                    borderRadius: '20px', textTransform: 'none', fontWeight: 600, px: 2,
+                                    color: 'white', boxShadow: 'none',
+                                }}
+                            >
+                                <i className="tabler-brand-whatsapp" style={{ color: 'white', fontSize: 20, marginRight: 6 }} />
+                                Contactar al asesor académico
+                            </Button>
+                        )}
                     </Stack>
                 </Box>
             )}
@@ -836,10 +902,9 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                     flexGrow: 1,
                     overflowY: { xs: 'auto', md: 'scroll' },
                     overflowX: 'hidden',
-                    transition: 'margin 0.3s',
-                    mr: sidebarOpen && !isMobile ? '380px' : 0,
+                    transition: 'all 0.3s',
                 }}>
-                    <Box sx={{ px: { xs: 2, sm: 3, md: 4 }, pt: { xs: 2, md: 3 }, pb: 2 }}>
+                    <Box sx={{ px: { xs: 2, sm: 4, md: 5 }, pt: { xs: 2, md: 3 }, pb: 4 }}>
                         <Grid container spacing={0}>
                             {renderMainContent()}
                         </Grid>
@@ -849,22 +914,24 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                 {/* Desktop sidebar */}
                 {!isMobile && (
                     <Box sx={{
-                        width: 380,
-                        position: 'absolute',
-                        top: 0,
-                        right: 0,
-                        height: '100%',
-                        borderLeft: '1px solid',
+                        width: sidebarOpen ? 360 : 0,
+                        minWidth: sidebarOpen ? 360 : 0,
+                        flexShrink: 0,
+                        borderLeft: sidebarOpen ? '1px solid' : 'none',
                         borderColor: 'divider',
                         bgcolor: 'background.paper',
-                        transform: sidebarOpen ? 'translateX(0)' : 'translateX(100%)',
-                        transition: 'transform 0.3s',
-                        zIndex: 10,
+                        overflow: 'hidden',
+                        transition: 'width 0.3s, min-width 0.3s',
                         display: 'flex',
                         flexDirection: 'column',
                     }}>
                         <CourseContentSidebar onLessonSelect={handleLessonSelect} />
                     </Box>
+                )}
+
+                {/* Espacio derecho fijo */}
+                {!isMobile && (
+                    <Box sx={{ width: 80, minWidth: 80, flexShrink: 0 }} />
                 )}
             </Box>
             {/* ── Rating Modal ── */}

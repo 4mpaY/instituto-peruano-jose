@@ -95,30 +95,6 @@ const CourseContentSidebar = ({ onLessonSelect }: CourseContentSidebarProps) => 
                     />
                 </Box>
 
-                {/* Search */}
-                <CustomTextField
-                    fullWidth
-                    size="small"
-                    placeholder="Buscar video o clase..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <i className="tabler-search" style={{ fontSize: '1rem', color: '#9ca3af' }} />
-                            </InputAdornment>
-                        ),
-                        endAdornment: searchQuery ? (
-                            <InputAdornment position="end">
-                                <i
-                                    className="tabler-x cursor-pointer"
-                                    style={{ fontSize: '1rem', color: '#9ca3af' }}
-                                    onClick={() => setSearchQuery('')}
-                                />
-                            </InputAdornment>
-                        ) : null
-                    }}
-                />
             </Box>
 
             {/* ── Lesson list ── */}

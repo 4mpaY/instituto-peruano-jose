@@ -20,7 +20,6 @@ import {
 } from '@mui/material'
 
 import CustomTextField from '@core/components/mui/TextField'
-import MediaLibrary from '../MediaLibrary'
 import { sanitizeDatetimeInput, toLocalDatetimeLocalValue } from '@/utils/functions/sanitizeDatetime'
 
 type Recurso = { nombre: string; url: string; tipo?: 'enlace' | 'archivo' }
@@ -78,9 +77,7 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
   const [recursos, setRecursos] = useState<Recurso[]>([])
   const [contenido, setContenido] = useState('')
 
-  const [recursoMode, setRecursoMode] = useState<'enlace' | 'archivo'>('enlace')
   const [newRecurso, setNewRecurso] = useState<Recurso>({ nombre: '', url: '', tipo: 'enlace' })
-  const [openMediaResources, setOpenMediaResources] = useState(false)
 
   useEffect(() => {
     if (lessonData) {
@@ -111,18 +108,13 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
 
   const handleAddRecurso = () => {
     if (newRecurso.nombre && newRecurso.url) {
-      setRecursos([...recursos, { ...newRecurso, tipo: recursoMode }])
-      setNewRecurso({ nombre: '', url: '', tipo: recursoMode })
+      setRecursos([{ ...newRecurso, tipo: 'enlace' }])
+      setNewRecurso({ nombre: '', url: '', tipo: 'enlace' })
     }
   }
 
   const handleRemoveRecurso = (index: number) => {
     setRecursos(recursos.filter((_, i) => i !== index))
-  }
-
-  const handleModeChange = (mode: 'enlace' | 'archivo') => {
-    setRecursoMode(mode)
-    setNewRecurso({ nombre: '', url: '', tipo: mode })
   }
 
   const handleSave = () => {
@@ -140,7 +132,7 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
     })
   }
 
-  const urlPreview = recursoMode === 'enlace' && newRecurso.url.length > 7 && newRecurso.url.startsWith('http')
+  const urlPreview = newRecurso.url.length > 7 && newRecurso.url.startsWith('http')
     ? detectService(newRecurso.url)
     : null
 
@@ -334,45 +326,17 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
             </Stack>
           )}
 
-          {/* Formulario añadir recurso */}
-          <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
-            {/* Pestañas */}
-            <Box sx={{ display: 'flex', borderBottom: '1px solid', borderColor: 'divider' }}>
-              {(['enlace', 'archivo'] as const).map((mode) => (
-                <Button
-                  key={mode}
-                  onClick={() => handleModeChange(mode)}
+          {/* Formulario añadir recurso — solo un link */}
+          {recursos.length === 0 && (
+            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+              <Stack spacing={2} sx={{ p: 2 }}>
+                <CustomTextField
                   fullWidth
-                  disableRipple
-                  startIcon={<i className={mode === 'enlace' ? 'tabler-link text-base' : 'tabler-upload text-base'} />}
-                  sx={{
-                    borderRadius: 0,
-                    py: 1.25,
-                    fontWeight: recursoMode === mode ? 700 : 400,
-                    fontSize: '0.8rem',
-                    color: recursoMode === mode ? 'primary.main' : 'text.secondary',
-                    backgroundColor: recursoMode === mode ? 'action.selected' : 'transparent',
-                    borderBottom: recursoMode === mode ? '2px solid' : '2px solid transparent',
-                    borderBottomColor: recursoMode === mode ? 'primary.main' : 'transparent',
-                    '&:hover': { backgroundColor: 'action.hover' },
-                  }}
-                >
-                  {mode === 'enlace' ? 'Enlace externo' : 'Subir archivo'}
-                </Button>
-              ))}
-            </Box>
-
-            {/* Contenido del tab */}
-            <Stack spacing={2} sx={{ p: 2 }}>
-              <CustomTextField
-                fullWidth
-                size='small'
-                placeholder={recursoMode === 'enlace' ? 'Nombre del recurso (ej: Guía del módulo)' : 'Nombre del archivo (ej: Plantilla Excel)'}
-                value={newRecurso.nombre}
-                onChange={e => setNewRecurso({ ...newRecurso, nombre: e.target.value })}
-              />
-
-              {recursoMode === 'enlace' ? (
+                  size='small'
+                  placeholder='Nombre del recurso (ej: Sesión 1)'
+                  value={newRecurso.nombre}
+                  onChange={e => setNewRecurso({ ...newRecurso, nombre: e.target.value })}
+                />
                 <Box>
                   <CustomTextField
                     fullWidth
@@ -388,77 +352,27 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
                       )
                     }}
                   />
-                  {/* Preview del servicio detectado */}
                   {urlPreview && (
-                    <Box
-                      sx={{
-                        mt: 1,
-                        px: 1.5,
-                        py: 0.75,
-                        bgcolor: 'action.hover',
-                        borderRadius: 1.5,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                      }}
-                    >
+                    <Box sx={{ mt: 1, px: 1.5, py: 0.75, bgcolor: 'action.hover', borderRadius: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                       <i className={`${urlPreview.icon} text-base text-primary`} />
                       <Typography variant='caption' fontWeight={600}>{urlPreview.name}</Typography>
                       <Typography variant='caption' color='text.secondary'>· {urlPreview.domain}</Typography>
                     </Box>
                   )}
                 </Box>
-              ) : (
-                <Box
-                  onClick={() => setOpenMediaResources(true)}
-                  sx={{
-                    border: '1.5px dashed',
-                    borderColor: 'divider',
-                    borderRadius: 2,
-                    p: 2,
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
-                  }}
+                <Button
+                  variant='contained'
+                  fullWidth
+                  onClick={handleAddRecurso}
+                  disabled={!newRecurso.nombre.trim() || !newRecurso.url}
+                  startIcon={<i className='tabler-plus text-base' />}
                 >
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                    <i className='tabler-cloud-upload text-2xl text-textSecondary' />
-                    <Typography variant='body2' color='text.secondary'>
-                      Arrastra aquí o <span style={{ color: 'var(--mui-palette-primary-main)', fontWeight: 600 }}>selecciona archivo</span>
-                    </Typography>
-                    <Typography variant='caption' color='text.disabled'>PDF, Word, ZIP · máx. 50 MB</Typography>
-                  </Box>
-                </Box>
-              )}
+                  Añadir enlace
+                </Button>
+              </Stack>
+            </Box>
+          )}
 
-              <Button
-                variant='contained'
-                fullWidth
-                onClick={handleAddRecurso}
-                disabled={!newRecurso.nombre.trim() || !newRecurso.url}
-                startIcon={<i className='tabler-plus text-base' />}
-              >
-                Añadir recurso
-              </Button>
-            </Stack>
-          </Box>
-
-          <MediaLibrary
-            open={openMediaResources}
-            onClose={() => setOpenMediaResources(false)}
-            onSelect={(url: string, nombre?: string) => {
-              const parts = url.split('/')
-              const fileName = parts[parts.length - 1] || 'Recurso'
-              const resourceName = newRecurso.nombre.trim() || nombre || fileName.split('.')[0] || 'Recurso'
-
-              setRecursos(prev => [...prev, { nombre: resourceName, url, tipo: 'archivo' }])
-              setNewRecurso({ nombre: '', url: '', tipo: 'archivo' })
-              setOpenMediaResources(false)
-            }}
-            title='Seleccionar Recurso'
-            acceptType='OTRO'
-          />
         </Stack>
       </DialogContent>
       <DialogActions>

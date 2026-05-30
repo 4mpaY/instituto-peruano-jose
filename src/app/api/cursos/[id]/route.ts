@@ -64,6 +64,7 @@ const cursoInclude = {
           estado: true,
           es_en_vivo: true,
           fecha_programada: true,
+          fecha_fin: true,
           enlace_reunion: true
         }
       },

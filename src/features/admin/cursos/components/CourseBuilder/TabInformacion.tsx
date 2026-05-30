@@ -51,7 +51,7 @@ export function TabInformacion({ curso, profesores, onSuccess }: TabInformacionP
     brochure: curso.brochure || '',
     fecha_inicio: curso.fecha_inicio ? toLocalDateInputValue(curso.fecha_inicio) : '',
     fecha_fin: curso.fecha_fin ? toLocalDateInputValue(curso.fecha_fin) : '',
-    nivel: curso.nivel || 'BASICO'
+    nivel: curso.nivel || ''
   })
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -75,7 +75,7 @@ export function TabInformacion({ curso, profesores, onSuccess }: TabInformacionP
           brochure: form.brochure || null,
           fecha_inicio: form.fecha_inicio ? sanitizeDatetimeInput(form.fecha_inicio) : null,
           fecha_fin: form.fecha_fin ? sanitizeDatetimeInput(form.fecha_fin) : null,
-          nivel: form.nivel as 'BASICO' | 'INTERMEDIO' | 'AVANZADO'
+          nivel: (form.nivel || null) as 'BASICO' | 'INTERMEDIO' | 'AVANZADO' | null
         }
       })
       enqueueSnackbar('Curso actualizado exitosamente', { variant: 'success' })
@@ -148,6 +148,7 @@ export function TabInformacion({ curso, profesores, onSuccess }: TabInformacionP
           value={form.nivel}
           onChange={handleChange}
         >
+          <MenuItem value=''>Sin nivel</MenuItem>
           <MenuItem value='BASICO'>Básico</MenuItem>
           <MenuItem value='INTERMEDIO'>Intermedio</MenuItem>
           <MenuItem value='AVANZADO'>Avanzado</MenuItem>

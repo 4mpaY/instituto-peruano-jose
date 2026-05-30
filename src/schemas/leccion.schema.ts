@@ -15,6 +15,7 @@ export const crearLeccionSchema = z.object({
   video_url: z.string().optional().nullable(),
   es_en_vivo: z.boolean().optional().default(false),
   fecha_programada: z.string().datetime().optional().nullable(),
+  fecha_fin: z.string().datetime().optional().nullable(),
   recursos: z.array(z.any()).optional(),
   es_vista_previa: z.boolean().optional()
 })
@@ -37,6 +38,7 @@ export const actualizarLeccionSchema = z.object({
   video_url: z.string().optional().nullable(),
   es_en_vivo: z.boolean().optional(),
   fecha_programada: z.string().datetime().optional().nullable(),
+  fecha_fin: z.string().datetime().optional().nullable(),
   recursos: z.array(z.any()).optional(),
   estado: z.enum(['BORRADOR', 'PUBLICADO']).optional(),
   es_vista_previa: z.boolean().optional()

@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import Button from '@mui/material/Button'
+import GoogleButton from '@/features/shared/components/GoogleButton'
 import Divider from '@mui/material/Divider'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -334,16 +335,7 @@ const LoginV2 = ({ mode }: { mode: SystemMode }) => {
             <Divider className='gap-2'>o</Divider>
 
             <div className='flex justify-center items-center gap-1.5'>
-              <Button
-                fullWidth
-                variant='outlined'
-                color='secondary'
-                startIcon={<i className='tabler-brand-google-filled' />}
-                onClick={handleGoogleLogin}
-                disabled={isLoading}
-              >
-                Continuar con Google
-              </Button>
+              <GoogleButton onClick={handleGoogleLogin} disabled={isLoading} label='Continuar con Google' />
             </div>
           </form>
         </div>

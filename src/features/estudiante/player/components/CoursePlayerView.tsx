@@ -321,6 +321,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                                 titulo={currentLesson.titulo}
                                 esEnVivo={true}
                                 fechaProgramada={currentLesson.fecha_programada}
+                                fechaFin={currentLesson.fecha_fin}
                                 enlaceReunion={currentLesson.enlace_reunion}
                             />
                         ) : (

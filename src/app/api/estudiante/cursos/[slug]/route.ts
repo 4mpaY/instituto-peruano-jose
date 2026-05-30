@@ -185,6 +185,7 @@ export async function GET(request: Request, { params }: { params: { slug: string
             video_url: l.video_url,
             es_en_vivo: (l as any).es_en_vivo,
             fecha_programada: (l as any).fecha_programada,
+            fecha_fin: (l as any).fecha_fin,
             enlace_reunion: (l as any).enlace_reunion,
             completada: l.progreso[0]?.esta_completado || false,
             recursos: Array.isArray(l.recursos) ? l.recursos : []

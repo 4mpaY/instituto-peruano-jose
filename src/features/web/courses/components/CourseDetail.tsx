@@ -80,6 +80,7 @@ interface CourseDetailProps {
     video_presentacion?: string | null
     duracion?: string | null
     fecha_inicio?: string | Date | null
+    fecha_fin?: string | Date | null
     creado_en?: string | Date
     modulos: Modulo[]
     objetivos?: string[]
@@ -156,19 +157,16 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
 
   const embedUrl = getEmbedUrl(course.video_presentacion)
 
-  const getDisplayDate = () => {
-    const isSincrono = course.tipo_emision === 'SINCRONO' || course.tipo_emision === 'MIXTO'
-    const dateToUse = isSincrono ? course.fecha_inicio : course.creado_en
+  const isLive = course.tipo_emision === 'SINCRONO' || course.tipo_emision === 'MIXTO'
 
-    if (!dateToUse) return { label: isSincrono ? 'Inicio' : 'Publicado', value: 'Próximamente' }
-
-    return {
-      label: isSincrono ? 'Inicio' : 'Publicado',
-      value: <HydratedDate date={dateToUse} format="date" options={{ day: '2-digit', month: '2-digit', year: 'numeric' }} />
-    }
-  }
-
-  const { label: dateLabel, value: dateValue } = getDisplayDate()
+  const displayDate = isLive
+    ? {
+        label: 'Inicio',
+        value: course.fecha_inicio
+          ? <HydratedDate date={course.fecha_inicio} format="date" options={{ day: '2-digit', month: '2-digit', year: 'numeric' }} />
+          : 'Próximamente'
+      }
+    : null
 
   const defaultBeneficios = [
     { title: 'Clase en vivo', desc: 'Clases 100% en vivo por Zoom.', icon: 'tabler-video' },
@@ -322,12 +320,14 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
                       </Box>
                     </Stack>
                   </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <Box sx={{ bgcolor: 'rgba(255,255,255,0.06)', borderRadius: '12px', p: 1.5, border: '1px solid rgba(255,255,255,0.08)' }}>
-                      <Typography sx={{ fontFamily: FONT, fontSize: '0.6875rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{dateLabel}</Typography>
-                      <Typography sx={{ fontFamily: FONT, fontSize: '0.9rem', color: '#fff', fontWeight: 700, mt: 0.25 }}>{dateValue}</Typography>
-                    </Box>
-                  </Grid>
+                  {displayDate && (
+                    <Grid item xs={6} sm={3}>
+                      <Box sx={{ bgcolor: 'rgba(255,255,255,0.06)', borderRadius: '12px', p: 1.5, border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <Typography sx={{ fontFamily: FONT, fontSize: '0.6875rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{displayDate.label}</Typography>
+                        <Typography sx={{ fontFamily: FONT, fontSize: '0.9rem', color: '#fff', fontWeight: 700, mt: 0.25 }}>{displayDate.value}</Typography>
+                      </Box>
+                    </Grid>
+                  )}
                   {course.duracion && (
                     <Grid item xs={6}>
                       <Stack direction="row" spacing={1.5} alignItems="center">
@@ -339,6 +339,16 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
                           <Typography variant="body1" sx={{ fontWeight: 700, color: 'white', fontSize: '1.1rem' }}>{course.duracion}</Typography>
                         </Box>
                       </Stack>
+                    </Grid>
+                  )}
+                  {isLive && course.fecha_fin && (
+                    <Grid item xs={6} sm={3}>
+                      <Box sx={{ bgcolor: 'rgba(255,255,255,0.06)', borderRadius: '12px', p: 1.5, border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <Typography sx={{ fontFamily: FONT, fontSize: '0.6875rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Fin</Typography>
+                        <Typography sx={{ fontFamily: FONT, fontSize: '0.9rem', color: '#fff', fontWeight: 700, mt: 0.25 }}>
+                          <HydratedDate date={course.fecha_fin} format="date" options={{ day: '2-digit', month: '2-digit', year: 'numeric' }} />
+                        </Typography>
+                      </Box>
                     </Grid>
                   )}
                 </Grid>

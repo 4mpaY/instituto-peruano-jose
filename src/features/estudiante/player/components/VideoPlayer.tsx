@@ -177,39 +177,6 @@ const VideoPlayer = ({ url, tipo = 'VIDEO', onEnded, nextLessonTitle, onNextLess
                         style={{ border: 'none', display: 'block' }}
                     />
 
-                    {/* Franja superior: oculta título, logo e info de YouTube al hacer hover */}
-                    {isYT && !videoEnded && (
-                        <Box
-                            sx={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                height: '22%',
-                                zIndex: 2,
-                                pointerEvents: 'auto',
-                                cursor: 'default',
-                                background: 'linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 100%)'
-                            }}
-                        />
-                    )}
-
-                    {/* Franja inferior derecha: tapa el logo, "Más videos" y botones de YouTube */}
-                    {isYT && !videoEnded && (
-                        <Box
-                            sx={{
-                                position: 'absolute',
-                                bottom: 0,
-                                right: 0,
-                                width: '65%',
-                                height: '42px',
-                                zIndex: 2,
-                                pointerEvents: 'auto',
-                                cursor: 'default',
-                                background: 'linear-gradient(to right, transparent 0%, #0f0f0f 25%)'
-                            }}
-                        />
-                    )}
 
                     {/* Pantalla final: cubre los videos relacionados cuando termina el video */}
                     {videoEnded && (

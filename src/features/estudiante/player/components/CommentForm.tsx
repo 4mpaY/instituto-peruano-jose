@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 
-import { Box, TextField, Button, Avatar, Stack, CircularProgress } from '@mui/material'
+import { Box, TextField, Button, Avatar, Stack, CircularProgress, Alert } from '@mui/material'
 import { useSession } from 'next-auth/react'
 
 interface CommentFormProps {
@@ -25,25 +25,21 @@ const CommentForm = ({
   const [contenido, setContenido] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [pendiente, setPendiente] = useState(false)
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-
     if (!contenido.trim()) return
 
     setIsSubmitting(true)
     setError('')
+    setPendiente(false)
 
     try {
       const response = await fetch(`/api/lecciones/${leccionId}/comentarios`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contenido,
-          respuesta_a_id: respuestaAId
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contenido, respuesta_a_id: respuestaAId }),
       })
 
       if (!response.ok) {
@@ -52,9 +48,15 @@ const CommentForm = ({
         throw new Error(data.error || 'Error al enviar el comentario')
       }
 
-      setContenido('')
-      onSuccess()
+      const data = await response.json()
 
+      setContenido('')
+
+      if (data.estado === 'PENDIENTE') {
+        setPendiente(true)
+      } else {
+        onSuccess()
+      }
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -62,8 +64,23 @@ const CommentForm = ({
     }
   }
 
-  if (!session?.user) {
-    return null // No renderizar si no hay sesión
+  if (!session?.user) return null
+
+  if (pendiente) {
+    return (
+      <Alert
+        severity="info"
+        icon={<i className="tabler-clock" style={{ fontSize: '1.1rem' }} />}
+        action={
+          <Button size="small" onClick={() => setPendiente(false)}>
+            Otro comentario
+          </Button>
+        }
+        sx={{ borderRadius: '12px' }}
+      >
+        Tu comentario está pendiente de aprobación y será visible una vez revisado.
+      </Alert>
+    )
   }
 
   return (
@@ -95,9 +112,7 @@ const CommentForm = ({
               bgcolor: 'white',
               '& .MuiOutlinedInput-root': {
                 borderRadius: '12px',
-                '&.Mui-focused fieldset': {
-                  borderWidth: '2px',
-                }
+                '&.Mui-focused fieldset': { borderWidth: '2px' }
               }
             }}
           />

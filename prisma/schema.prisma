@@ -94,7 +94,8 @@ model Curso {
   actualizado_en       DateTime          @updatedAt
   profesor_id          String
   categoria_id         String?
-  nivel                NivelCurso        @default(BASICO)
+  nivel                NivelCurso?
+  tipo                 TipoCurso         @default(CURSO)
   beneficios           Json?             @default("[]")
   incluye              Json?             @default("[]")
   metodologia          Json?             @default("[]")
@@ -119,6 +120,7 @@ model Curso {
   @@index([profesor_id])
   @@index([categoria_id])
   @@index([estado])
+  @@index([tipo])
   @@map("cursos")
 }
 
@@ -155,6 +157,7 @@ model Leccion {
   es_vista_previa  Boolean            @default(false)
   es_en_vivo       Boolean            @default(false)
   fecha_programada DateTime?
+  fecha_fin        DateTime?
   comentarios      Comentario[]
   contenidos       ContenidoLeccion[]
   modulo           Modulo             @relation(fields: [modulo_id], references: [id], onDelete: Cascade)
@@ -478,17 +481,18 @@ model Notificacion {
 }
 
 model Comentario {
-  id             String       @id @default(uuid())
+  id             String            @id @default(uuid())
   contenido      String
-  creado_en      DateTime     @default(now())
-  actualizado_en DateTime     @updatedAt
+  estado         EstadoComentario  @default(PENDIENTE)
+  creado_en      DateTime          @default(now())
+  actualizado_en DateTime          @updatedAt
   usuario_id     String
   leccion_id     String
   respuesta_a_id String?
-  leccion        Leccion      @relation(fields: [leccion_id], references: [id], onDelete: Cascade)
-  padre          Comentario?  @relation("Respuestas", fields: [respuesta_a_id], references: [id], onDelete: Cascade)
-  respuestas     Comentario[] @relation("Respuestas")
-  usuario        Usuario      @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  leccion        Leccion           @relation(fields: [leccion_id], references: [id], onDelete: Cascade)
+  padre          Comentario?       @relation("Respuestas", fields: [respuesta_a_id], references: [id], onDelete: Cascade)
+  respuestas     Comentario[]      @relation("Respuestas")
+  usuario        Usuario           @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
   @@index([usuario_id])
   @@index([leccion_id])
@@ -664,6 +668,11 @@ enum NivelCurso {
   AVANZADO
 }
 
+enum TipoCurso {
+  CURSO
+  DIPLOMADO
+}
+
 enum TipoDescuento {
   PORCENTAJE
   MONTO_FIJO
@@ -689,6 +698,12 @@ enum TipoReclamacion {
 enum EstadoReclamacion {
   PENDIENTE
   ATENDIDO
+}
+
+enum EstadoComentario {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
 }
 
 enum TipoExamen {

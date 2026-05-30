@@ -32,14 +32,19 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return ApiResponse.error(request, 'No tienes permiso para ver los comentarios de este curso', 403)
     }
 
+    const { searchParams } = new URL(request.url)
+    const estadoFilter = searchParams.get('estado')
+
+    const whereEstado = estadoFilter && ['PENDIENTE', 'APROBADO', 'RECHAZADO'].includes(estadoFilter)
+      ? { estado: estadoFilter as any }
+      : {}
+
     // Obtener todos los comentarios de las lecciones de este curso
     const comentarios = await prisma.comentario.findMany({
       where: {
-        leccion: {
-          modulo: {
-            curso_id: cursoId
-          }
-        }
+        leccion: { modulo: { curso_id: cursoId } },
+        respuesta_a_id: null,
+        ...whereEstado
       },
       include: {
         usuario: {

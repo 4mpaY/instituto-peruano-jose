@@ -415,6 +415,7 @@ export function ConfiguracionView({ initialData }: ConfiguracionViewProps) {
     MP_ACCESS_TOKEN: '',
     MP_PUBLIC_KEY: '',
     PEDIDOS_SOLICITAR_COMPROBANTE: 'true',
+    COMENTARIOS_REQUIERE_APROBACION: 'false',
     ...initialMapped
   })
 
@@ -633,6 +634,25 @@ export function ConfiguracionView({ initialData }: ConfiguracionViewProps) {
                   />
                 }
                 label='Habilitar solicitud de comprobantes en el Checkout'
+              />
+            </Paper>
+          </Box>
+
+          {/* Comentarios */}
+          <Box>
+            <Typography variant='h6' gutterBottom>Moderación de Comentarios</Typography>
+            <Typography variant='body2' color='text.secondary' sx={{ mb: 3 }}>
+              Controla si los comentarios de los estudiantes requieren aprobación antes de ser visibles públicamente. Los comentarios de admin y profesor siempre se publican de inmediato.
+            </Typography>
+            <Paper variant='outlined' sx={{ p: 2, bgcolor: 'background.default' }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={config.COMENTARIOS_REQUIERE_APROBACION === 'true'}
+                    onChange={(e) => handleInputChange('COMENTARIOS_REQUIERE_APROBACION', e.target.checked ? 'true' : 'false')}
+                  />
+                }
+                label='Requerir aprobación antes de publicar comentarios de estudiantes'
               />
             </Paper>
           </Box>

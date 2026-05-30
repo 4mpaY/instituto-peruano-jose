@@ -224,14 +224,12 @@ export function useReorderExamenesModulo() {
 /**
  * Hook para obtener todos los comentarios de un curso
  */
-export function useComentariosCurso(cursoId: string) {
-
-
+export function useComentariosCurso(cursoId: string, estado?: string) {
   return useQuery<{ comentarios: any[] }, any>({
-    queryKey: [...QUERY_KEY.CURSOS, cursoId, 'comentarios'],
-    queryFn: async () => await axiosCurso.getComentarios(cursoId),
+    queryKey: [...QUERY_KEY.CURSOS, cursoId, 'comentarios', estado],
+    queryFn: async () => await axiosCurso.getComentarios(cursoId, estado),
     enabled: !!cursoId,
-    staleTime: 30_000
+    staleTime: 0
   })
 }
 

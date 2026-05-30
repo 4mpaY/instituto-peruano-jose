@@ -29,7 +29,7 @@ export const crearCursoSchema = z.object({
   fecha_inicio: z.string().optional().nullable(),
   fecha_fin: z.string().optional().nullable(),
   vigencia_meses: z.coerce.number().int().positive().optional().nullable(),
-  nivel: z.enum(['BASICO', 'INTERMEDIO', 'AVANZADO']).default('BASICO')
+  nivel: z.enum(['BASICO', 'INTERMEDIO', 'AVANZADO']).optional().nullable()
 })
 
 export type CrearCursoDto = z.infer<typeof crearCursoSchema>
@@ -48,7 +48,7 @@ export const actualizarCursoSchema = z.object({
   categoria_id: z.string().uuid('ID de categoría inválido').optional().nullable(),
   profesor_id: z.string().uuid('ID de profesor inválido').optional(),
   tipo_emision: z.enum(['SINCRONO', 'ASINCRONO', 'MIXTO']).optional(),
-  nivel: z.enum(['BASICO', 'INTERMEDIO', 'AVANZADO']).optional(),
+  nivel: z.enum(['BASICO', 'INTERMEDIO', 'AVANZADO']).optional().nullable(),
   es_gratis: z.boolean().optional(),
   es_privado: z.boolean().optional(),
   completar_automatico: z.boolean().optional(),

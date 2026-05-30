@@ -72,6 +72,7 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
   const [videoUrl, setVideoUrl] = useState('')
   const [esEnVivo, setEsEnVivo] = useState(false)
   const [fechaProgramada, setFechaProgramada] = useState('')
+  const [fechaFin, setFechaFin] = useState('')
   const [enlaceReunion, setEnlaceReunion] = useState('')
   const [esVistaPrevia, setEsVistaPrevia] = useState(false)
   const [recursos, setRecursos] = useState<Recurso[]>([])
@@ -88,13 +89,8 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
       setVideoUrl(lessonData.video_url || '')
       setEsEnVivo(lessonData.es_en_vivo || false)
 
-      if (lessonData.fecha_programada) {
-        setFechaProgramada(toLocalDatetimeLocalValue(lessonData.fecha_programada))
-        setFechaProgramada(toLocalDatetimeLocalValue(lessonData.fecha_programada))
-      } else {
-        setFechaProgramada('')
-      }
-
+      setFechaProgramada(lessonData.fecha_programada ? toLocalDatetimeLocalValue(lessonData.fecha_programada) : '')
+      setFechaFin(lessonData.fecha_fin ? toLocalDatetimeLocalValue(lessonData.fecha_fin) : '')
       setEnlaceReunion(lessonData.enlace_reunion || '')
       setEsVistaPrevia(lessonData.es_vista_previa || false)
       setRecursos(lessonData.recursos || [])
@@ -105,6 +101,7 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
       setVideoUrl('')
       setEsEnVivo(false)
       setFechaProgramada('')
+      setFechaFin('')
       setEnlaceReunion('')
       setEsVistaPrevia(false)
       setRecursos([])
@@ -135,6 +132,7 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
       video_url: videoUrl || null,
       es_en_vivo: esEnVivo,
       fecha_programada: sanitizeDatetimeInput(fechaProgramada),
+      fecha_fin: sanitizeDatetimeInput(fechaFin),
       enlace_reunion: enlaceReunion || null,
       es_vista_previa: esVistaPrevia,
       contenido: contenido || null,
@@ -191,9 +189,17 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
               <CustomTextField
                 fullWidth
                 type='datetime-local'
-                label='Fecha y Hora Programada'
+                label='Fecha y Hora de Inicio'
                 value={fechaProgramada}
                 onChange={e => setFechaProgramada(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+              <CustomTextField
+                fullWidth
+                type='datetime-local'
+                label='Fecha y Hora de Fin'
+                value={fechaFin}
+                onChange={e => setFechaFin(e.target.value)}
                 InputLabelProps={{ shrink: true }}
               />
               <CustomTextField

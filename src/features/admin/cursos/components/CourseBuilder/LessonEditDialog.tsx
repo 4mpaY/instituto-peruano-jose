@@ -78,6 +78,8 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
   const [contenido, setContenido] = useState('')
 
   const [newRecurso, setNewRecurso] = useState<Recurso>({ nombre: '', url: '', tipo: 'enlace' })
+  const [openMediaResources, setOpenMediaResources] = useState(false)
+  const [errors, setErrors] = useState<{ fechaProgramada?: string; fechaFin?: string }>({})
 
   useEffect(() => {
     if (lessonData) {
@@ -104,6 +106,8 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
       setRecursos([])
       setContenido('')
     }
+
+    setErrors({})
   }, [lessonData])
 
   const handleAddRecurso = () => {
@@ -118,6 +122,20 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
   }
 
   const handleSave = () => {
+    if (esEnVivo) {
+      const newErrors: { fechaProgramada?: string; fechaFin?: string } = {}
+
+      if (!fechaProgramada) newErrors.fechaProgramada = 'La fecha de inicio es obligatoria para clases en vivo'
+      if (!fechaFin) newErrors.fechaFin = 'La fecha de fin es obligatoria para clases en vivo'
+
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors)
+
+        return
+      }
+    }
+
+    setErrors({})
     onSave({
       titulo: title,
       duracion: duration ? Number(duration) : null,
@@ -181,18 +199,22 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
               <CustomTextField
                 fullWidth
                 type='datetime-local'
-                label='Fecha y Hora de Inicio'
+                label='Fecha y Hora de Inicio *'
                 value={fechaProgramada}
-                onChange={e => setFechaProgramada(e.target.value)}
+                onChange={e => { setFechaProgramada(e.target.value); setErrors(p => ({ ...p, fechaProgramada: undefined })) }}
                 InputLabelProps={{ shrink: true }}
+                error={!!errors.fechaProgramada}
+                helperText={errors.fechaProgramada}
               />
               <CustomTextField
                 fullWidth
                 type='datetime-local'
-                label='Fecha y Hora de Fin'
+                label='Fecha y Hora de Fin *'
                 value={fechaFin}
-                onChange={e => setFechaFin(e.target.value)}
+                onChange={e => { setFechaFin(e.target.value); setErrors(p => ({ ...p, fechaFin: undefined })) }}
                 InputLabelProps={{ shrink: true }}
+                error={!!errors.fechaFin}
+                helperText={errors.fechaFin}
               />
               <CustomTextField
                 fullWidth

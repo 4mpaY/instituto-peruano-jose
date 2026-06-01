@@ -35,7 +35,6 @@ model Usuario {
   progreso_cursos    ProgresoCurso[]
   progreso_lecciones ProgresoLeccion[]
   valoraciones       ValoracionCurso[]
-  suscripcions       Suscripcion[]
 
   @@index([rol])
   @@map("usuarios")
@@ -481,18 +480,18 @@ model Notificacion {
 }
 
 model Comentario {
-  id             String            @id @default(uuid())
+  id             String           @id @default(uuid())
   contenido      String
-  estado         EstadoComentario  @default(PENDIENTE)
-  creado_en      DateTime          @default(now())
-  actualizado_en DateTime          @updatedAt
+  estado         EstadoComentario @default(PENDIENTE)
+  creado_en      DateTime         @default(now())
+  actualizado_en DateTime         @updatedAt
   usuario_id     String
   leccion_id     String
   respuesta_a_id String?
-  leccion        Leccion           @relation(fields: [leccion_id], references: [id], onDelete: Cascade)
-  padre          Comentario?       @relation("Respuestas", fields: [respuesta_a_id], references: [id], onDelete: Cascade)
-  respuestas     Comentario[]      @relation("Respuestas")
-  usuario        Usuario           @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  leccion        Leccion          @relation(fields: [leccion_id], references: [id], onDelete: Cascade)
+  padre          Comentario?      @relation("Respuestas", fields: [respuesta_a_id], references: [id], onDelete: Cascade)
+  respuestas     Comentario[]     @relation("Respuestas")
+  usuario        Usuario          @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
   @@index([usuario_id])
   @@index([leccion_id])
@@ -715,45 +714,4 @@ enum EstadoNota {
   APROBADO
   DESAPROBADO
   EN_PROGRESO
-}
-
-model PlanSuscripcion {
-  id            String        @id @default(uuid())
-  nombre        String
-  precio        Decimal       @db.Decimal(10, 2)
-  intervalo     IntervaloPlan
-  culqi_plan_id String        @unique // créalo una vez en el dashboard de Culqi
-  esta_activo   Boolean       @default(true)
-  suscripciones Suscripcion[]
-
-  @@map("planes_suscripcion")
-}
-
-model Suscripcion {
-  id                   String            @id @default(uuid())
-  culqi_suscripcion_id String?           @unique
-  estado               EstadoSuscripcion @default(PENDIENTE)
-  fecha_fin            DateTime?
-  usuario_id           String
-  plan_id              String
-  usuario              Usuario           @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
-  plan                 PlanSuscripcion   @relation(fields: [plan_id], references: [id])
-  creado_en            DateTime          @default(now())
-
-  @@unique([usuario_id, plan_id])
-  @@map("suscripciones")
-}
-
-enum IntervaloPlan {
-  MENSUAL
-  TRIMESTRAL
-  SEMESTRAL
-  ANUAL
-}
-
-enum EstadoSuscripcion {
-  PENDIENTE
-  ACTIVO
-  CANCELADO
-  VENCIDO
 }

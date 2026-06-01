@@ -270,11 +270,13 @@ export function EvaluacionDialog({
   const handleSaveConfig = async () => {
     if (!config.titulo.trim()) return
 
+    const toISO = (val: string | null) => (val ? new Date(val).toISOString() : null)
+
     const configToSave = {
       ...config,
       puntaje_aprobacion: config.puntaje_aprobacion * 5,
-      fecha_inicio: config.fecha_inicio || null,
-      fecha_fin: config.fecha_fin || null
+      fecha_inicio: toISO(config.fecha_inicio),
+      fecha_fin: toISO(config.fecha_fin)
     }
 
     try {

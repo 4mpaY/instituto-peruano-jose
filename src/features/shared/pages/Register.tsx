@@ -25,6 +25,9 @@ import classnames from 'classnames'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 
+// Component Imports
+import GoogleButton from '@/features/shared/components/GoogleButton'
+
 // Type Imports
 import type { SystemMode } from '@core/types'
 import { registerSchema, type RegisterDto } from '@/schemas/auth.schema'

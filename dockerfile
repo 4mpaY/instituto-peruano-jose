@@ -81,6 +81,10 @@ ENV HOSTNAME="0.0.0.0"
 # URL interna para que los Server Components puedan hacer HTTP al propio servidor
 ENV INTERNAL_API_URL="http://web:3000"
 
+# Pasada como ARG en build o leída desde .env en runtime
+ARG APP_URL
+ENV APP_URL=$APP_URL
+
 # Crear un usuario y grupo sin privilegios de root por seguridad
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

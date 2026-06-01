@@ -358,10 +358,11 @@ export async function POST(request: Request) {
         return ApiResponse.error(request, 'La pasarela Mercado Pago no está configurada', 500)
       }
 
-      const rawOrigin = new URL(request.url).origin
-      const appUrl = (process.env.NEXTAUTH_URL || rawOrigin).replace(/\/$/, '')
-      const isLocalhost = appUrl.includes('localhost') || appUrl.includes('127.0.0.1')
-      const isSandbox = accessToken.startsWith('TEST-')
+      const appUrl = (
+        process.env.NEXT_PUBLIC_APP_URL ||
+        process.env.APP_URL ||
+        new URL(request.url).origin
+      ).replace(/\/$/, '')
 
       const preference: Record<string, any> = {
         external_reference: pedido.id,
@@ -377,12 +378,10 @@ export async function POST(request: Request) {
           failure: `${appUrl}/checkout/mercadopago/failure?pedidoId=${pedido.id}`,
           pending: `${appUrl}/checkout/mercadopago/pending?pedidoId=${pedido.id}`
         },
-        ...(!isLocalhost && { auto_return: 'approved' }),
-        ...(!isLocalhost && { notification_url: `${appUrl}/api/mercadopago/webhook` })
-      }
 
-      if (isSandbox) {
-        console.log('[MP_CHECKOUT] Modo sandbox detectado')
+        // auto_return solo funciona con URLs HTTPS públicas (no localhost)
+        ...(appUrl.startsWith('https://') ? { auto_return: 'approved' } : {}),
+        notification_url: `${appUrl}/api/mercadopago/webhook`
       }
 
       const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
@@ -401,6 +400,9 @@ export async function POST(request: Request) {
       }
 
       const mpData = await mpResponse.json()
+
+      console.log('[MP_CHECKOUT] init_point:', mpData.init_point)
+      console.log('[MP_CHECKOUT] sandbox_init_point:', mpData.sandbox_init_point)
 
       await prisma.pedido.update({
         where: { id: pedido.id },

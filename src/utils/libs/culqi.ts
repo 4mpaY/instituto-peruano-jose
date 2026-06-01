@@ -29,11 +29,6 @@ export const culqi = {
       phone_number: '999999999'
     }),
 
-  crearSuscripcion: (plan_id: string, token_id: string, metadata?: object) =>
-    req('POST', '/subscriptions', { plan_id, token_id, metadata }),
-
-  cancelarSuscripcion: (id: string) => req('DELETE', `/subscriptions/${id}`),
-
   verificarFirma: (payload: string, firma: string) => {
     const expected = crypto.createHmac('sha256', process.env.CULQI_WEBHOOK_SECRET!).update(payload).digest('hex')
 

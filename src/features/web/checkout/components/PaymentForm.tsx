@@ -519,47 +519,9 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
 
       if (!response.ok) throw new Error(dataRaw.message || 'Error al iniciar el pago con Mercado Pago')
 
-      const { preferenceId, mpSandboxInitPoint, mpInitPoint } = dataRaw.result
-      const publicKey = configs.MP_PUBLIC_KEY
+      const { mpSandboxInitPoint, mpInitPoint } = dataRaw.result
 
-      const redirectUrl = mpSandboxInitPoint || mpInitPoint
-
-      // Intentar abrir modal con SDK, fallback a redirect
-      if (preferenceId && publicKey && typeof window !== 'undefined') {
-        try {
-          const loadSDK = (): Promise<void> =>
-            new Promise((resolve, reject) => {
-
-              if ((window as any).MercadoPago) {
-                resolve()
-
-                return
-              }
-
-              const script = document.createElement('script')
-
-              script.src = 'https://sdk.mercadopago.com/js/v2'
-
-              script.onload = () => resolve()
-              script.onerror = () => reject()
-              document.head.appendChild(script)
-            })
-
-          await loadSDK()
-          const mp = new (window as any).MercadoPago(publicKey, { locale: 'es-PE' })
-
-          mp.checkout({ preference: { id: preferenceId }, autoOpen: true })
-
-          return
-        } catch {
-          // SDK no disponible, usar redirección
-          window.location.href = redirectUrl
-
-          return
-        }
-      }
-
-      window.location.href = redirectUrl
+      window.location.href = mpInitPoint || mpSandboxInitPoint
     } catch (error: any) {
       setPaymentError(error.message || 'Ocurrió un error inesperado')
     } finally {

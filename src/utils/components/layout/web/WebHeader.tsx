@@ -1,7 +1,5 @@
 'use client'
 
-import Link from 'next/link'
-
 import { Button } from '@mui/material'
 import { useSession } from 'next-auth/react'
 
@@ -38,9 +36,7 @@ export default function WebHeader({ initialCategories = [], platformName = 'Aula
       style={{ height: 'var(--navbar-height)' }}
     >
       {/* Logo */}
-      <Link href="/" className="flex items-center gap-3 group no-underline">
-        <Logo />
-      </Link>
+      <Logo />
 
       {/* Auth Buttons */}
       <div className="flex items-center gap-3">

@@ -11,8 +11,7 @@ import { signOut, useSession } from 'next-auth/react'
 
 import { Home, BookOpen, Users, Award, Map, Building2, LogIn, UserPlus, User, LayoutDashboard, BookMarked, LogOut } from 'lucide-react'
 
-import AuthModal from '@/features/shared/components/AuthModal'
-import type { Mode } from '@/features/shared/components/AuthModal'
+import { useAuthModal } from '@/contexts/AuthModalContext'
 
 const ALL_NAV_ITEMS = [
   { title: 'Inicio', url: '/', icon: Home, key: 'inicio' },
@@ -35,15 +34,9 @@ export default function LeftSidebar({
   const [expanded, setExpanded] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [menuPos, setMenuPos] = useState({ bottom: 0, left: 0 })
-  const [authModalOpen, setAuthModalOpen] = useState(false)
-  const [authMode, setAuthMode] = useState<Mode>('login')
   const { data: session } = useSession()
   const userButtonRef = useRef<HTMLButtonElement>(null)
-
-  const openAuth = (mode: Mode) => {
-    setAuthMode(mode)
-    setAuthModalOpen(true)
-  }
+  const { openLogin, openRegister } = useAuthModal()
 
   const navItems = ALL_NAV_ITEMS.filter(item => {
     if (item.key === 'rutas' && !rutasHabilitado) return false
@@ -273,7 +266,7 @@ export default function LeftSidebar({
           /* Not logged in — show login + register */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <button
-              onClick={() => openAuth('login')}
+              onClick={() => openLogin()}
               className="flex items-center w-full rounded-xl px-3 transition-all"
               style={{ height: '44px', gap: '12px', backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.12)' }}
@@ -287,7 +280,7 @@ export default function LeftSidebar({
               </span>
             </button>
             <button
-              onClick={() => openAuth('register')}
+              onClick={() => openRegister()}
               className="flex items-center w-full rounded-xl px-3 transition-all"
               style={{ height: '44px', gap: '12px', backgroundColor: 'var(--web-light, #BDD962)', border: '1px solid transparent', cursor: 'pointer' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--web-primary, #25927F)' }}
@@ -304,13 +297,6 @@ export default function LeftSidebar({
         )}
       </div>
     </aside>
-
-    <AuthModal
-      open={authModalOpen}
-      mode={authMode}
-      onClose={() => setAuthModalOpen(false)}
-      onSwitchMode={(m) => setAuthMode(m)}
-    />
     </>
   )
 }

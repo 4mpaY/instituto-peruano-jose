@@ -78,7 +78,6 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
   const [contenido, setContenido] = useState('')
 
   const [newRecurso, setNewRecurso] = useState<Recurso>({ nombre: '', url: '', tipo: 'enlace' })
-  const [openMediaResources, setOpenMediaResources] = useState(false)
   const [errors, setErrors] = useState<{ fechaProgramada?: string; fechaFin?: string }>({})
 
   useEffect(() => {

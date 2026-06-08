@@ -4,6 +4,7 @@ import { generarClasicoResumido } from './clasico_resumido'
 import { generarCorporativo } from './corporativo'
 import { generarModerno } from './moderno'
 import { generarElegante } from './elegante'
+import { generarInstitutoPeruano } from './instituto_peruano'
 
 export const PLANTILLAS = {
   clasico: {
@@ -41,6 +42,13 @@ export const PLANTILLAS = {
     paginas: 2,
     thumbnail: '/images/plantillas-certificado/elegante.png',
   },
+  instituto_peruano: {
+    id: 'instituto_peruano',
+    nombre: 'Instituto Peruano',
+    descripcion: 'Diseño oficial del Instituto Peruano de Gestión Ambiental, Seguridad y Calidad. Barras verdes, temario por lección y logos institucionales.',
+    paginas: 2,
+    thumbnail: '/images/plantillas-certificado/instituto_peruano.png',
+  },
 } as const
 
 export type PlantillaId = keyof typeof PLANTILLAS
@@ -54,9 +62,10 @@ export function getGenerator(plantilla: string): GeneratorFn {
     case 'clasico_resumido': return generarClasicoResumido
     case 'corporativo': return generarCorporativo
     case 'moderno':     return generarModerno
-    case 'elegante':    return generarElegante
-    default:            return generarClasico
+    case 'elegante':           return generarElegante
+    case 'instituto_peruano':  return generarInstitutoPeruano
+    default:                   return generarClasico
   }
 }
 
-export { generarClasico, generarClasicoResumido, generarCorporativo, generarModerno, generarElegante }
+export { generarClasico, generarClasicoResumido, generarCorporativo, generarModerno, generarElegante, generarInstitutoPeruano }

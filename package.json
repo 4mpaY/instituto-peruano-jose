@@ -16,7 +16,8 @@
     "db:migration:dev": "prisma migrate dev --schema ./prisma/schema.prisma",
     "db:client:push": "prisma db push --schema ./prisma/schema.prisma & prisma generate --schema ./prisma/schema.prisma",
     "db:migration:deploy": "prisma migrate deploy --schema ./prisma/schema.prisma",
-    "db:main:seed": "dotenv -- tsx ./prisma/seed/main"
+    "db:main:seed": "dotenv -- tsx ./prisma/seed/main",
+    "db:instituto-peruano:seed": "dotenv -- tsx ./prisma/seed/instituto-peruano"
   },
   "prisma": {
     "seed": "tsx prisma/seed_student.ts"

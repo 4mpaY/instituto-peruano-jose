@@ -90,7 +90,7 @@ export async function GET(request: Request, { params }: { params: { certificadoI
           orden: true,
           lecciones: {
             orderBy: { orden: 'asc' },
-            select: { id: true, titulo: true, orden: true, duracion: true }
+            select: { id: true, titulo: true, orden: true, duracion: true, contenido: true }
           }
         }
       })

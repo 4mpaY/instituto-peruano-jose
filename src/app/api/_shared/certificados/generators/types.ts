@@ -16,6 +16,7 @@ export interface LeccionData {
   titulo: string
   orden: number
   duracion?: number | null
+  contenido?: string | null
 }
 
 /**

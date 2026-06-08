@@ -27,7 +27,7 @@ type CertificadoConRelaciones = {
       id: string
       titulo: string
       orden: number
-      lecciones: Array<{ id: string; titulo: string; orden: number; duracion: number | null }>
+      lecciones: Array<{ id: string; titulo: string; orden: number; duracion: number | null; contenido: string | null }>
     }>
   }
   usuario: { nombre: string; apellido: string }

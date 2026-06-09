@@ -109,6 +109,12 @@ const PLANTILLAS_CERTIFICADO = [
     descripcion: 'Fondo crema con bordes ornamentales. Estilo universitario.',
     thumbnail: '/images/plantillas-certificado/elegante.png',
   },
+  {
+    id: 'minimalista',
+    nombre: 'Minimalista',
+    descripcion: 'Diseño limpio y moderno con fondo blanco. Panel derecho con gradiente y QR.',
+    thumbnail: '/images/plantillas-certificado/minimalista.png',
+  },
 ]
 
 function CertificadosSettings({ config, onInputChange }: { config: any; onInputChange: (clave: string, valor: string) => void }) {

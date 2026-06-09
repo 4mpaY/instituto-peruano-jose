@@ -103,7 +103,7 @@ export async function GET(request: Request, { params }: { params: { certificadoI
 
     const cursoFechaFin = cursoFechaFinRow?.fecha_fin ?? null
 
-    // ── Gerente General ───────────────────────────────────────────────
+    // ── Gerente General (fallback al primer admin del sistema) ───────────
     const gerenteGeneralId = configs.CERTIFICADO_GERENTE_GENERAL_ID
 
     const gerenteGeneral = gerenteGeneralId
@@ -111,7 +111,11 @@ export async function GET(request: Request, { params }: { params: { certificadoI
           where: { id: gerenteGeneralId },
           select: { nombre: true, apellido: true, cargo: true, firma: true }
         })
-      : null
+      : await prisma.usuario.findFirst({
+          where: { rol: 'ADMIN' },
+          select: { nombre: true, apellido: true, cargo: true, firma: true },
+          orderBy: { creado_en: 'asc' }
+        })
 
     // ── Construir datos del certificado ───────────────────────────────
     const certData = await buildCertificadoData({

@@ -1,651 +1,458 @@
-import { fetchImageBuffer, compressImageForPdf, formatDateLong } from './utils'
+import { fetchImageBuffer, compressImageForPdf, resolveLogoDimensions, formatDateLong } from './utils'
+import type { GeneratorFn, ModuloData } from './types'
 
-import type { GeneratorFn } from './types'
+function extractBullets(html: string | null | undefined): string[] {
+  if (!html) return []
+  const matches = html.match(/<li[^>]*>([\s\S]*?)<\/li>/gi)
+  if (!matches) return []
+  return matches.map(m => m.replace(/<[^>]+>/g, '').trim()).filter(Boolean)
+}
 
 /**
- * Plantilla CLÁSICA — Diseño original con panel lateral degradado y QR.
- * Página 1: Certificado principal.
- * Página 2: Rendimiento académico + Contenido del programa.
+ * Plantilla MINIMALISTA — Dos páginas:
+ * - Página 1: Certificado formal con logos, nombre, curso y firmas.
+ * - Página 2: Temario del programa en dos columnas con logos al pie.
  */
-export const generarClasico: GeneratorFn = async data => {
+export const generarMinimalista: GeneratorFn = async data => {
   const {
-    pr,
-    pg,
-    pb,
-    logoBuffer,
-    logoUrl,
-    base64Logo,
+    pr, pg, pb,
+    base64Logo, logoUrl, logoBuffer,
     nombreInstitucion,
-    slogan,
-    disclaimer,
-    institutionUrl,
     nombreCompleto,
-    avatarBuffer,
-    cursoTitulo,
-    cursoDuracion,
-    fechaEmisionVal,
-    fechaInicioVal,
-    fechaFinVal,
-    vigenciaHastaVal,
-    gerenteGeneral,
-    profesorSnapshot,
-    mostrarFirmaDocente,
+    cursoTitulo, cursoDuracion,
+    fechaEmisionVal, fechaInicioVal, fechaFinVal,
+    gerenteGeneral, profesorSnapshot,
     codigoVerificacion,
     qrDataUrl,
     modulos,
-    notasPorModulo,
-    notaInscripcion,
-    previewFlag
+    notasPorModulo, notaInscripcion,
   } = data
+
+  const DARK  = { r: 30,  g: 30,  b: 30  }
+  const GRAY  = { r: 100, g: 100, b: 100 }
+  const LGRAY = { r: 220, g: 220, b: 220 }
 
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true })
-  const pageWidth = doc.internal.pageSize.getWidth()
-  const pageHeight = doc.internal.pageSize.getHeight()
-
-  // ── Helpers ──────────────────────────────────────────────────────────
-  const dpR = Math.round(pr * 0.52)
-  const dpG = Math.round(pg * 0.52)
-  const dpB = Math.round(pb * 0.52)
-
-  const fechaFirmadaTxt = new Date(fechaEmisionVal).toLocaleDateString('es-PE', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC'
-  })
-
-  const addSignatureBlock = async (x: number, lineY: number, user: any) => {
-    if (!user) return
-
-    if (user.firma) {
-      try {
-        const signatureBuffer = await fetchImageBuffer(user.firma)
-
-        if (signatureBuffer) {
-          const { buffer: compressed, jsPdfFormat } = await compressImageForPdf(signatureBuffer, { maxWidth: 300, format: 'png' })
-
-          doc.addImage(compressed, jsPdfFormat, x - 17, lineY - 34, 34, 34)
-        }
-      } catch {
-        /* skip */
-      }
-    }
-
-    doc.setDrawColor(50, 50, 50)
-    doc.setLineWidth(0.5)
-    doc.line(x - 36, lineY, x + 36, lineY)
-    const nombreFirmante = `${user.nombre || ''} ${user.apellido || ''}`.trim()
-
-    doc.setFontSize(12)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(25, 25, 25)
-    doc.text(nombreFirmante, x, lineY + 7, { align: 'center' })
-
-    if (user.cargo) {
-      doc.setFontSize(12)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(80, 80, 80)
-      doc.text(user.cargo, x, lineY + 13, { align: 'center' })
-    }
-  }
-
-  // ── PÁGINA 1 ─────────────────────────────────────────────────────────
-  const panelW = 72
-  const contentW = pageWidth - panelW
-  const cx = contentW / 2
-
-  doc.setFillColor(255, 255, 255)
-  doc.rect(0, 0, pageWidth, pageHeight, 'F')
-
-  // Gradiente del panel lateral
-  const gradStrips = 70
-
-  for (let i = 0; i < gradStrips; i++) {
-    const t = i / (gradStrips - 1)
-    const r = Math.round(pr + (255 - pr) * 0.12 - (pr + (255 - pr) * 0.12 - dpR) * t)
-    const g = Math.round(pg + (255 - pg) * 0.12 - (pg + (255 - pg) * 0.12 - dpG) * t)
-    const b = Math.round(pb + (255 - pb) * 0.12 - (pb + (255 - pb) * 0.12 - dpB) * t)
-
-    doc.setFillColor(Math.max(0, Math.min(255, r)), Math.max(0, Math.min(255, g)), Math.max(0, Math.min(255, b)))
-    doc.rect(contentW, (i / gradStrips) * pageHeight, panelW, pageHeight / gradStrips + 0.5, 'F')
-  }
-
-  // Ribbons diagonales
-  const ribR1 = Math.round(pr + (255 - pr) * 0.28)
-  const ribG1 = Math.round(pg + (255 - pg) * 0.28)
-  const ribB1 = Math.round(pb + (255 - pb) * 0.28)
-
-  doc.setFillColor(ribR1, ribG1, ribB1)
-  doc.lines(
-    [
-      [21, 22, 41, 68, 60, 96],
-      [0, 24],
-      [-19, -12, -39, -48, -60, -96],
-      [0, -24]
-    ],
-    237,
-    0,
-    [1, 1],
-    'F',
-    true
-  )
-
-  const ribR2 = Math.round(pr + (255 - pr) * 0.14)
-  const ribG2 = Math.round(pg + (255 - pg) * 0.14)
-  const ribB2 = Math.round(pb + (255 - pb) * 0.14)
-
-  doc.setFillColor(ribR2, ribG2, ribB2)
-  doc.lines(
-    [
-      [20, 18, 41, 62, 60, 88],
-      [0, 32],
-      [-19, -4, -39, -42, -60, -98],
-      [0, -22]
-    ],
-    237,
-    90,
-    [1, 1],
-    'F',
-    true
-  )
-
-  // QR
-  const qrSz = 30
-  const qrX0 = contentW + (panelW - qrSz) / 2
-  const qrY0 = pageHeight - qrSz - 24
-
-  doc.setFillColor(255, 255, 255)
-  doc.roundedRect(qrX0 - 3, qrY0 - 3, qrSz + 6, qrSz + 6, 2, 2, 'F')
-  doc.addImage(qrDataUrl, 'PNG', qrX0, qrY0, qrSz, qrSz)
-  doc.setFontSize(12)
-  doc.setTextColor(255, 255, 255)
-  doc.setFont('helvetica', 'normal')
-  doc.text('Escanea para verificar', contentW + panelW / 2, pageHeight - 16, { align: 'center' })
-
-  // Área de contenido izquierda (blanco encima)
-  doc.setFillColor(255, 255, 255)
-  doc.rect(0, 0, contentW, pageHeight, 'F')
-
-  // "CERTIFICADO" vertical
-  doc.setFontSize(55)
-  doc.setTextColor(Math.round(pr * 0.55), Math.round(pg * 0.55), Math.round(pb * 0.55))
-  doc.setFont('helvetica', 'bold')
-  doc.text('CERTIFICADO', contentW + panelW / 2 + 8, 148, { angle: 90 })
-
-  // ── Logo ──
-  let y = 10
-  const maxLogoH = 22
-  const maxLogoW = 60
-  let logoDisplayW = maxLogoH
-  let logoDisplayH = maxLogoH
-
-  if (logoBuffer) {
-    try {
-      const { default: sharp } = await import('sharp')
-      const meta = await sharp(logoBuffer).metadata()
-
-      if (meta.width && meta.height) {
-        const ratio = meta.width / meta.height
-
-        logoDisplayH = maxLogoH
-        logoDisplayW = Math.min(logoDisplayH * ratio, maxLogoW)
-        if (logoDisplayW === maxLogoW) logoDisplayH = maxLogoW / ratio
-      }
-    } catch {
-      /* default */
-    }
-  }
-
-  if (base64Logo) {
-    try {
-      const ext = logoUrl.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'PNG'
-
-      doc.addImage(base64Logo, ext, cx - logoDisplayW / 2, y, logoDisplayW, logoDisplayH, 'LOGO')
-    } catch {
-      /* skip */
-    }
-  }
-
-  y += logoDisplayH + 14
-
-  // Título, nombre, curso, descripción
-  doc.setFontSize(20)
-  doc.setTextColor(18, 18, 18)
-  doc.setFont('helvetica', 'bold')
-  doc.text('CERTIFICADO', cx, y, { align: 'center' })
-  y += 11
-
-  doc.setFontSize(12)
-  doc.setTextColor(100, 100, 100)
-  doc.setFont('helvetica', 'normal')
-  doc.text('Otorgado a:', cx, y, { align: 'center' })
-  y += 11
-
-  doc.setFontSize(20)
-  doc.setTextColor(pr, pg, pb)
-  doc.setFont('helvetica', 'bold')
-  doc.text(nombreCompleto.toUpperCase(), cx, y, { align: 'center' })
-  y += 11
-
-  doc.setFontSize(12)
-  doc.setTextColor(100, 100, 100)
-  doc.setFont('helvetica', 'normal')
-  doc.text('Por haber concluido y aprobado con éxito el curso de:', cx, y, { align: 'center' })
-  y += 10
-
-  doc.setFontSize(20)
-  doc.setTextColor(15, 15, 15)
-  doc.setFont('helvetica', 'bold')
-  const cursoLines = doc.splitTextToSize(cursoTitulo, contentW - 34)
-
-  doc.text(cursoLines, cx, y, { align: 'center' })
-  y += cursoLines.length * 7 + 6
-
-  doc.setFontSize(12)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(100, 100, 100)
-  const descripcionTxt = `Emitido por ${nombreInstitucion}, con una duración de ${cursoDuracion || '---'}, realizado desde el ${formatDateLong(fechaInicioVal)} hasta el ${formatDateLong(fechaFinVal)}.`
-  const descripcionLines = doc.splitTextToSize(descripcionTxt, contentW - 40)
-
-  doc.text(descripcionLines, cx, y, { align: 'center' })
-  y += descripcionLines.length * 6 + 4
-
-  const porcuantoLines = doc.splitTextToSize(
-    'Por cuanto: Para que conste y sea reconocido, se otorga el presente certificado en calidad de:',
-    contentW - 40
-  )
-
-  doc.text(porcuantoLines, cx, y, { align: 'center' })
-  y += porcuantoLines.length * 6 + 5
-
-  doc.setFontSize(14)
-  doc.setTextColor(pr, pg, pb)
-  doc.setFont('helvetica', 'bold')
-  doc.text('APROBADO', cx, y, { align: 'center' })
-  const aprobadoW = doc.getTextWidth('APROBADO')
-
-  doc.setDrawColor(pr, pg, pb)
-  doc.setLineWidth(0.4)
-  doc.line(cx - aprobadoW / 2 - 10, y - 1.5, cx - aprobadoW / 2 - 2, y - 1.5)
-  doc.line(cx + aprobadoW / 2 + 2, y - 1.5, cx + aprobadoW / 2 + 10, y - 1.5)
-  y += 8
-
-  doc.setFontSize(12)
-  doc.setTextColor(100, 100, 100)
-  doc.setFont('helvetica', 'normal')
-  doc.text(`Firmado, el ${fechaFirmadaTxt}.`, cx, y, { align: 'center' })
-  y += 12
-
-  // Firmas
-  const hasGerente = gerenteGeneral !== null
-
-  if (hasGerente && mostrarFirmaDocente) {
-    await addSignatureBlock(cx - 54, y + 20, gerenteGeneral)
-    await addSignatureBlock(cx + 54, y + 20, profesorSnapshot)
-  } else if (hasGerente) {
-    await addSignatureBlock(cx, y + 20, gerenteGeneral)
-  } else if (mostrarFirmaDocente) {
-    await addSignatureBlock(cx, y + 20, profesorSnapshot)
-  }
-
-  // Footer página 1
-  doc.setFontSize(10)
-  doc.setTextColor(90, 90, 90)
-  doc.setFont('helvetica', 'normal')
-  doc.text(`Código de Registro: ${codigoVerificacion}`, 16, pageHeight - 12)
-  doc.text(`Fecha de Emisión: ${fechaFirmadaTxt}`, 16, pageHeight - 7)
-  doc.text(
-    `Vigencia de acceso: ${vigenciaHastaVal ? formatDateLong(vigenciaHastaVal) : 'sin caducidad'}`,
-    pageWidth - 80,
-    pageHeight - 7,
-    { align: 'right' }
-  )
-
-  void previewFlag
-
-  // ── PÁGINA 2 ─────────────────────────────────────────────────────────
-  doc.addPage()
-  doc.setFillColor(255, 255, 255)
-  doc.rect(0, 0, pageWidth, pageHeight, 'F')
-
-  const T = { sectionTitle: 9, label: 8, body: 8, small: 7, score: 22 }
-  const margin = 12
-
-  // Banda superior
-  doc.setFillColor(pr, pg, pb)
-  doc.rect(0, 0, pageWidth, 18, 'F')
-
-  const bandH = 20
-  const maxLogoHP2 = bandH - 8
-  const maxLogoWP2 = 40
-  let logoP2W = maxLogoHP2
-  let logoP2H = maxLogoHP2
-
-  if (logoBuffer) {
-    try {
-      const { default: sharp } = await import('sharp')
-      const meta = await sharp(logoBuffer).metadata()
-
-      if (meta.width && meta.height) {
-        const ratio = meta.width / meta.height
-
-        logoP2H = maxLogoHP2
-        logoP2W = Math.min(logoP2H * ratio, maxLogoWP2)
-        if (logoP2W === maxLogoWP2) logoP2H = maxLogoWP2 / ratio
-
-        if (logoP2H > maxLogoHP2) {
-          logoP2H = maxLogoHP2
-          logoP2W = logoP2H * ratio
-        }
-      }
-    } catch {
-      /* default */
-    }
-  }
-
-  if (base64Logo) {
-    try {
-      const ext = logoUrl.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'PNG'
-
-      doc.addImage(base64Logo, ext, margin, (bandH - logoP2H) / 2, logoP2W, logoP2H, 'LOGO')
-    } catch {
-      /* skip */
-    }
-  }
-
-  const logoRightEdge = margin + logoP2W + 4
-
-  doc.setFontSize(12)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(255, 255, 255)
-  doc.text(nombreInstitucion.toUpperCase(), logoRightEdge, 10)
-  doc.setFontSize(T.body)
-  doc.setFont('helvetica', 'normal')
-  doc.text(slogan, logoRightEdge, 16)
-  doc.setFontSize(T.label)
-  doc.setFont('helvetica', 'bold')
-  doc.text(`Código: ${codigoVerificacion}`, pageWidth - margin, 9, { align: 'right' })
-  doc.setFontSize(T.label)
-  doc.setFont('helvetica', 'normal')
-  doc.text(`Fecha de emisión: ${fechaFirmadaTxt}`, pageWidth - margin, 15, { align: 'right' })
-
-  // Zona A: Avatar + datos graduado
-  const zoneAY = 24
-  const avatarSize = 22
-  const avatarX = margin
-
-  if (avatarBuffer) {
-    try {
-      const base64Avatar = `data:image/jpeg;base64,${avatarBuffer.toString('base64')}`
-
-      doc.setFillColor(240, 240, 240)
-      doc.circle(avatarX + avatarSize / 2, zoneAY + avatarSize / 2, avatarSize / 2, 'F')
-      doc.addImage(base64Avatar, 'JPEG', avatarX, zoneAY, avatarSize, avatarSize)
-    } catch {
-      /* skip */
-    }
-  } else {
-    doc.setFillColor(pr, pg, pb)
-    doc.circle(avatarX + avatarSize / 2, zoneAY + avatarSize / 2, avatarSize / 2, 'F')
-    doc.setFontSize(14)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(255, 255, 255)
-
-    const initials = nombreCompleto
-      .split(' ')
-      .slice(0, 2)
-      .map((w: string) => w[0])
-      .join('')
-
-    doc.text(initials, avatarX + avatarSize / 2, zoneAY + avatarSize / 2 + 2.5, { align: 'center' })
-  }
-
-  const textX = avatarX + avatarSize + 5
-
-  doc.setFontSize(13)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(25, 25, 25)
-  doc.text(nombreCompleto, textX, zoneAY + 8)
-  doc.setFontSize(T.body)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(100, 100, 100)
-  doc.text('Certificado de Finalización', textX, zoneAY + 14)
-  const cursoTituloP2Lines = doc.splitTextToSize(cursoTitulo, pageWidth - textX - margin - 80)
-
-  doc.setFontSize(T.body)
-  doc.setFont('helvetica', 'italic')
-  doc.setTextColor(60, 60, 60)
-  doc.text(cursoTituloP2Lines, textX, zoneAY + 20)
-
-  doc.setDrawColor(220, 220, 220)
-  doc.setLineWidth(0.3)
-  doc.line(margin, zoneAY + avatarSize + 5, pageWidth - margin, zoneAY + avatarSize + 5)
-
-  // Zona B: columnas
-  const colW = (pageWidth - margin * 2 - 6) / 2
-
-  // Rendimiento académico — lado derecho a la altura del alumno
-  const perfX = pageWidth - margin - colW
-  const rendimientoYOffset = -6
-
-  doc.setFillColor(pr, pg, pb)
-  doc.roundedRect(perfX, zoneAY, colW, 8, 1, 1, 'F')
-  doc.setFontSize(T.sectionTitle)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(255, 255, 255)
-  doc.text('RENDIMIENTO ACADÉMICO', perfX + colW / 2, zoneAY + 5.5, { align: 'center' })
-
-  let yLeft = zoneAY + 13
-
-  const promediosPorModulo = Object.values(notasPorModulo).map(e => {
+  const W = doc.internal.pageSize.getWidth()   // 297
+  const H = doc.internal.pageSize.getHeight()  // 210
+
+  const margin      = 14
+  const BAR_H       = 3.5
+  const footerH     = 32
+  const bottomLimit = H - BAR_H - footerH
+
+  // ── Logos adicionales (public/logos/) ────────────────────────────────
+  const [logo1Buf, logo2Buf, logo3Buf, logo4Buf] = await Promise.all([
+    fetchImageBuffer('/logos/logo1.png'),
+    fetchImageBuffer('/logos/logo2.png'),
+    fetchImageBuffer('/logos/logo3.png'),
+    fetchImageBuffer('/logos/logo4.png'),
+  ])
+  const [logo1Comp, logo2Comp, logo3Comp, logo4Comp] = await Promise.all([
+    logo1Buf ? compressImageForPdf(logo1Buf, { maxWidth: 300, format: 'png' }) : null,
+    logo2Buf ? compressImageForPdf(logo2Buf, { maxWidth: 300, format: 'png' }) : null,
+    logo3Buf ? compressImageForPdf(logo3Buf, { maxWidth: 300, format: 'png' }) : null,
+    logo4Buf ? compressImageForPdf(logo4Buf, { maxWidth: 300, format: 'png' }) : null,
+  ])
+
+  // ── Nota final ───────────────────────────────────────────────────────
+  const promedios = Object.values(notasPorModulo).map(e => {
     const raw = e.puntaje / e.count
-
     return raw > 20 ? raw / 5 : raw
   })
-
-  const notaMax = 20
-
-  const notaFinal =
-    promediosPorModulo.length > 0
-      ? promediosPorModulo.reduce((a, b) => a + b, 0) / promediosPorModulo.length
+  const notaFinalCalc =
+    promedios.length > 0
+      ? promedios.reduce((a, b) => a + b, 0) / promedios.length
       : (() => {
           const raw = notaInscripcion ?? null
-
           return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
         })()
 
-  const notaDisplay = notaFinal !== null ? notaFinal.toFixed(2) : '---'
+  const fechaFirmadaTxt = new Date(fechaEmisionVal).toLocaleDateString('es-PE', {
+    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+  })
 
-  doc.setFontSize(T.score)
+  // ── Helper: fondo + barras ───────────────────────────────────────────
+  const setupPage = () => {
+    doc.setFillColor(255, 255, 255)
+    doc.rect(0, 0, W, H, 'F')
+    doc.setFillColor(pr, pg, pb)
+    doc.rect(0, 0, W, BAR_H, 'F')
+    doc.setFillColor(pr, pg, pb)
+    doc.rect(0, H - BAR_H, W, BAR_H, 'F')
+  }
+
+  // ── Helper: firma (siempre dibuja línea + label aunque user sea null) ──
+  const drawSignatureBlock = async (cx: number, lineY: number, user: typeof gerenteGeneral, label: string) => {
+    if (user?.firma) {
+      try {
+        const buf = await fetchImageBuffer(user.firma)
+        if (buf) {
+          const { buffer: comp, jsPdfFormat } = await compressImageForPdf(buf, { maxWidth: 300, format: 'png' })
+          doc.addImage(comp, jsPdfFormat, cx - 18, lineY - 22, 36, 20)
+        }
+      } catch { /* skip */ }
+    }
+    doc.setDrawColor(DARK.r, DARK.g, DARK.b)
+    doc.setLineWidth(0.4)
+    doc.line(cx - 40, lineY, cx + 40, lineY)
+    if (user) {
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(DARK.r, DARK.g, DARK.b)
+      doc.text(`${user.nombre || ''} ${user.apellido || ''}`.trim(), cx, lineY + 5, { align: 'center' })
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+      doc.text(label, cx, lineY + 11, { align: 'center' })
+      const instLines = doc.splitTextToSize(nombreInstitucion, 82)
+      doc.text(instLines, cx, lineY + 16, { align: 'center' })
+    } else {
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+      doc.text(label, cx, lineY + 6, { align: 'center' })
+      const instLines = doc.splitTextToSize(nombreInstitucion, 82)
+      doc.text(instLines, cx, lineY + 11, { align: 'center' })
+    }
+  }
+
+  // ── Helper: footer de logos (página 2) ──────────────────────────────
+  // Fila 1: logo principal centrado solo.
+  // Fila 2: logo1 + logo2 + logo3 centrados (sin logo4).
+  const drawFooter = async () => {
+    const row1H   = 11
+    const row2H   = 9
+    const rowGap  = 3
+    const textH   = 5
+    // Calcular posición Y de abajo hacia arriba
+    const textY  = H - BAR_H - 2
+    const row2Y  = textY - textH - rowGap - row2H
+    const row1Y  = row2Y - rowGap - row1H
+
+    // Fila 1: logo principal centrado
+    if (logoBuffer && base64Logo) {
+      const dims = await resolveLogoDimensions(logoBuffer, 60, row1H)
+      const lx = (W - dims.w) / 2
+      try {
+        const ext = logoUrl.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'PNG'
+        doc.addImage(base64Logo, ext, lx, row1Y + (row1H - dims.h) / 2, dims.w, dims.h, 'MFOOT_MAIN')
+      } catch { /* skip */ }
+    }
+
+    // Fila 2: logo1 + logo2 + logo3 centrados
+    type LogoEntry = { buf: Buffer; comp: { buffer: Buffer; jsPdfFormat: string } }
+    const row2Entries: LogoEntry[] = []
+    if (logo1Buf && logo1Comp) row2Entries.push({ buf: logo1Buf, comp: logo1Comp })
+    if (logo2Buf && logo2Comp) row2Entries.push({ buf: logo2Buf, comp: logo2Comp })
+    if (logo3Buf && logo3Comp) row2Entries.push({ buf: logo3Buf, comp: logo3Comp })
+
+    if (row2Entries.length > 0) {
+      const logoGap = 10
+      const dims2 = await Promise.all(row2Entries.map(({ buf }) => resolveLogoDimensions(buf, 44, row2H)))
+      const totalW = dims2.reduce((s, d) => s + d.w, 0) + logoGap * (row2Entries.length - 1)
+      let lx = (W - totalW) / 2
+      for (let i = 0; i < row2Entries.length; i++) {
+        const { comp } = row2Entries[i]
+        const { w, h } = dims2[i]
+        try {
+          doc.addImage(comp.buffer, comp.jsPdfFormat, lx, row2Y + (row2H - h) / 2, w, h, `MFOOT_R2_${i}`)
+        } catch { /* skip */ }
+        lx += w + logoGap
+      }
+    }
+
+    // Fecha y código de verificación
+    doc.setFontSize(7.5)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+    doc.text(`Fecha de Emisión: ${fechaFirmadaTxt}`, W - margin, textY, { align: 'right' })
+    doc.text(`Cód. verificación: ${codigoVerificacion}`, margin, textY)
+  }
+
+  // ── QR en negro (convierte el QR de color a negro puro) ─────────────
+  // threshold(200): píxeles con gris < 200 → negro; > 200 → blanco
+  // El verde #36B658 tiene gris ≈133 → negro ✓; fondo blanco 255 → blanco ✓
+  const blackQrBuf = await (async () => {
+    try {
+      const { default: sharp } = await import('sharp')
+      const base64 = qrDataUrl.split(',')[1]
+      const buf = Buffer.from(base64, 'base64')
+      return await sharp(buf)
+        .flatten({ background: '#ffffff' })
+        .greyscale()
+        .threshold(200)
+        .png()
+        .toBuffer()
+    } catch {
+      return Buffer.from(qrDataUrl.split(',')[1], 'base64')
+    }
+  })()
+
+  // ══════════════════════════════════════════════════════════════════════
+  // PÁGINA 1 — Certificado formal
+  // ══════════════════════════════════════════════════════════════════════
+  setupPage()
+
+  const cx      = W / 2
+  const qrSize  = 28
+  const qrX     = W - margin - qrSize
+  const qrY     = BAR_H + 5
+  const logoMaxH = 18
+  const logoMaxW = 55
+  const logoGap  = 10
+
+  // ── Logos centrados horizontalmente, alineados al centro vertical del QR ──
+  const mainDims  = await resolveLogoDimensions(logoBuffer, logoMaxW, logoMaxH)
+  const logo4Dims = logo4Buf ? await resolveLogoDimensions(logo4Buf, logoMaxW, logoMaxH) : null
+
+  const totalLogosW = mainDims.w + (logo4Dims ? logoGap + logo4Dims.w : 0)
+  const logosStartX = (W - totalLogosW) / 2
+  const qrCenterY    = qrY + qrSize / 2   // centro vertical del QR
+
+  if (base64Logo) {
+    try {
+      const ext = logoUrl.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'PNG'
+      doc.addImage(base64Logo, ext, logosStartX, qrCenterY - mainDims.h / 2, mainDims.w, mainDims.h, 'LOGO_P1')
+    } catch { /* skip */ }
+  }
+  if (logo4Buf && logo4Comp && logo4Dims) {
+    try {
+      const lx = logosStartX + mainDims.w + logoGap
+      doc.addImage(logo4Comp.buffer, logo4Comp.jsPdfFormat, lx, qrCenterY - logo4Dims.h / 2, logo4Dims.w, logo4Dims.h, 'LOGO4_P1')
+    } catch { /* skip */ }
+  }
+
+  // ── QR esquina superior derecha — negro, sin borde ───────────────────
+  doc.addImage(blackQrBuf, 'PNG', qrX, qrY, qrSize, qrSize)
+  doc.setFontSize(6.5)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+  doc.text('Verifica su',  qrX + qrSize / 2, qrY + qrSize + 4, { align: 'center' })
+  doc.text('autenticidad', qrX + qrSize / 2, qrY + qrSize + 8, { align: 'center' })
+
+  // ── Cuerpo central — distribución proporcional ───────────────────────
+  // contentTop comienza después del QR (el elemento más alto del header)
+  const contentTop    = qrY + qrSize + 12          // ~49mm — CERTIFICADO va más abajo
+  const sigLineY      = H - BAR_H - 32             // ~174mm
+  const contentBottom = sigLineY - 22              // deja ~22mm libres antes de las firmas
+
+  // Pre-calcular alturas variables (con fuentes actualizadas)
+  doc.setFontSize(20)
+  doc.setFont('helvetica', 'bold')
+  const cursoLines = doc.splitTextToSize(cursoTitulo, W - margin * 2 - 60)
+  const cursoH = cursoLines.length * 8
+
+  doc.setFontSize(26)
+  doc.setFont('helvetica', 'bold')
+  const nombreLines = doc.splitTextToSize(nombreCompleto, W - margin * 2 - 40)
+  const NAME_H = nombreLines.length * 10
+
+  const fechaInicioTxt = formatDateLong(fechaInicioVal)
+  const fechaFinTxt    = formatDateLong(fechaFinVal)
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  const descFull  = `Emitido por el ${nombreInstitucion}, con una duración de ${cursoDuracion || '---'}, realizado desde el ${fechaInicioTxt} hasta el ${fechaFinTxt}.`
+  const descLines = doc.splitTextToSize(descFull, W - margin * 2 - 40)
+  const descH = descLines.length * 5.5
+
+  const porcuanto      = 'Por cuanto: Para que conste y sea reconocido, se otorga el presente certificado en calidad de:'
+  const porcuantoLines = doc.splitTextToSize(porcuanto, W - margin * 2 - 40)
+  const porcuantoH = porcuantoLines.length * 5.5
+
+  // Alturas fijas de cada bloque
+  const CERT_H  = 10   // avance real tras "CERTIFICADO" (34pt, cap≈8.5mm, sin gap extra)
+  const OTO_H   = 5    // "Otorgado a:"
+  const PORH_H  = 5    // "Por haber concluido..."
+  const APR_H   = 5    // "APROBADO"
+  const FIRM_H  = 5    // "Firmado, el..."
+  // Factores: nombre→PORH=0.8, curso→desc=1.0, desc→porcuanto=0.3, porcuanto→APROBADO=1.5 → total=3.6
+  const fixedContent = CERT_H + OTO_H + 7 + NAME_H + PORH_H + 7 + cursoH + descH + porcuantoH + APR_H + FIRM_H
+  const totalGapH    = (contentBottom - contentTop) - fixedContent
+  const gap          = Math.min(4, Math.max(2, totalGapH / 3.6))
+
+  let y = contentTop
+
+  // "CERTIFICADO"
+  doc.setFontSize(34)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(DARK.r, DARK.g, DARK.b)
+  doc.text('CERTIFICADO', cx, y, { align: 'center' })
+  y += CERT_H
+
+  // "Otorgado a:"
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+  doc.text('Otorgado a:', cx, y, { align: 'center' })
+  y += OTO_H + 7
+
+  // Nombre del estudiante (fuente más grande)
+  doc.setFontSize(26)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(pr, pg, pb)
-  doc.text(notaDisplay, perfX + colW / 2, yLeft + 10 + rendimientoYOffset, { align: 'center' })
-  doc.setFontSize(T.small)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(150, 150, 150)
-  doc.text(`/ ${notaMax}.00`, perfX + colW / 2 + 8, yLeft + 10 + rendimientoYOffset)
-  doc.setFontSize(T.label)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(120, 120, 120)
-  doc.text('Promedio Ponderado Final', perfX + colW / 2, yLeft + 16 + rendimientoYOffset, { align: 'center' })
-  yLeft += 10
+  doc.text(nombreLines, cx, y, { align: 'center' })
+  y += NAME_H + gap * 0.8
 
-  // ── Contenido del programa ────────────────────────────────────────────
-  const contenidoStartY = yLeft + 6
-  const contentColGap = 6
-  const contentColW = (pageWidth - margin * 2 - contentColGap) / 2
-  const contentColLeft = margin
-  const contentColRight = margin + contentColW + contentColGap
-  const contentBottomLimit = pageHeight - 22
+  // "Por haber concluido..."
+  doc.setFontSize(9.5)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(DARK.r, DARK.g, DARK.b)
+  doc.text('Por haber concluido y aprobado con éxito el curso de especialización de:', cx, y, { align: 'center' })
+  y += PORH_H + 7
 
-  doc.setFillColor(pr, pg, pb)
-  doc.roundedRect(margin, contenidoStartY, pageWidth - margin * 2, 8, 1, 1, 'F')
-  doc.setFontSize(T.sectionTitle)
+  // Nombre del curso (fuente más grande, permite 2+ líneas)
+  doc.setFontSize(20)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(255, 255, 255)
-  doc.text('CONTENIDO DEL PROGRAMA', pageWidth / 2, contenidoStartY + 5.5, { align: 'center' })
+  doc.setTextColor(DARK.r, DARK.g, DARK.b)
+  doc.text(cursoLines, cx, y, { align: 'center' })
+  y += cursoH + gap
 
-  const contentStartY = contenidoStartY + 13
+  // Descripción institucional
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+  doc.text(descLines, cx, y, { align: 'center' })
+  y += descH + gap * 0.3
 
-  // ── Pre-calcular altura de cada módulo ────────────────────────────────
-  const calcModuloHeight = (modulo: any): number => {
-    const modTxt = `${modulo.orden + 1}. ${modulo.titulo}`.toUpperCase()
-    const modLines = doc.splitTextToSize(modTxt, contentColW - 8)
-    let h = modLines.length * 4.5 + 4 + 2
+  // "Por cuanto..."
+  doc.text(porcuantoLines, cx, y, { align: 'center' })
+  y += porcuantoH + gap * 1.5
 
-    for (const leccion of modulo.lecciones) {
-      const lecTxt = `${modulo.orden + 1}.${leccion.orden + 1}  ${leccion.titulo}`
-      const lecLines = doc.splitTextToSize(lecTxt, contentColW - 14)
+  // "APROBADO"
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+  doc.text('APROBADO', cx, y, { align: 'center' })
+  y += APR_H + 1
 
-      h += lecLines.length * 4 + 1.5
-    }
+  // "Firmado, el..."
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+  doc.text(`Firmado, el ${fechaFirmadaTxt}.`, cx, y, { align: 'center' })
 
-    h += 3
+  // ── Firmas: admin izquierda, docente derecha (siempre ambas) ─────────
+  await drawSignatureBlock(cx - 62, sigLineY, gerenteGeneral,  'Gerente General')
+  await drawSignatureBlock(cx + 62, sigLineY, profesorSnapshot, 'Director Académico')
 
-    return h
+  // ══════════════════════════════════════════════════════════════════════
+  // PÁGINA 2 — Temario del programa
+  // ══════════════════════════════════════════════════════════════════════
+  doc.addPage()
+  setupPage()
+
+  // QR — esquina superior derecha
+  const qr2Size = 28
+  const qr2X    = W - margin - qr2Size
+  const qr2Y    = BAR_H + 5
+  doc.setFillColor(255, 255, 255)
+  doc.roundedRect(qr2X - 2, qr2Y - 2, qr2Size + 4, qr2Size + 4, 1.5, 1.5, 'F')
+  doc.addImage(blackQrBuf, 'PNG', qr2X, qr2Y, qr2Size, qr2Size)
+  doc.setFontSize(6.5)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+  doc.text('Verifica su',   qr2X + qr2Size / 2, qr2Y + qr2Size + 4, { align: 'center' })
+  doc.text('autenticidad',  qr2X + qr2Size / 2, qr2Y + qr2Size + 8, { align: 'center' })
+
+  // "CERTIFICADO" — título superior izquierda
+  const titleY = BAR_H + 10
+  doc.setFontSize(22)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(pr, pg, pb)
+  doc.text('CERTIFICADO', margin, titleY)
+
+  // Bloque de datos del curso
+  let infoY = titleY + 7
+  const infoBlockW = W - margin * 2 - qr2Size - 14
+
+  const infoRows: Array<{ label: string; value: string }> = [
+    { label: 'Curso de especialización:', value: cursoTitulo },
+    { label: 'Duración:',                 value: cursoDuracion || '---' },
+    { label: 'Promedio Final:',           value: notaFinalCalc !== null ? notaFinalCalc.toFixed(2) : '---' },
+    { label: 'Estudiante:',               value: nombreCompleto },
+    {
+      label: 'Docente:',
+      value: profesorSnapshot
+        ? `${profesorSnapshot.nombre} ${profesorSnapshot.apellido || ''}`.trim()
+        : '---',
+    },
+  ]
+
+  doc.setFontSize(8.5)
+  for (const { label, value } of infoRows) {
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(DARK.r, DARK.g, DARK.b)
+    const lw = doc.getTextWidth(label)
+    doc.text(label, margin, infoY)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+    const vLines = doc.splitTextToSize(value, infoBlockW - lw - 2)
+    doc.text(vLines, margin + lw + 2, infoY)
+    infoY += vLines.length * 5 + 1
   }
 
-  // ── Distribuir módulos en dos columnas balanceadas por altura ─────────
-  const totalH = modulos.reduce((sum: number, m: any) => sum + calcModuloHeight(m), 0)
-  const leftTarget = totalH / 2
-  let leftFilled = 0
-  const leftModulos: any[] = []
-  const rightModulos: any[] = []
+  // Separador horizontal
+  const sepY = Math.max(infoY, qr2Y + qr2Size + 10) + 4
+  doc.setDrawColor(LGRAY.r, LGRAY.g, LGRAY.b)
+  doc.setLineWidth(0.3)
+  doc.line(margin, sepY - 2, W - margin, sepY - 2)
 
-  for (const modulo of modulos) {
-    if (leftFilled < leftTarget || leftModulos.length === 0) {
-      leftModulos.push(modulo)
-      leftFilled += calcModuloHeight(modulo)
-    } else {
-      rightModulos.push(modulo)
-    }
-  }
+  // ── Temario en dos columnas ───────────────────────────────────────────
+  const allLecciones = (modulos as ModuloData[])
+    .sort((a, b) => a.orden - b.orden)
+    .flatMap(m => m.lecciones.sort((a, b) => a.orden - b.orden))
 
-  // ── Paginar: agrupar módulos por página (ambas columnas juntas) ───────
-  const paginateColumns = (
-    leftList: any[],
-    rightList: any[]
-  ): Array<{ left: any[]; right: any[] }> => {
-    const pages: Array<{ left: any[]; right: any[] }> = []
-    let li = 0
-    let ri = 0
-    let isFirst = true
+  const colW      = (W - margin * 2 - 10) / 2
+  const colLeft   = margin
+  const colRight  = margin + colW + 10
 
-    while (li < leftList.length || ri < rightList.length) {
-      const avail = isFirst ? contentBottomLimit - contentStartY : contentBottomLimit - 14
-      const page: { left: any[]; right: any[] } = { left: [], right: [] }
-      let lh = 0
-      let rh = 0
+  const globalIndex = new Map<string, number>()
+  allLecciones.forEach((l, i) => globalIndex.set(l.id, i + 1))
 
-      while (li < leftList.length) {
-        const h = calcModuloHeight(leftList[li])
+  const half      = Math.ceil(allLecciones.length / 2)
+  const leftLecs  = allLecciones.slice(0, half)
+  const rightLecs = allLecciones.slice(half)
 
-        if (lh + h > avail && page.left.length > 0) break
-        page.left.push(leftList[li++])
-        lh += h
-      }
+  const renderLecciones = (list: typeof allLecciones, startX: number, startY: number): void => {
+    let cy = startY
+    for (const lec of list) {
+      const bullets  = extractBullets(lec.contenido)
+      const num      = globalIndex.get(lec.id) ?? 0
+      const numLabel = `LECCIÓN ${String(num).padStart(2, '0')}:`
 
-      while (ri < rightList.length) {
-        const h = calcModuloHeight(rightList[ri])
-
-        if (rh + h > avail && page.right.length > 0) break
-        page.right.push(rightList[ri++])
-        rh += h
-      }
-
-      pages.push(page)
-      isFirst = false
-    }
-
-    return pages
-  }
-
-  // ── Renderizar una columna en la página actual (sin addPage) ──────────
-  const renderColumnSegment = (lista: any[], startX: number, startY: number): void => {
-    let y = startY
-
-    for (const modulo of lista) {
-      const modTxt = `${modulo.orden + 1}. ${modulo.titulo}`.toUpperCase()
-      const modLines = doc.splitTextToSize(modTxt, contentColW - 8)
-      const modH = modLines.length * 4.5 + 4
-
-      doc.setFillColor(
-        Math.round(pr * 0.12 + 255 * 0.88),
-        Math.round(pg * 0.12 + 255 * 0.88),
-        Math.round(pb * 0.12 + 255 * 0.88)
-      )
-      doc.roundedRect(startX, y, contentColW, modH, 1, 1, 'F')
-      doc.setFontSize(T.sectionTitle)
+      doc.setFontSize(7.5)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(pr, pg, pb)
-      doc.text(modLines, startX + 4, y + 4.5)
-      y += modH + 2
+      doc.text(numLabel, startX, cy)
+      cy += 4.5
 
-      for (const leccion of modulo.lecciones) {
-        const lecTxt = `${modulo.orden + 1}.${leccion.orden + 1}  ${leccion.titulo}`
-        const lecLines = doc.splitTextToSize(lecTxt, contentColW - 14)
-        const lecH = lecLines.length * 4 + 1.5
-
-        doc.setFillColor(pr, pg, pb)
-        doc.circle(startX + 4, y + 1.5, 0.9, 'F')
-        doc.setFontSize(T.body)
-        doc.setFont('helvetica', 'normal')
-        doc.setTextColor(60, 60, 60)
-        doc.text(lecLines, startX + 7, y + 2.5)
-        y += lecH
-      }
-
-      y += 3
-    }
-  }
-
-  // ── Renderizar página por página con ambas columnas sincronizadas ─────
-  const columnPages = paginateColumns(leftModulos, rightModulos)
-
-  for (let pi = 0; pi < columnPages.length; pi++) {
-    if (pi > 0) {
-      doc.addPage()
-      doc.setFillColor(255, 255, 255)
-      doc.rect(0, 0, pageWidth, pageHeight, 'F')
-      doc.setFillColor(pr, pg, pb)
-      doc.rect(0, 0, pageWidth, 8, 'F')
-      doc.setFontSize(T.small)
+      const titleLines = doc.splitTextToSize(lec.titulo.toUpperCase(), colW - 6)
+      doc.setFontSize(7.5)
       doc.setFont('helvetica', 'bold')
-      doc.setTextColor(255, 255, 255)
-      doc.text('CONTENIDO DEL PROGRAMA ACADÉMICO (continuación)', margin, 5.5)
+      doc.setTextColor(DARK.r, DARK.g, DARK.b)
+      doc.text(titleLines, startX, cy)
+      cy += titleLines.length * 4 + 1
+
+      doc.setFontSize(7)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+      for (const bullet of bullets) {
+        const bLines = doc.splitTextToSize(`• ${bullet}`, colW - 6)
+        if (cy + bLines.length * 3.8 > bottomLimit) break
+        doc.text(bLines, startX, cy)
+        cy += bLines.length * 3.8
+      }
+      cy += 4
+      if (cy > bottomLimit) break
     }
-
-    const y0 = pi === 0 ? contentStartY : 14
-
-    renderColumnSegment(columnPages[pi].left, contentColLeft, y0)
-    renderColumnSegment(columnPages[pi].right, contentColRight, y0)
   }
 
-  // ── Pie de página 2 ───────────────────────────────────────────────────
-  const footerTopY = pageHeight - 20
+  renderLecciones(leftLecs,  colLeft,  sepY + 5)
+  renderLecciones(rightLecs, colRight, sepY + 5)
 
-  doc.setFillColor(245, 245, 245)
-  doc.rect(0, footerTopY, pageWidth, 20, 'F')
-  doc.setDrawColor(pr, pg, pb)
-  doc.setLineWidth(0.4)
-  doc.line(0, footerTopY, pageWidth, footerTopY)
-
-  if (disclaimer) {
-    const disclaimerLines = doc.splitTextToSize(disclaimer, pageWidth - margin * 2 - 60)
-
-    doc.setFontSize(T.small)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(120, 120, 120)
-    doc.text(disclaimerLines, margin, footerTopY + 5)
-  }
-
-  if (institutionUrl) {
-    doc.setFontSize(T.small)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(pr, pg, pb)
-    doc.text(institutionUrl, pageWidth - margin, footerTopY + 5, { align: 'right' })
-  }
+  await drawFooter()
 
   return doc.output('arraybuffer')
 }

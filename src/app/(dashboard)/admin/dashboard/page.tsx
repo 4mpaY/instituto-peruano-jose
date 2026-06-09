@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation'
+﻿import { redirect } from 'next/navigation'
 
 import { getServerSession } from 'next-auth'
 
@@ -19,7 +19,7 @@ export default async function Page() {
   console.log('[Dashboard Page] Server Session:', session ? 'Encontrada' : 'Nula')
 
   if (!session) {
-    console.log('[Dashboard Page] Redirigiendo a /login (Sesión Nula)')
+    console.log('[Dashboard Page] Redirigiendo a /login (SesiÃ³n Nula)')
     redirect('/login')
   }
 
@@ -29,7 +29,7 @@ export default async function Page() {
     getAuthToken: () => token
   })
 
-  let initialData: any = null
+  let initialData: any = undefined
 
   try {
     initialData = await axiosDashboard.getResumen()
@@ -46,3 +46,4 @@ export default async function Page() {
     </Box>
   )
 }
+

@@ -5,6 +5,7 @@ import { generarCorporativo } from './corporativo'
 import { generarModerno } from './moderno'
 import { generarElegante } from './elegante'
 import { generarInstitutoPeruano } from './instituto_peruano'
+import { generarMinimalista } from './minimalista'
 
 export const PLANTILLAS = {
   clasico: {
@@ -19,7 +20,7 @@ export const PLANTILLAS = {
     nombre: 'Clásico (Resumido)',
     descripcion: 'Versión del clásico con el temario resumido a dos columnas para ahorrar espacio.',
     paginas: 2,
-    thumbnail: '/images/plantillas-certificado/clasico.png', // Reusing the same thumbnail for now, will replace
+    thumbnail: '/images/plantillas-certificado/clasico.png',
   },
   corporativo: {
     id: 'corporativo',
@@ -49,6 +50,13 @@ export const PLANTILLAS = {
     paginas: 2,
     thumbnail: '/images/plantillas-certificado/instituto_peruano.png',
   },
+  minimalista: {
+    id: 'minimalista',
+    nombre: 'Minimalista',
+    descripcion: 'Diseño limpio y moderno con fondo blanco. Panel derecho con gradiente y QR.',
+    paginas: 2,
+    thumbnail: '/images/plantillas-certificado/minimalista.png',
+  },
 } as const
 
 export type PlantillaId = keyof typeof PLANTILLAS
@@ -60,12 +68,13 @@ export type PlantillaId = keyof typeof PLANTILLAS
 export function getGenerator(plantilla: string): GeneratorFn {
   switch (plantilla) {
     case 'clasico_resumido': return generarClasicoResumido
-    case 'corporativo': return generarCorporativo
-    case 'moderno':     return generarModerno
-    case 'elegante':           return generarElegante
-    case 'instituto_peruano':  return generarInstitutoPeruano
-    default:                   return generarClasico
+    case 'corporativo':      return generarCorporativo
+    case 'moderno':          return generarModerno
+    case 'elegante':         return generarElegante
+    case 'instituto_peruano': return generarInstitutoPeruano
+    case 'minimalista':      return generarMinimalista
+    default:                 return generarClasico
   }
 }
 
-export { generarClasico, generarClasicoResumido, generarCorporativo, generarModerno, generarElegante, generarInstitutoPeruano }
+export { generarClasico, generarClasicoResumido, generarCorporativo, generarModerno, generarElegante, generarInstitutoPeruano, generarMinimalista }

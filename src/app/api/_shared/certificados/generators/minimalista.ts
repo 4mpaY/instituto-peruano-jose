@@ -15,7 +15,6 @@ function extractBullets(html: string | null | undefined): string[] {
  */
 export const generarMinimalista: GeneratorFn = async data => {
   const {
-    pr, pg, pb,
     base64Logo, logoUrl, logoBuffer,
     nombreInstitucion,
     nombreCompleto,
@@ -31,6 +30,8 @@ export const generarMinimalista: GeneratorFn = async data => {
   const DARK  = { r: 30,  g: 30,  b: 30  }
   const GRAY  = { r: 100, g: 100, b: 100 }
   const LGRAY = { r: 220, g: 220, b: 220 }
+  const GREEN = { r: 54,  g: 182, b: 88  }  // #36B658
+  const TEAL  = { r: 19,  g: 153, b: 113 }  // #139971
 
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true })
@@ -77,9 +78,9 @@ export const generarMinimalista: GeneratorFn = async data => {
   const setupPage = () => {
     doc.setFillColor(255, 255, 255)
     doc.rect(0, 0, W, H, 'F')
-    doc.setFillColor(pr, pg, pb)
+    doc.setFillColor(GREEN.r, GREEN.g, GREEN.b)
     doc.rect(0, 0, W, BAR_H, 'F')
-    doc.setFillColor(pr, pg, pb)
+    doc.setFillColor(GREEN.r, GREEN.g, GREEN.b)
     doc.rect(0, H - BAR_H, W, BAR_H, 'F')
   }
 
@@ -226,7 +227,7 @@ export const generarMinimalista: GeneratorFn = async data => {
 
   // ── QR esquina superior derecha — negro, sin borde ───────────────────
   doc.addImage(blackQrBuf, 'PNG', qrX, qrY, qrSize, qrSize)
-  doc.setFontSize(6.5)
+  doc.setFontSize(7.6)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   doc.text('Verifica su',  qrX + qrSize / 2, qrY + qrSize + 4, { align: 'center' })
@@ -244,25 +245,25 @@ export const generarMinimalista: GeneratorFn = async data => {
   const cursoLines = doc.splitTextToSize(cursoTitulo, W - margin * 2 - 60)
   const cursoH = cursoLines.length * 8
 
-  doc.setFontSize(26)
+  doc.setFontSize(30)
   doc.setFont('helvetica', 'bold')
   const nombreLines = doc.splitTextToSize(nombreCompleto, W - margin * 2 - 40)
-  const NAME_H = nombreLines.length * 10
+  const NAME_H = nombreLines.length * 12
 
   const fechaInicioTxt = formatDateLong(fechaInicioVal)
   const fechaFinTxt    = formatDateLong(fechaFinVal)
-  doc.setFontSize(9)
+  doc.setFontSize(10.6)
   doc.setFont('helvetica', 'normal')
   const descFull  = `Emitido por el ${nombreInstitucion}, con una duración de ${cursoDuracion || '---'}, realizado desde el ${fechaInicioTxt} hasta el ${fechaFinTxt}.`
   const descLines = doc.splitTextToSize(descFull, W - margin * 2 - 40)
-  const descH = descLines.length * 5.5
+  const descH = descLines.length * 5.8
 
   const porcuanto      = 'Por cuanto: Para que conste y sea reconocido, se otorga el presente certificado en calidad de:'
   const porcuantoLines = doc.splitTextToSize(porcuanto, W - margin * 2 - 40)
-  const porcuantoH = porcuantoLines.length * 5.5
+  const porcuantoH = porcuantoLines.length * 5.8
 
   // Alturas fijas de cada bloque
-  const CERT_H  = 10   // avance real tras "CERTIFICADO" (34pt, cap≈8.5mm, sin gap extra)
+  const CERT_H  = 18   // avance real tras "CERTIFICADO" (47pt, cap≈16.6mm)
   const OTO_H   = 5    // "Otorgado a:"
   const PORH_H  = 5    // "Por haber concluido..."
   const APR_H   = 5    // "APROBADO"
@@ -274,35 +275,35 @@ export const generarMinimalista: GeneratorFn = async data => {
 
   let y = contentTop
 
-  // "CERTIFICADO"
-  doc.setFontSize(34)
+  // "CERTIFICADO" — 47pt ExtraLight
+  doc.setFontSize(47)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   doc.text('CERTIFICADO', cx, y, { align: 'center' })
   y += CERT_H
 
   // "Otorgado a:"
-  doc.setFontSize(10)
+  doc.setFontSize(10.6)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   doc.text('Otorgado a:', cx, y, { align: 'center' })
   y += OTO_H + 7
 
-  // Nombre del estudiante (fuente más grande)
-  doc.setFontSize(26)
+  // Nombre del estudiante — 30pt bold, teal #139971
+  doc.setFontSize(30)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(pr, pg, pb)
+  doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
   doc.text(nombreLines, cx, y, { align: 'center' })
   y += NAME_H + gap * 0.8
 
   // "Por haber concluido..."
-  doc.setFontSize(9.5)
+  doc.setFontSize(10.6)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   doc.text('Por haber concluido y aprobado con éxito el curso de especialización de:', cx, y, { align: 'center' })
   y += PORH_H + 7
 
-  // Nombre del curso (fuente más grande, permite 2+ líneas)
+  // Nombre del curso — SemiBold
   doc.setFontSize(20)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
@@ -310,7 +311,7 @@ export const generarMinimalista: GeneratorFn = async data => {
   y += cursoH + gap
 
   // Descripción institucional
-  doc.setFontSize(9)
+  doc.setFontSize(10.6)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   doc.text(descLines, cx, y, { align: 'center' })
@@ -350,21 +351,21 @@ export const generarMinimalista: GeneratorFn = async data => {
   doc.setFillColor(255, 255, 255)
   doc.roundedRect(qr2X - 2, qr2Y - 2, qr2Size + 4, qr2Size + 4, 1.5, 1.5, 'F')
   doc.addImage(blackQrBuf, 'PNG', qr2X, qr2Y, qr2Size, qr2Size)
-  doc.setFontSize(6.5)
+  doc.setFontSize(7.6)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   doc.text('Verifica su',   qr2X + qr2Size / 2, qr2Y + qr2Size + 4, { align: 'center' })
   doc.text('autenticidad',  qr2X + qr2Size / 2, qr2Y + qr2Size + 8, { align: 'center' })
 
-  // "CERTIFICADO" — título superior izquierda
-  const titleY = BAR_H + 10
-  doc.setFontSize(22)
+  // "CERTIFICADO" — 28pt, verde claro #36B658
+  const titleY = BAR_H + 11
+  doc.setFontSize(28)
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(pr, pg, pb)
+  doc.setTextColor(GREEN.r, GREEN.g, GREEN.b)
   doc.text('CERTIFICADO', margin, titleY)
 
   // Bloque de datos del curso
-  let infoY = titleY + 7
+  let infoY = titleY + 10
   const infoBlockW = W - margin * 2 - qr2Size - 14
 
   const infoRows: Array<{ label: string; value: string }> = [
@@ -380,7 +381,7 @@ export const generarMinimalista: GeneratorFn = async data => {
     },
   ]
 
-  doc.setFontSize(8.5)
+  doc.setFontSize(8)
   for (const { label, value } of infoRows) {
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(DARK.r, DARK.g, DARK.b)
@@ -424,7 +425,7 @@ export const generarMinimalista: GeneratorFn = async data => {
 
       doc.setFontSize(7.5)
       doc.setFont('helvetica', 'bold')
-      doc.setTextColor(pr, pg, pb)
+      doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
       doc.text(numLabel, startX, cy)
       cy += 4.5
 

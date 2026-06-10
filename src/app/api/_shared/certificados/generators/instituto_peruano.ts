@@ -149,7 +149,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   doc.setFillColor(255, 255, 255)
   doc.roundedRect(qrX - 2, qrY - 2, qrSize + 4, qrSize + 4, 1.5, 1.5, 'F')
   doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize)
-  doc.setFontSize(6.5)
+  doc.setFontSize(7.6)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   doc.text('Verifica su', qrX + qrSize / 2, qrY + qrSize + 4, { align: 'center' })
@@ -165,58 +165,58 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   const cx = W / 2
   let y = sepY + 10
 
-  // "CERTIFICADO"
-  doc.setFontSize(32)
-  doc.setFont('helvetica', 'bold')
+  // "CERTIFICADO" — 47pt ExtraLight (aproximado con 'normal')
+  doc.setFontSize(47)
+  doc.setFont('helvetica', 'normal')
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   doc.text('CERTIFICADO', cx, y, { align: 'center' })
-  y += 10
+  y += 18
 
   // "Otorgado a:"
-  doc.setFontSize(10)
+  doc.setFontSize(10.6)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   doc.text('Otorgado a:', cx, y, { align: 'center' })
-  y += 9
+  y += 8
 
-  // Nombre del estudiante (teal, grande)
-  doc.setFontSize(20)
+  // Nombre del estudiante (teal, 30pt bold)
+  doc.setFontSize(30)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
   doc.text(nombreCompleto, cx, y, { align: 'center' })
-  y += 10
+  y += 14
 
   // Texto "Por haber concluido..."
-  doc.setFontSize(9.5)
+  doc.setFontSize(10.6)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   doc.text('Por haber concluido y aprobado con éxito el curso de especialización de:', cx, y, { align: 'center' })
   y += 9
 
-  // Nombre del curso
-  doc.setFontSize(16)
+  // Nombre del curso (SemiBold ≈ bold)
+  doc.setFontSize(20)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   const cursoLines = doc.splitTextToSize(cursoTitulo, W - margin * 2 - 60)
   doc.text(cursoLines, cx, y, { align: 'center' })
-  y += cursoLines.length * 7 + 7
+  y += cursoLines.length * 8 + 6
 
   // Descripción institucional
   const fechaInicioTxt = formatDateLong(fechaInicioVal)
   const fechaFinTxt    = formatDateLong(fechaFinVal)
   const descripcion = `Emitido por el ${nombreInstitucion}, con una duración de ${cursoDuracion || '---'}, realizado desde el ${fechaInicioTxt} hasta el ${fechaFinTxt}.`
-  doc.setFontSize(9)
+  doc.setFontSize(10.6)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   const descLines = doc.splitTextToSize(descripcion, W - margin * 2 - 50)
   doc.text(descLines, cx, y, { align: 'center' })
-  y += descLines.length * 5.5 + 4
+  y += descLines.length * 5.8 + 4
 
   // "Por cuanto..."
   const porcuanto = 'Por cuanto: Para que conste y sea reconocido, se otorga el presente certificado en calidad de:'
   const porcuantoLines = doc.splitTextToSize(porcuanto, W - margin * 2 - 50)
   doc.text(porcuantoLines, cx, y, { align: 'center' })
-  y += porcuantoLines.length * 5.5 + 5
+  y += porcuantoLines.length * 5.8 + 5
 
   // "APROBADO"
   doc.setFontSize(12)
@@ -266,16 +266,16 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   doc.setFillColor(GREEN.r, GREEN.g, GREEN.b)
   doc.rect(0, H - BAR_H, W, BAR_H, 'F')
 
-  // ── "CERTIFICADO" título superior izquierda (teal, delgado) ──────────
-  const p2TitleY = BAR_H + 9
-  doc.setFontSize(22)
+  // ── "CERTIFICADO" título superior izquierda (verde claro, 28pt) ──────
+  const p2TitleY = BAR_H + 11
+  doc.setFontSize(28)
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
+  doc.setTextColor(GREEN.r, GREEN.g, GREEN.b)
   doc.text('CERTIFICADO', margin, p2TitleY)
 
   // ── Bloque de datos del curso (izquierda) ─────────────────────────────
   const infoX = margin
-  let infoY = p2TitleY + 7
+  let infoY = p2TitleY + 10
 
   // Calcular nota final igual que en otros generadores
   const promedios = Object.values(notasPorModulo).map(e => {
@@ -299,7 +299,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   ]
 
   const infoBlockW = W - margin * 2 - qrSize - 14
-  doc.setFontSize(8.5)
+  doc.setFontSize(8)
 
   for (const { label, value } of infoLines) {
     doc.setFont('helvetica', 'bold')
@@ -321,7 +321,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   doc.setFillColor(255, 255, 255)
   doc.roundedRect(qr2X - 2, qr2Y - 2, qr2Size + 4, qr2Size + 4, 1.5, 1.5, 'F')
   doc.addImage(qrDataUrl, 'PNG', qr2X, qr2Y, qr2Size, qr2Size)
-  doc.setFontSize(6.5)
+  doc.setFontSize(7.6)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   doc.text('Verifica su', qr2X + qr2Size / 2, qr2Y + qr2Size + 4, { align: 'center' })

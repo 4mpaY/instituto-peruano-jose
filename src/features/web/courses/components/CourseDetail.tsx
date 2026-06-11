@@ -199,6 +199,27 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
     { text: 'Certificado por Ecoambiental o CIP', active: false },
   ]
 
+  const iconClass = (icon: string | undefined) =>
+    icon?.trim()
+      ? icon.startsWith('tabler-') ? icon : `tabler-${icon}`
+      : 'tabler-star'
+
+  const efectivoBeneficios = course.beneficios?.filter(b => b?.title?.trim()).length
+    ? course.beneficios.filter(b => b?.title?.trim())
+    : defaultBeneficios
+
+  const efectivaMetodologia = course.metodologia?.filter(m => m?.title?.trim()).length
+    ? course.metodologia.filter(m => m?.title?.trim())
+    : defaultMetodologia
+
+  const efectivosObjetivos = course.objetivos?.filter(o => o?.trim()).length
+    ? course.objetivos.filter(o => o?.trim())
+    : defaultObjetivos
+
+  const efectivoIncluye = course.incluye?.filter(i => i?.text?.trim()).length
+    ? course.incluye.filter(i => i?.text?.trim())
+    : defaultIncluye
+
   return (
     <Box sx={{ pb: 10, bgcolor: '#f8fafc' }}>
 
@@ -410,7 +431,7 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
 
           {/* Beneficios Cards */}
           <Grid container spacing={2} sx={{ mt: 6 }}>
-            {(course.beneficios?.length ? course.beneficios : defaultBeneficios).map((item, i) => (
+            {efectivoBeneficios.map((item, i) => (
               <Grid item xs={6} sm={6} md={3} key={i}>
                 <Box sx={{
                   p: { xs: 2, md: 2.5 }, borderRadius: '16px', textAlign: 'center',
@@ -420,7 +441,7 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
                   '&:hover': { bgcolor: 'rgba(255,255,255,0.09)' },
                 }}>
                   <Box sx={{ width: 44, height: 44, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(var(--web-light-rgb,189,217,98),0.12)', color: 'var(--web-light, #BDD962)', mx: 'auto', mb: 1.5 }}>
-                    <i className={item.icon?.startsWith('tabler-') ? item.icon : `tabler-${item.icon}`} style={{ fontSize: '1.375rem' }} />
+                    <i className={iconClass(item.icon)} style={{ fontSize: '1.375rem' }} />
                   </Box>
                   <Typography sx={{ fontFamily: FONT, fontWeight: 800, fontSize: { xs: '0.8rem', md: '0.9rem' }, color: '#fff', lineHeight: 1.3, mb: 0.5 }}>{item.title}</Typography>
                   <Typography sx={{ fontFamily: FONT, fontSize: { xs: '0.7rem', md: '0.8125rem' }, color: 'rgba(255,255,255,0.6)', lineHeight: 1.4 }}>{item.desc}</Typography>
@@ -458,11 +479,11 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
                   Basado en la experiencia del profesional
                 </Typography>
                 <Grid container spacing={2}>
-                  {(course.metodologia?.length ? course.metodologia : defaultMetodologia).map((m, i) => (
+                  {efectivaMetodologia.map((m, i) => (
                     <Grid item xs={12} md={4} key={i}>
                       <Box sx={{ p: 3, bgcolor: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 1.5 }}>
                         <Avatar sx={{ bgcolor: 'rgba(var(--web-primary-rgb,37,146,127),0.1)', color: 'var(--web-primary, #25927F)', width: 60, height: 60 }}>
-                          <i className={m.icon?.startsWith('tabler-') ? m.icon : `tabler-${m.icon}`} style={{ fontSize: '2rem' }} />
+                          <i className={iconClass(m.icon)} style={{ fontSize: '2rem' }} />
                         </Avatar>
                         <Typography sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '0.9375rem', lineHeight: 1.3 }}>{m.title}</Typography>
                         {m.desc && <Typography sx={{ fontFamily: FONT, fontSize: '0.8125rem', color: '#64748b' }}>{m.desc}</Typography>}
@@ -476,7 +497,7 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
               <Box>
                 <SectionTitle>Objetivos del curso</SectionTitle>
                 <Stack spacing={1.5}>
-                  {(course.objetivos?.length ? course.objetivos : defaultObjetivos).map((text, i) => (
+                  {efectivosObjetivos.map((text, i) => (
                     <Stack key={i} direction="row" spacing={1.5} alignItems="flex-start">
                       <Box sx={{ mt: '2px', flexShrink: 0 }}>
                         <CheckCircle size={20} color="var(--web-primary, #25927F)" />
@@ -586,7 +607,7 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
                 {/* Incluye */}
                 <Box sx={{ p: 3 }}>
                   <Stack spacing={1.25} sx={{ mb: 3 }}>
-                    {(course.incluye?.length ? course.incluye : defaultIncluye).map((item, i) => (
+                    {efectivoIncluye.map((item, i) => (
                       <Stack key={i} direction="row" spacing={1.25} alignItems="center">
                         {item.active
                           ? <CheckCircle size={18} color="var(--web-primary, #25927F)" />

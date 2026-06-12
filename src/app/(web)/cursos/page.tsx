@@ -37,8 +37,16 @@ async function getData(token: string | null) {
 }
 
 export const metadata = {
-  title: `${process.env.NEXT_PUBLIC_APP_NAME} | Cursos`,
-  description: 'Explora nuestra amplia variedad de cursos y comienza a aprender hoy mismo.'
+  title: 'Catálogo de Cursos | IPG Ingenieros',
+  description: 'Explora el catálogo de cursos online en Gestión Ambiental, Seguridad Industrial, ISO y Calidad. Certificados verificables para profesionales peruanos.',
+  alternates: { canonical: 'https://ipgingenierosperu.com/cursos' },
+  openGraph: {
+    title: 'Cursos online en Gestión Ambiental y Seguridad — IPG Ingenieros',
+    description: 'Más de 80 cursos con certificado verificable. Gestión Ambiental, Seguridad Industrial, ISO 9001, ISO 14001 y más.',
+    url: 'https://ipgingenierosperu.com/cursos',
+    type: 'website',
+    images: [{ url: '/images/og-default.jpg', width: 1200, height: 630, alt: 'Catálogo de cursos IPG Ingenieros' }],
+  },
 }
 
 export default async function CursosPage() {

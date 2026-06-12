@@ -46,6 +46,19 @@ async function getRutas() {
   }
 }
 
+export const metadata = {
+  title: 'Rutas de Aprendizaje | IPG Ingenieros',
+  description: 'Rutas de aprendizaje estructuradas en Gestión Ambiental, Seguridad Industrial y Calidad. Progresa de principiante a experto con certificados verificables.',
+  alternates: { canonical: 'https://ipgingenierosperu.com/rutas' },
+  openGraph: {
+    title: 'Rutas de Aprendizaje — IPG Ingenieros',
+    description: 'Colecciones curadas de cursos para llevarte de principiante a experto en Gestión Ambiental, Seguridad y Calidad.',
+    url: 'https://ipgingenierosperu.com/rutas',
+    type: 'website',
+    images: [{ url: '/images/og-default.jpg', width: 1200, height: 630, alt: 'Rutas de Aprendizaje IPG Ingenieros' }],
+  },
+}
+
 export default async function RutasIndexPage() {
   const habilitado = await getConfig('WEB_RUTAS_HABILITADO', 'true')
 

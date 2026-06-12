@@ -12,16 +12,28 @@ import '@assets/iconify-icons/generated-icons.css'
 
 export async function generateMetadata(): Promise<Metadata> {
   const configs = await getConfigs()
-  const title = configs.TEMPLATE_NAME || 'Aula Virtual'
-  const slogan = configs.TEMPLATE_SLOGAN || ''
+  const title = configs.TEMPLATE_NAME || 'IPG Ingenieros'
+  const slogan = configs.TEMPLATE_SLOGAN || 'Formación especializada en Gestión Ambiental, Seguridad y Calidad'
   const logo = configs.TEMPLATE_LOGO || '/favicon.ico'
+  const siteTitle = slogan ? `${title} — ${slogan}` : title
 
   return {
-    title: slogan ? `${title} - ${slogan}` : title,
-    description: slogan,
-    icons: {
-      icon: logo
-    }
+    metadataBase: new URL('https://ipgingenierosperu.com'),
+    title: {
+      default: siteTitle,
+      template: `%s | IPG Ingenieros`,
+    },
+    description: slogan || 'Plataforma de formación online especializada en Gestión Ambiental, Seguridad Industrial y Calidad para profesionales peruanos.',
+    icons: { icon: logo },
+    openGraph: {
+      siteName: title,
+      locale: 'es_PE',
+      type: 'website',
+      images: [{ url: '/images/og-default.jpg', width: 1200, height: 630, alt: `${title} — Aula Virtual` }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+    },
   }
 }
 

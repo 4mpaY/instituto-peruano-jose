@@ -16,8 +16,22 @@ import CompaniesSection from '@/features/web/home/components/CompaniesSection'
 import EnterpriseCTASection from '@/features/web/home/components/EnterpriseCTASection'
 
 export const metadata = {
-  title: 'Aula Virtual - Aprende sin límites',
-  description: 'Plataforma de aprendizaje online con cursos especializados, rutas de aprendizaje y certificados.',
+  title: 'IPG Ingenieros | Cursos en Gestión Ambiental, Seguridad y Calidad',
+  description: 'Formación online especializada del Instituto Peruano de Gestión Ambiental, Seguridad y Calidad. Cursos con certificado verificable, rutas de aprendizaje y capacitación corporativa. Lima, Perú.',
+  alternates: { canonical: 'https://ipgingenierosperu.com' },
+  openGraph: {
+    title: 'IPG Ingenieros — Formación especializada en Gestión Ambiental y Seguridad',
+    description: 'Cursos online con certificados verificables en Gestión Ambiental, Seguridad Industrial, ISO y Calidad. Más de 80 cursos y 1 200 estudiantes en Perú.',
+    url: 'https://ipgingenierosperu.com',
+    type: 'website',
+    images: [{ url: '/images/og-default.jpg', width: 1200, height: 630, alt: 'IPG Ingenieros — Aula Virtual' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'IPG Ingenieros | Cursos en Gestión Ambiental y Seguridad',
+    description: 'Formación online especializada con certificados verificables. Lima, Perú.',
+    images: ['/images/og-default.jpg'],
+  },
 }
 
 async function getHomeData() {
@@ -104,11 +118,41 @@ async function getHomeData() {
   }
 }
 
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': 'https://ipgingenierosperu.com/#organization',
+      name: 'Instituto Peruano de Gestión Ambiental, Seguridad y Calidad IPG Ingenieros S.A.C.',
+      alternateName: 'IPG Ingenieros',
+      url: 'https://ipgingenierosperu.com',
+      logo: 'https://ipgingenierosperu.com/images/logo.svg',
+      email: 'ipg.ingenieros.contacto@gmail.com',
+      address: { '@type': 'PostalAddress', addressLocality: 'Miraflores', addressRegion: 'Lima', addressCountry: 'PE' },
+      sameAs: ['https://www.facebook.com/ipgingenierosinst/'],
+    },
+    {
+      '@type': 'WebSite',
+      '@id': 'https://ipgingenierosperu.com/#website',
+      url: 'https://ipgingenierosperu.com',
+      name: 'IPG Ingenieros',
+      publisher: { '@id': 'https://ipgingenierosperu.com/#organization' },
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: { '@type': 'EntryPoint', urlTemplate: 'https://ipgingenierosperu.com/cursos?q={search_term_string}' },
+        'query-input': 'required name=search_term_string',
+      },
+    },
+  ],
+}
+
 export default async function HomePage() {
   const { courses, rutas, teachers, heroTitle, heroDescription, logos } = await getHomeData()
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
       {/* ── 1. HERO ─────────────────────────────────── */}
       <section
         style={{

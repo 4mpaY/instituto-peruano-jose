@@ -3,7 +3,10 @@ import React from 'react'
 import { Box, Container, Typography, Divider } from '@mui/material'
 
 export const metadata = {
-  title: 'Términos y Condiciones | Instituto Peruano de Gestión Ambiental, Seguridad y Calidad',
+  title: 'Términos y Condiciones | IPG Ingenieros',
+  description: 'Términos y condiciones de uso de la plataforma educativa IPG Ingenieros. Conozca sus derechos, obligaciones y las políticas que rigen el acceso a nuestros cursos.',
+  alternates: { canonical: 'https://ipgingenierosperu.com/terminos-y-condiciones' },
+  robots: { index: true, follow: false },
 }
 
 export default function TerminosYCondicionesPage() {

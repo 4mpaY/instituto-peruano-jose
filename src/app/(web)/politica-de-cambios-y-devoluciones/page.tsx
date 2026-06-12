@@ -3,7 +3,10 @@ import React from 'react'
 import { Box, Container, Typography, Divider } from '@mui/material'
 
 export const metadata = {
-  title: 'Política de Cambios y Devoluciones | Instituto Peruano de Gestión Ambiental, Seguridad y Calidad',
+  title: 'Política de Devoluciones | IPG Ingenieros',
+  description: 'Política de cambios y devoluciones de IPG Ingenieros. Conozca las condiciones de reembolso para cursos digitales conforme al Código de Protección al Consumidor (Ley N° 29571).',
+  alternates: { canonical: 'https://ipgingenierosperu.com/politica-de-cambios-y-devoluciones' },
+  robots: { index: true, follow: false },
 }
 
 export default function PoliticaCambiosYDevolucionesPage() {

@@ -8,8 +8,16 @@ import ProfessorsCarousel from '@/features/web/nosotros/components/ProfessorsCar
 import { MisionVisionSection, ValoresSection } from '@/features/web/nosotros/components/NosotrosInteractive'
 
 export const metadata = {
-  title: 'Nosotros - Aula Virtual',
-  description: 'Conoce quiénes somos, nuestra misión, visión y los valores que guían nuestra plataforma educativa.',
+  title: 'Quiénes Somos | IPG Ingenieros',
+  description: 'Conoce el Instituto Peruano de Gestión Ambiental, Seguridad y Calidad IPG Ingenieros. Nuestra misión, visión, valores y el equipo de profesionales detrás de nuestra plataforma educativa.',
+  alternates: { canonical: 'https://ipgingenierosperu.com/nosotros' },
+  openGraph: {
+    title: 'Quiénes Somos — IPG Ingenieros',
+    description: 'Instituto Peruano de Gestión Ambiental, Seguridad y Calidad. Formando profesionales en Lima, Perú.',
+    url: 'https://ipgingenierosperu.com/nosotros',
+    type: 'website',
+    images: [{ url: '/images/og-default.jpg', width: 1200, height: 630, alt: 'Equipo IPG Ingenieros' }],
+  },
 }
 
 async function getTeachers() {

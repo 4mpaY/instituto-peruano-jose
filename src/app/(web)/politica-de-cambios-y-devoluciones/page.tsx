@@ -3,7 +3,7 @@ import React from 'react'
 import { Box, Container, Typography, Divider } from '@mui/material'
 
 export const metadata = {
-  title: 'Política de Cambios y Devoluciones | ARM Asset Reliability Management',
+  title: 'Política de Cambios y Devoluciones | Instituto Peruano de Gestión Ambiental, Seguridad y Calidad',
 }
 
 export default function PoliticaCambiosYDevolucionesPage() {
@@ -21,8 +21,8 @@ export default function PoliticaCambiosYDevolucionesPage() {
 
           <Typography paragraph>
             La presente política regula las condiciones de reembolso y cambios aplicables a los
-            servicios educativos ofrecidos por <strong>[NOMBRE DE EMPRESA]</strong>,
-            con RUC <strong>[RUC]</strong>, con domicilio en [DIRECCIÓN] — a través de su Aula Virtual. Al adquirir cualquier curso,
+            servicios educativos ofrecidos por <strong>INSTITUTO PERUANO DE GESTION AMBIENTAL, SEGURIDAD Y CALIDAD IPG INGENIEROS S.A.C.</strong>,
+            con RUC <strong>20613893483</strong>, con domicilio en Lima, Miraflores — a través de su Aula Virtual. Al adquirir cualquier curso,
             el usuario declara haber leído y aceptado los términos aquí descritos.
           </Typography>
 
@@ -90,7 +90,7 @@ export default function PoliticaCambiosYDevolucionesPage() {
             entre <strong>15 y 30 días hábiles</strong>.
           </Typography>
           <Typography paragraph>
-            Visiona Perú Safety Solutions S.A.C se reserva el derecho de descontar las comisiones operativas
+            INSTITUTO PERUANO DE GESTION AMBIENTAL, SEGURIDAD Y CALIDAD IPG INGENIEROS S.A.C. se reserva el derecho de descontar las comisiones operativas
             cobradas por la pasarela de pago que no sean reembolsables por la misma.
           </Typography>
 

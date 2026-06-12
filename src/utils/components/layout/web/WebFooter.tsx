@@ -193,7 +193,7 @@ const WebFooter = async ({ platformName = 'Aula Virtual', rutasHabilitado = true
             </p>
           </div>
           <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
-            Desarrollado con ❤️ por
+            Desarrollado por
             <Link
               href="https://flyup.pe"
               target="_blank"

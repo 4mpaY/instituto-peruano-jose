@@ -22,14 +22,6 @@ const FooterContent = () => {
     <div
       className={classnames(verticalLayoutClasses.footerContent, 'flex items-center justify-between flex-wrap gap-4')}
     >
-      <p>
-        <span className='text-textSecondary'>{`© `}<HydratedDate date={new Date()} format="year" />{`, Desarrollado con`}</span>
-        <span>{`❤️`}</span>
-        <span className='text-textSecondary'>{` por `}</span>
-        <Link href='https://fly-software.lovable.app/' target='_blank' className='text-primary'>
-          Fly
-        </Link>
-      </p>
       {/* {!isBreakpointReached && (
         <div className='flex items-center gap-4'>
           <Link href='https://themeforest.net/licenses/standard' target='_blank' className='text-primary'>

@@ -3,7 +3,7 @@ import React from 'react'
 import { Box, Container, Typography, Divider } from '@mui/material'
 
 export const metadata = {
-  title: 'Términos y Condiciones | ARM Asset Reliability Management',
+  title: 'Términos y Condiciones | Instituto Peruano de Gestión Ambiental, Seguridad y Calidad',
 }
 
 export default function TerminosYCondicionesPage() {
@@ -20,7 +20,7 @@ export default function TerminosYCondicionesPage() {
         <Box sx={{ '& h4': { color: 'var(--web-dark, #025E44)', fontWeight: 800, mt: 5, mb: 2 }, '& p': { mb: 2, lineHeight: 1.8 } }}>
 
           <Typography paragraph>
-            Bienvenido a <strong>NOMBRE DE TU EMPRESA</strong> (&quot;Nosotros&quot;, &quot;ARM&quot;).
+            Bienvenido a <strong>INSTITUTO PERUANO DE GESTION AMBIENTAL, SEGURIDAD Y CALIDAD IPG INGENIEROS S.A.C.</strong> (&quot;Nosotros&quot;, &quot;IPG Ingenieros&quot;).
             Al acceder a nuestro sitio web y utilizar nuestros servicios de Aula Virtual e Ingeniería,
             usted (&quot;el Usuario&quot;) acepta estar sujeto a los presentes Términos y Condiciones.
             Le sugerimos leer esta página cuidadosamente antes de proceder con cualquier compra o inscripción.
@@ -30,7 +30,7 @@ export default function TerminosYCondicionesPage() {
 
           <Typography variant="h4">1. Generalidades de los Servicios</Typography>
           <Typography paragraph>
-            ARM brinda servicios de capacitación, Consultoría en Sistemas de Gestión - ISO, Capacitaciones y entrenamiento, Eventos, activaciones BTL y campañas en SST y Respuesta ante emergencias, Actividades de Trabajos de Alto Riesgo.
+            IPG Ingenieros brinda servicios de capacitación, Consultoría en Sistemas de Gestión - ISO, Capacitaciones y entrenamiento, Eventos, activaciones BTL y campañas en SST y Respuesta ante emergencias, Actividades de Trabajos de Alto Riesgo.
             Nuestra Aula Virtual contiene cursos y certificaciones dirigidos a profesionales de las diferentes especialidades y sectores económicos.
             Al adquirir un curso, está comprando una licencia de acceso individual e intransferible.
           </Typography>
@@ -53,7 +53,7 @@ export default function TerminosYCondicionesPage() {
           <Typography variant="h4">4. Propiedad Intelectual e Industrial</Typography>
           <Typography paragraph>
             Todo el material expuesto en la plataforma web (textos, gráficos, videos, diagramas y recursos)
-            pertenece originariamente a NOMBRE DE TU EMPRESA o a sus instructores afiliados.
+            pertenece originariamente a INSTITUTO PERUANO DE GESTION AMBIENTAL, SEGURIDAD Y CALIDAD IPG INGENIEROS S.A.C. o a sus instructores afiliados.
             Queda estrictamente prohibida su copia, distribución sin autorización comercial y cualquier modalidad de piratería.
             Cualquier violación directa implicará el bloqueo irrevocable de la cuenta y potenciales acciones civiles correspondientes.
           </Typography>
@@ -61,7 +61,7 @@ export default function TerminosYCondicionesPage() {
           <Typography variant="h4">5. Certificaciones</Typography>
           <Typography paragraph>
             La emisión de certificados dentro de nuestra plataforma se somete a los requisitos técnicos
-            indicados en cada curso (visualización al 100%, aprobación de evaluaciones, etc.). ARM se reserva
+            indicados en cada curso (visualización al 100%, aprobación de evaluaciones, etc.). IPG Ingenieros se reserva
             el derecho de verificar y cruzar la identidad de los estudiantes y de no emitir certificaciones si constata fraude o suplantación.
           </Typography>
 

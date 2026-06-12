@@ -137,8 +137,8 @@ export default function LibroReclamacionesForm() {
           esta institución cuenta con un Libro de Reclamaciones Virtual a su disposición.
         </Typography>
         <Box sx={{ mt: 2, textAlign: 'left', bgcolor: 'white', p: 2, border: '1px solid #eee', borderRadius: 1 }}>
-          <Typography variant="caption" display="block"><strong>PROVEEDOR:</strong> NOMBRE DE TU EMPRESA</Typography>
-          <Typography variant="caption" display="block"><strong>RUC:</strong> 20600000000 </Typography>
+          <Typography variant="caption" display="block"><strong>PROVEEDOR:</strong> INSTITUTO PERUANO DE GESTION AMBIENTAL, SEGURIDAD Y CALIDAD IPG INGENIEROS S.A.C.</Typography>
+          <Typography variant="caption" display="block"><strong>RUC:</strong> 20613893483</Typography>
           <Typography variant="caption" display="block"><strong>DOMICILIO:</strong> [DIRECCIÓN]</Typography>
         </Box>
       </Box>

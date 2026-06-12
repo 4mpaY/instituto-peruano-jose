@@ -12,8 +12,10 @@ const LGRAY  = { r: 220, g: 220, b: 220 }
 function extractBullets(html: string | null | undefined): string[] {
   if (!html) return []
   const matches = html.match(/<li[^>]*>([\s\S]*?)<\/li>/gi)
+
   if (!matches) return []
-  return matches.map(m => m.replace(/<[^>]+>/g, '').trim()).filter(Boolean)
+  
+return matches.map(m => m.replace(/<[^>]+>/g, '').trim()).filter(Boolean)
 }
 
 /**
@@ -73,24 +75,30 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
     labelOverride?: string
   ) => {
     if (!user) return
+
     if (user.firma) {
       try {
         const buf = await fetchImageBuffer(user.firma)
+
         if (buf) {
           const { buffer: comp, jsPdfFormat } = await compressImageForPdf(buf, { maxWidth: 300, format: 'png' })
+
           doc.addImage(comp, jsPdfFormat, cx - 18, lineY - 22, 36, 20)
         }
       } catch { /* skip */ }
     }
+
     doc.setDrawColor(DARK.r, DARK.g, DARK.b)
     doc.setLineWidth(0.4)
     doc.line(cx - 38, lineY, cx + 38, lineY)
     const nombre = `${user.nombre || ''} ${user.apellido || ''}`.trim()
+
     doc.setFontSize(9)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(DARK.r, DARK.g, DARK.b)
     doc.text(nombre, cx, lineY + 5, { align: 'center' })
     const cargo = labelOverride || user.cargo || ''
+
     if (cargo) {
       doc.setFontSize(8)
       doc.setFont('helvetica', 'normal')
@@ -122,14 +130,18 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   // Logo principal (IPG)
   let logoW = logoMaxH
   let logoH = logoMaxH
+
   if (logoBuffer) {
     const dims = await resolveLogoDimensions(logoBuffer, logoMaxW, logoMaxH)
+
     logoW = dims.w
     logoH = dims.h
   }
+
   if (base64Logo) {
     try {
       const ext = logoUrl.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'PNG'
+
       doc.addImage(base64Logo, ext, margin, headerY, logoW, logoH, 'LOGO_P1')
     } catch { /* skip */ }
   }
@@ -138,6 +150,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   if (logo2Comp) {
     try {
       const dims = await resolveLogoDimensions(logo2Buf!, logoMaxW, logoMaxH)
+
       doc.addImage(logo2Comp.buffer, logo2Comp.jsPdfFormat, margin + logoW + 6, headerY + (logoH - dims.h) / 2, dims.w, dims.h, 'LOGO2_P1')
     } catch { /* skip */ }
   }
@@ -146,6 +159,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   const qrSize = 28
   const qrX = W - margin - qrSize
   const qrY = headerY
+
   doc.setFillColor(255, 255, 255)
   doc.roundedRect(qrX - 2, qrY - 2, qrSize + 4, qrSize + 4, 1.5, 1.5, 'F')
   doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize)
@@ -157,6 +171,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
 
   // Línea separadora bajo el header
   const sepY = headerY + logoMaxH + 5
+
   doc.setDrawColor(LGRAY.r, LGRAY.g, LGRAY.b)
   doc.setLineWidth(0.3)
   doc.line(margin, sepY, W - margin, sepY)
@@ -198,6 +213,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   const cursoLines = doc.splitTextToSize(cursoTitulo, W - margin * 2 - 60)
+
   doc.text(cursoLines, cx, y, { align: 'center' })
   y += cursoLines.length * 8 + 6
 
@@ -205,16 +221,19 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   const fechaInicioTxt = formatDateLong(fechaInicioVal)
   const fechaFinTxt    = formatDateLong(fechaFinVal)
   const descripcion = `Emitido por el ${nombreInstitucion}, con una duración de ${cursoDuracion || '---'}, realizado desde el ${fechaInicioTxt} hasta el ${fechaFinTxt}.`
+
   doc.setFontSize(10.6)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   const descLines = doc.splitTextToSize(descripcion, W - margin * 2 - 50)
+
   doc.text(descLines, cx, y, { align: 'center' })
   y += descLines.length * 5.8 + 4
 
   // "Por cuanto..."
   const porcuanto = 'Por cuanto: Para que conste y sea reconocido, se otorga el presente certificado en calidad de:'
   const porcuantoLines = doc.splitTextToSize(porcuanto, W - margin * 2 - 50)
+
   doc.text(porcuantoLines, cx, y, { align: 'center' })
   y += porcuantoLines.length * 5.8 + 5
 
@@ -224,6 +243,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
   doc.text('APROBADO', cx, y, { align: 'center' })
   const aprobadoW = doc.getTextWidth('APROBADO')
+
   doc.setDrawColor(TEAL.r, TEAL.g, TEAL.b)
   doc.setLineWidth(0.4)
   doc.line(cx - aprobadoW / 2 - 12, y - 1.5, cx - aprobadoW / 2 - 2, y - 1.5)
@@ -234,6 +254,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   const fechaFirmadaTxt = new Date(fechaEmisionVal).toLocaleDateString('es-PE', {
     day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'
   })
+
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
@@ -268,6 +289,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
 
   // ── "CERTIFICADO" título superior izquierda (verde claro, 28pt) ──────
   const p2TitleY = BAR_H + 11
+
   doc.setFontSize(28)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(GREEN.r, GREEN.g, GREEN.b)
@@ -280,14 +302,19 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   // Calcular nota final igual que en otros generadores
   const promedios = Object.values(notasPorModulo).map(e => {
     const raw = e.puntaje / e.count
-    return raw > 20 ? raw / 5 : raw
+
+    
+return raw > 20 ? raw / 5 : raw
   })
+
   const notaFinalCalc =
     promedios.length > 0
       ? promedios.reduce((a, b) => a + b, 0) / promedios.length
       : (() => {
           const raw = notaInscripcion ?? null
-          return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
+
+          
+return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
         })()
 
   const infoLines: Array<{ label: string; value: string }> = [
@@ -299,17 +326,20 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   ]
 
   const infoBlockW = W - margin * 2 - qrSize - 14
+
   doc.setFontSize(8)
 
   for (const { label, value } of infoLines) {
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(DARK.r, DARK.g, DARK.b)
     const labelW = doc.getTextWidth(label)
+
     doc.text(label, infoX, infoY)
 
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
     const valueLines = doc.splitTextToSize(value, infoBlockW - labelW - 2)
+
     doc.text(valueLines, infoX + labelW + 2, infoY)
     infoY += valueLines.length * 5 + 1
   }
@@ -318,6 +348,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   const qr2Size = 28
   const qr2X = W - margin - qr2Size
   const qr2Y = BAR_H + 5
+
   doc.setFillColor(255, 255, 255)
   doc.roundedRect(qr2X - 2, qr2Y - 2, qr2Size + 4, qr2Size + 4, 1.5, 1.5, 'F')
   doc.addImage(qrDataUrl, 'PNG', qr2X, qr2Y, qr2Size, qr2Size)
@@ -329,6 +360,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
 
   // ── Separador horizontal ──────────────────────────────────────────────
   const lessonStartY = Math.max(infoY, qr2Y + qr2Size + 10) + 4
+
   doc.setDrawColor(LGRAY.r, LGRAY.g, LGRAY.b)
   doc.setLineWidth(0.3)
   doc.line(margin, lessonStartY - 2, W - margin, lessonStartY - 2)
@@ -345,19 +377,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
 
   const bottomLimit = H - footerReserve
 
-  // Pre-calcular altura de cada lección
-  const calcLecHeight = (leccion: (typeof allLecciones)[number]): number => {
-    const bullets = extractBullets(leccion.contenido)
-    // Línea de número + título
-    const titleLines = doc.splitTextToSize(leccion.titulo.toUpperCase(), colW - 20)
-    let h = 5 + titleLines.length * 4  // número + título
-    for (const b of bullets) {
-      const bLines = doc.splitTextToSize(`• ${b}`, colW - 8)
-      h += bLines.length * 3.8
-    }
-    h += 5 // espaciado inferior
-    return h
-  }
+
 
   // Dividir en dos columnas balanceadas
   const half = Math.ceil(allLecciones.length / 2)
@@ -366,10 +386,12 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
 
   // Índice global para número de lección
   const globalIndex: Map<string, number> = new Map()
+
   allLecciones.forEach((l, i) => globalIndex.set(l.id, i + 1))
 
   const renderLecciones = (list: typeof allLecciones, startX: number, startY: number) => {
     let cy = startY
+
     for (const lec of list) {
       const bullets = extractBullets(lec.contenido)
       const num = globalIndex.get(lec.id) ?? 0
@@ -384,6 +406,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
 
       // Título en negrita oscuro
       const titleLines = doc.splitTextToSize(lec.titulo.toUpperCase(), colW - 6)
+
       doc.setFontSize(7.5)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(DARK.r, DARK.g, DARK.b)
@@ -394,8 +417,10 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
       doc.setFontSize(7)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+
       for (const bullet of bullets) {
         const bLines = doc.splitTextToSize(`• ${bullet}`, colW - 6)
+
         if (cy + bLines.length * 3.8 > bottomLimit) break
         doc.text(bLines, startX, cy)
         cy += bLines.length * 3.8
@@ -427,6 +452,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   const logoDims: Array<{ w: number; h: number }> = await Promise.all(
     footerLogos.map(({ buf }) => resolveLogoDimensions(buf, 40, logoFooterH))
   )
+
   const totalLogosW = logoDims.reduce((s, d) => s + d.w, 0) + logoGap * (footerLogos.length - 1)
   let lx = (W - totalLogosW) / 2
 
@@ -434,14 +460,17 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
     const { comp } = footerLogos[i]
     const { w, h } = logoDims[i]
     const ly = footerY + (logoFooterH - h) / 2
+
     try {
       if (i === 0 && base64Logo) {
         const ext = logoUrl.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'PNG'
+
         doc.addImage(base64Logo, ext, lx, ly, w, h, `FOOT_LOGO_${i}`)
       } else {
         doc.addImage(comp.buffer, comp.jsPdfFormat, lx, ly, w, h, `FOOT_LOGO_${i}`)
       }
     } catch { /* skip */ }
+
     lx += w + logoGap
   }
 

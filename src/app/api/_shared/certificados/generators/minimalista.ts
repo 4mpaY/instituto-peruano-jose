@@ -7,14 +7,18 @@ import type { GeneratorFn, ModuloData } from './types'
 function extractBullets(html: string | null | undefined): string[] {
   if (!html) return []
   const matches = html.match(/<li[^>]*>([\s\S]*?)<\/li>/gi)
+
   if (!matches) return []
-  return matches.map(m => m.replace(/<[^>]+>/g, '').trim()).filter(Boolean)
+  
+return matches.map(m => m.replace(/<[^>]+>/g, '').trim()).filter(Boolean)
 }
 
 async function loadFontBase64(relativePath: string): Promise<string | null> {
   try {
     const buf = await readFile(join(process.cwd(), 'public', relativePath))
-    return buf.toString('base64')
+
+    
+return buf.toString('base64')
   } catch {
     return null
   }
@@ -34,7 +38,6 @@ export const generarMinimalista: GeneratorFn = async data => {
     cursoTitulo, cursoDuracion,
     fechaEmisionVal, fechaInicioVal, fechaFinVal,
     gerenteGeneral, profesorSnapshot,
-    codigoVerificacion,
     qrDataUrl,
     modulos,
     notasPorModulo, notaInscripcion,
@@ -58,20 +61,25 @@ export const generarMinimalista: GeneratorFn = async data => {
 
   // ── Poppins font registration ────────────────────────────────────────
   let hasPoppins = false
+
   const fontDefs = [
     { file: 'fonts/poppins/Poppins-ExtraLight.ttf', style: 'extralight' },
     { file: 'fonts/poppins/Poppins-Regular.ttf',    style: 'normal'     },
     { file: 'fonts/poppins/Poppins-SemiBold.ttf',   style: 'semibold'   },
     { file: 'fonts/poppins/Poppins-Bold.ttf',        style: 'bold'       },
   ]
+
   try {
     const bases = await Promise.all(fontDefs.map(f => loadFontBase64(f.file)))
+
     if (bases.every(b => b !== null)) {
       for (let i = 0; i < fontDefs.length; i++) {
         const fname = fontDefs[i].file.split('/').pop()!
+
         doc.addFileToVFS(fname, bases[i]!)
         doc.addFont(fname, 'Poppins', fontDefs[i].style)
       }
+
       hasPoppins = true
     }
   } catch { /* fallback to helvetica */ }
@@ -86,11 +94,14 @@ export const generarMinimalista: GeneratorFn = async data => {
   // Renders array of {text, bold?, semibold?} centered at `cx`, wrapping
   // at maxW. Returns total height consumed.
   type Seg = { text: string; bold?: boolean; semibold?: boolean }
+
   const renderMixed = (segs: Seg[], cx: number, y: number, maxW: number, lh: number): number => {
     type Tok = { word: string; style: 'normal' | 'semibold' | 'bold' }
     const tokens: Tok[] = []
+
     for (const seg of segs) {
       const style: Tok['style'] = seg.bold ? 'bold' : seg.semibold ? 'semibold' : 'normal'
+
       for (const p of seg.text.split(/(\s+)/)) if (p) tokens.push({ word: p, style })
     }
 
@@ -98,30 +109,38 @@ export const generarMinimalista: GeneratorFn = async data => {
       if (style === 'bold') setBold()
       else if (style === 'semibold') setSB()
       else setNormal()
-      return doc.getTextWidth(word)
+      
+return doc.getTextWidth(word)
     }
 
     const lines: Tok[][] = []
     let cur: Tok[] = []; let curW = 0
+
     for (const tok of tokens) {
       const isSpace = /^\s+$/.test(tok.word)
+
       if (isSpace && cur.length === 0) continue
       const w = wOf(tok.word, tok.style)
+
       if (!isSpace && curW + w > maxW && cur.length > 0) {
         while (cur.length && /^\s+$/.test(cur[cur.length - 1].word)) cur.pop()
         lines.push(cur); cur = [tok]; curW = w
       } else { cur.push(tok); curW += w }
     }
+
     if (cur.length) {
       while (cur.length && /^\s+$/.test(cur[cur.length - 1].word)) cur.pop()
       lines.push(cur)
     }
 
     let cy = y
+
     for (const line of lines) {
       let lw = 0
+
       for (const t of line) lw += wOf(t.word, t.style)
       let x = cx - lw / 2
+
       for (const t of line) {
         if (t.style === 'bold') setBold()
         else if (t.style === 'semibold') setSB()
@@ -129,9 +148,12 @@ export const generarMinimalista: GeneratorFn = async data => {
         doc.text(t.word, x, cy)
         x += wOf(t.word, t.style)
       }
+
       cy += lh
     }
-    return lines.length * lh
+
+    
+return lines.length * lh
   }
 
   // ── Logos adicionales ────────────────────────────────────────────────
@@ -141,6 +163,7 @@ export const generarMinimalista: GeneratorFn = async data => {
     fetchImageBuffer('/logos/logo3.png'),
     fetchImageBuffer('/logos/logo4.png'),
   ])
+
   const [logo1Comp, logo2Comp, logo3Comp, logo4Comp] = await Promise.all([
     logo1Buf ? compressImageForPdf(logo1Buf, { maxWidth: 300, format: 'png' }) : null,
     logo2Buf ? compressImageForPdf(logo2Buf, { maxWidth: 300, format: 'png' }) : null,
@@ -151,14 +174,19 @@ export const generarMinimalista: GeneratorFn = async data => {
   // ── Nota final ───────────────────────────────────────────────────────
   const promedios = Object.values(notasPorModulo).map(e => {
     const raw = e.puntaje / e.count
-    return raw > 20 ? raw / 5 : raw
+
+    
+return raw > 20 ? raw / 5 : raw
   })
+
   const notaFinalCalc =
     promedios.length > 0
       ? promedios.reduce((a, b) => a + b, 0) / promedios.length
       : (() => {
           const raw = notaInscripcion ?? null
-          return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
+
+          
+return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
         })()
 
   const fechaFirmadaTxt = new Date(fechaEmisionVal).toLocaleDateString('es-PE', {
@@ -180,15 +208,19 @@ export const generarMinimalista: GeneratorFn = async data => {
     if (user?.firma) {
       try {
         const buf = await fetchImageBuffer(user.firma)
+
         if (buf) {
           const { buffer: comp, jsPdfFormat } = await compressImageForPdf(buf, { maxWidth: 300, format: 'png' })
+
           doc.addImage(comp, jsPdfFormat, cx - 18, lineY - 22, 36, 20)
         }
       } catch { /* skip */ }
     }
+
     doc.setDrawColor(DARK.r, DARK.g, DARK.b)
     doc.setLineWidth(0.4)
     doc.line(cx - 40, lineY, cx + 40, lineY)
+
     if (user) {
       doc.setFontSize(9)
       setBold()
@@ -199,6 +231,7 @@ export const generarMinimalista: GeneratorFn = async data => {
       doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
       doc.text(label, cx, lineY + 11, { align: 'center' })
       const instLines = doc.splitTextToSize(nombreInstitucion, 82)
+
       doc.text(instLines, cx, lineY + 16, { align: 'center' })
     } else {
       doc.setFontSize(8)
@@ -206,6 +239,7 @@ export const generarMinimalista: GeneratorFn = async data => {
       doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
       doc.text(label, cx, lineY + 6, { align: 'center' })
       const instLines = doc.splitTextToSize(nombreInstitucion, 82)
+
       doc.text(instLines, cx, lineY + 11, { align: 'center' })
     }
   }
@@ -225,8 +259,10 @@ export const generarMinimalista: GeneratorFn = async data => {
     // Fila 1: logo principal centrado
     if (logoBuffer && base64Logo) {
       const dims = await resolveLogoDimensions(logoBuffer, 60, row1H)
+
       try {
         const ext = logoUrl.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'PNG'
+
         doc.addImage(base64Logo, ext, (W - dims.w) / 2, row1Y + (row1H - dims.h) / 2, dims.w, dims.h, 'MFOOT_MAIN')
       } catch { /* skip */ }
     }
@@ -234,6 +270,7 @@ export const generarMinimalista: GeneratorFn = async data => {
     // Fila 2: logo1 + logo2 + logo3 centrados
     type LogoEntry = { buf: Buffer; comp: { buffer: Buffer; jsPdfFormat: string } }
     const row2Entries: LogoEntry[] = []
+
     if (logo1Buf && logo1Comp) row2Entries.push({ buf: logo1Buf, comp: logo1Comp })
     if (logo2Buf && logo2Comp) row2Entries.push({ buf: logo2Buf, comp: logo2Comp })
     if (logo3Buf && logo3Comp) row2Entries.push({ buf: logo3Buf, comp: logo3Comp })
@@ -243,12 +280,15 @@ export const generarMinimalista: GeneratorFn = async data => {
       const dims2 = await Promise.all(row2Entries.map(({ buf }) => resolveLogoDimensions(buf, 44, row2H)))
       const totalW = dims2.reduce((s, d) => s + d.w, 0) + logoGap * (row2Entries.length - 1)
       let lx = (W - totalW) / 2
+
       for (let i = 0; i < row2Entries.length; i++) {
         const { comp } = row2Entries[i]
         const { w, h } = dims2[i]
+
         try {
           doc.addImage(comp.buffer, comp.jsPdfFormat, lx, row2Y + (row2H - h) / 2, w, h, `MFOOT_R2_${i}`)
         } catch { /* skip */ }
+
         lx += w + logoGap
       }
     }
@@ -259,9 +299,11 @@ export const generarMinimalista: GeneratorFn = async data => {
     doc.setTextColor(DARK.r, DARK.g, DARK.b)
     const valTxt = fechaFirmadaTxt
     const valW   = doc.getTextWidth(valTxt)
+
     setSB()
     const lblTxt = 'Fecha de Emisión: '
     const lblW   = doc.getTextWidth(lblTxt)
+
     doc.text(lblTxt, W - 14 - valW - lblW, textY)
     setNormal()
     doc.text(valTxt, W - 14, textY, { align: 'right' })
@@ -272,7 +314,9 @@ export const generarMinimalista: GeneratorFn = async data => {
     try {
       const { default: sharp } = await import('sharp')
       const buf = Buffer.from(qrDataUrl.split(',')[1], 'base64')
-      return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold(200).png().toBuffer()
+
+      
+return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold(200).png().toBuffer()
     } catch {
       return Buffer.from(qrDataUrl.split(',')[1], 'base64')
     }
@@ -299,9 +343,11 @@ export const generarMinimalista: GeneratorFn = async data => {
   if (base64Logo) {
     try {
       const ext = logoUrl.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'PNG'
+
       doc.addImage(base64Logo, ext, logosStartX, qrMidY - mainDims.h / 2, mainDims.w, mainDims.h, 'LOGO_P1')
     } catch { /* skip */ }
   }
+
   if (logo4Buf && logo4Comp && logo4Dims) {
     try {
       doc.addImage(logo4Comp.buffer, logo4Comp.jsPdfFormat,
@@ -334,13 +380,17 @@ export const generarMinimalista: GeneratorFn = async data => {
 
   const fechaInicioTxt = formatDateLong(fechaInicioVal)
   const fechaFinTxt    = formatDateLong(fechaFinVal)
+
   const descSegs: Seg[] = [
     { text: 'Emitido por el ' },
     { text: `${nombreInstitucion},`, bold: true },
     { text: ` con una duración de ${cursoDuracion || '---'} horas académicas, realizado desde el ${fechaInicioTxt} hasta el ${fechaFinTxt}.` },
   ]
+
   const lineH106 = 5.8
+
   doc.setFontSize(10.6); setNormal()
+
   const descEstH = doc.splitTextToSize(
     descSegs.map(s => s.text).join(''), W - margin * 2 - 40
   ).length * lineH106
@@ -424,6 +474,7 @@ export const generarMinimalista: GeneratorFn = async data => {
   const qr2Size = 28
   const qr2X    = W - p2M - qr2Size
   const qr2Y    = BAR_H + 5
+
   doc.addImage(blackQrBuf, 'PNG', qr2X, qr2Y, qr2Size, qr2Size)
   doc.setFontSize(7.6); setNormal()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
@@ -432,6 +483,7 @@ export const generarMinimalista: GeneratorFn = async data => {
 
   // "CERTIFICADO" — Regular Normal, green, 28pt — baseline ~5mm de gap visual desde barra
   const titleY = BAR_H + 12
+
   doc.setFontSize(28); setNormal()
   doc.setTextColor(GREEN.r, GREEN.g, GREEN.b)
   doc.text('CERTIFICADO', p2M, titleY)
@@ -454,20 +506,24 @@ export const generarMinimalista: GeneratorFn = async data => {
   ]
 
   doc.setFontSize(8)
+
   for (const { label, value } of infoRows) {
     setSB()
     doc.setTextColor(DARK.r, DARK.g, DARK.b)
     const lw = doc.getTextWidth(label)
+
     doc.text(label, p2M, infoY)
     setNormal()
     doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
     const vLines = doc.splitTextToSize(value, infoBlockW - lw - 2)
+
     doc.text(vLines, p2M + lw + 2, infoY)
     infoY += vLines.length * 5 + 1
   }
 
   // Separador
   const sepY = Math.max(infoY, qr2Y + qr2Size + 8) + 3
+
   doc.setDrawColor(LGRAY.r, LGRAY.g, LGRAY.b)
   doc.setLineWidth(0.3)
   doc.line(p2M, sepY - 2, W - p2M, sepY - 2)
@@ -482,6 +538,7 @@ export const generarMinimalista: GeneratorFn = async data => {
   const colRight = p2M + colW + 10
 
   const globalIndex = new Map<string, number>()
+
   allLecciones.forEach((l, i) => globalIndex.set(l.id, i + 1))
 
   const half      = Math.ceil(allLecciones.length / 2)
@@ -490,6 +547,7 @@ export const generarMinimalista: GeneratorFn = async data => {
 
   const renderLecciones = (list: typeof allLecciones, startX: number, startY: number) => {
     let cy = startY
+
     for (const lec of list) {
       const bullets  = extractBullets(lec.contenido)
       const num      = globalIndex.get(lec.id) ?? 0
@@ -503,6 +561,7 @@ export const generarMinimalista: GeneratorFn = async data => {
 
       // Título — Bold, dark
       const titleLines = doc.splitTextToSize(lec.titulo.toUpperCase(), colW)
+
       doc.setFontSize(7.5); setBold()
       doc.setTextColor(DARK.r, DARK.g, DARK.b)
       doc.text(titleLines, startX, cy)
@@ -511,12 +570,15 @@ export const generarMinimalista: GeneratorFn = async data => {
       // Bullets — Regular Normal, gray
       doc.setFontSize(7); setNormal()
       doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+
       for (const bullet of bullets) {
         const bLines = doc.splitTextToSize(`• ${bullet}`, colW)
+
         if (cy + bLines.length * 3.8 > bottomLimit) break
         doc.text(bLines, startX, cy)
         cy += bLines.length * 3.8
       }
+
       cy += 4
       if (cy > bottomLimit) break
     }

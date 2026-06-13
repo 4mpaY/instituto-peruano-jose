@@ -111,7 +111,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
 
     const handleLessonSelect = (lessonId: string) => {
         setCurrentLessonId(lessonId)
-        if (isMobile) setActiveTab(0)
+        if (isMobile) setActiveTab(TAB('Temario'))
     }
 
     const handleLessonComplete = async (lessonId: string, completed: boolean = true) => {
@@ -186,7 +186,11 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
         }
     }
 
-    const TABS = ['Sobre el curso', 'Evaluaciones', 'Materiales', 'Certificación', 'Comentarios', ...(isMobile ? ['Temario'] : [])]
+    const TABS = isMobile
+        ? ['Temario', 'Sobre el curso', 'Evaluaciones', 'Materiales', 'Certificación', 'Comentarios']
+        : ['Sobre el curso', 'Evaluaciones', 'Materiales', 'Certificación', 'Comentarios']
+
+    const TAB = (label: string) => TABS.indexOf(label)
 
     const renderMainContent = () => {
         if (currentView === 'exam' && currentExamenId) {
@@ -477,8 +481,15 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                 {/* ── Tab content ── */}
                 <Grid item xs={12} sx={{ pt: 2, pb: { xs: 10, md: 4 }, px: { xs: 1, sm: 0 } }}>
 
+                    {/* Temario (mobile, primer tab) */}
+                    {activeTab === TAB('Temario') && TAB('Temario') !== -1 && (
+                        <Box sx={{ mt: 0 }}>
+                            <CourseContentSidebar onLessonSelect={handleLessonSelect} />
+                        </Box>
+                    )}
+
                     {/* Sobre el curso */}
-                    {activeTab === 0 && (
+                    {activeTab === TAB('Sobre el curso') && (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                             {(course as any).descripcion && (
                                 <Box>
@@ -528,7 +539,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                     )}
 
                     {/* Evaluaciones */}
-                    {activeTab === 1 && (() => {
+                    {activeTab === TAB('Evaluaciones') && (() => {
                         const allExams = storeCourse?.examenes || []
 
                         if (allExams.length === 0) {
@@ -703,7 +714,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                     })()}
 
                     {/* Materiales */}
-                    {activeTab === 2 && (() => {
+                    {activeTab === TAB('Materiales') && (() => {
                         const modulosConRecursos = (storeCourse?.modulos || []).map(mod => ({
                             ...mod,
                             lecciones: mod.lecciones.filter((l: any) => l.recursos && l.recursos.length > 0)
@@ -753,7 +764,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                     })()}
 
                     {/* Certificación */}
-                    {activeTab === 3 && storeCourse && (
+                    {activeTab === TAB('Certificación') && storeCourse && (
                         <CertificateSection
                             cursoId={storeCourse.id}
                             completarAutomatico={(course as any).completar_automatico ?? false}
@@ -766,18 +777,12 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                     )}
 
                     {/* Comentarios */}
-                    {activeTab === 4 && currentLesson && (
+                    {activeTab === TAB('Comentarios') && currentLesson && (
                         <Box>
                             <CommentsSection leccionId={currentLesson.id} />
                         </Box>
                     )}
 
-                    {/* Temario (mobile only) */}
-                    {isMobile && activeTab === 5 && (
-                        <Box sx={{ mt: 0 }}>
-                            <CourseContentSidebar onLessonSelect={handleLessonSelect} />
-                        </Box>
-                    )}
                 </Grid>
             </>
         )
@@ -807,8 +812,11 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    px: { xs: 2, sm: 4, lg: 18 },
-                    py: { xs: 2, md: 3 }
+                    px: { xs: 2, sm: 4, md: 5 },
+                    py: { xs: 2, md: 3 },
+                    maxWidth: { lg: 920 },
+                    mx: 'auto',
+                    width: '100%',
                 }}>
                     <Typography
                         variant="h4"
@@ -902,7 +910,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                     overflowX: 'hidden',
                     transition: 'all 0.3s',
                 }}>
-                    <Box sx={{ px: { xs: 2, sm: 4, md: 5 }, pt: { xs: 2, md: 3 }, pb: 4 }}>
+                    <Box sx={{ px: { xs: 2, sm: 4, md: 5 }, pt: { xs: 2, md: 3 }, pb: 4, maxWidth: { lg: 920 }, mx: 'auto', width: '100%' }}>
                         <Grid container spacing={0}>
                             {renderMainContent()}
                         </Grid>

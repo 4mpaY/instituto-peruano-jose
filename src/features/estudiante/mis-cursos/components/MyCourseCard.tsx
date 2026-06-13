@@ -186,7 +186,7 @@ const MyCourseCard = ({
             fullWidth
             variant="contained"
             disabled={!tieneAcceso}
-            onClick={e => e.stopPropagation()}
+            onClick={e => { e.stopPropagation(); handleClick() }}
             sx={{
               borderRadius: '12px',
               textTransform: 'none',

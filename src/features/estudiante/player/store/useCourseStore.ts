@@ -87,11 +87,16 @@ export const useCourseStore = create<CourseState>((set) => ({
             const completed = allLessons.filter(l => l.completada).length
             const percentage = allLessons.length > 0 ? Math.round((completed / allLessons.length) * 100) : 0
 
+            // Resume desde la primera lección incompleta; si todas están completas, ir a la última
+            const firstIncomplete = allLessons.find(l => !l.completada)
+            const resumeLessonId = firstIncomplete?.id ?? allLessons[allLessons.length - 1]?.id
+
             return {
                 course,
                 progressPercentage: percentage,
-                currentLessonId: state.currentLessonId || course.modulos[0]?.lecciones[0]?.id,
-                examStatus: percentage >= 100 ? 'available' : 'locked'
+                currentLessonId: resumeLessonId,
+                examStatus: percentage >= 100 ? 'available' : 'locked',
+                currentView: 'lesson',
             }
         })
     },

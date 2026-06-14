@@ -60,8 +60,8 @@ export default withAuth(
     }
 
     // Rutas de estudiante - solo ESTUDIANTE o ADMIN (y PROFESOR para ver el reproductor)
-    if (path.startsWith('/estudiante') && rol !== Rol.ADMIN && rol !== Rol.ESTUDIANTE) {
-      // Excepción: Los profesores pueden acceder al reproductor para ver su curso
+    // /estudiante/aprender/ es manejado por la page.tsx (redirige al curso si no hay sesión)
+    if (path.startsWith('/estudiante') && !path.startsWith('/estudiante/aprender/') && rol !== Rol.ADMIN && rol !== Rol.ESTUDIANTE) {
       if (rol === Rol.PROFESOR && path.startsWith('/estudiante/aprender')) {
         // Permitido
       } else {
@@ -99,6 +99,7 @@ export default withAuth(
           path.startsWith('/assets') ||
           path.startsWith('/empresas') ||
           path.startsWith('/politica-de-devoluciones') ||
+          path.startsWith('/estudiante/aprender/') ||
           path === '/'
         ) {
           return true

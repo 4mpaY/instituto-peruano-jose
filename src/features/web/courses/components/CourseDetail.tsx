@@ -1,15 +1,16 @@
 'use client'
 
-import { Fragment, useState } from 'react'
+import { Fragment, useState, useEffect } from 'react'
 
 import Link from 'next/link'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
+  Alert,
   Avatar,
   Box,
   Button,
@@ -98,7 +99,17 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
   const [enrolling, setEnrolling] = useState(false)
   const { data: session } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { openLogin } = useAuthModal()
+
+  const sinAcceso = searchParams.get('sin-acceso') === '1'
+
+  useEffect(() => {
+    if (searchParams.get('login') === '1' && !session) {
+      openLogin(`/estudiante/aprender/${course.slug}`)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleFreeEnroll = async () => {
     if (!session) {
@@ -222,6 +233,17 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
 
   return (
     <Box sx={{ pb: 10, bgcolor: '#f8fafc' }}>
+
+      {/* ─── AVISO SIN ACCESO ─────────────────────────────────────────────── */}
+      {sinAcceso && (
+        <Alert
+          severity="warning"
+          icon={<i className="tabler-lock" style={{ fontSize: '1.2rem' }} />}
+          sx={{ borderRadius: 0, fontWeight: 600, justifyContent: 'center', fontSize: '0.95rem' }}
+        >
+          No tienes acceso a este curso. Adquiérelo para continuar aprendiendo.
+        </Alert>
+      )}
 
       {/* ─── HERO ──────────────────────────────────────────────────────────── */}
       <Box sx={{

@@ -812,11 +812,8 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    px: { xs: 2, sm: 4, md: 5 },
+                    px: { xs: 2, sm: 4, lg: 8 },
                     py: { xs: 2, md: 3 },
-                    maxWidth: { lg: 920 },
-                    mx: 'auto',
-                    width: '100%',
                 }}>
                     <Typography
                         variant="h4"
@@ -910,7 +907,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                     overflowX: 'hidden',
                     transition: 'all 0.3s',
                 }}>
-                    <Box sx={{ px: { xs: 2, sm: 4, md: 5 }, pt: { xs: 2, md: 3 }, pb: 4, maxWidth: { lg: 920 }, mx: 'auto', width: '100%' }}>
+                    <Box sx={{ px: { xs: 2, sm: 4, lg: 8 }, pt: { xs: 2, md: 3 }, pb: 4 }}>
                         <Grid container spacing={0}>
                             {renderMainContent()}
                         </Grid>

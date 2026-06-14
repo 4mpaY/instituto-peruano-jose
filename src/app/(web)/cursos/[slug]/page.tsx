@@ -1,5 +1,5 @@
 // Next Imports
-import React from 'react'
+import React, { Suspense } from 'react'
 
 import { notFound } from 'next/navigation'
 
@@ -62,7 +62,9 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
     return (
         <Box sx={{ flexGrow: 1, bgcolor: 'background.default' }}>
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(courseJsonLd) }} />
-            <CourseDetail course={course} />
+            <Suspense fallback={null}>
+                <CourseDetail course={course} />
+            </Suspense>
         </Box>
     )
 }

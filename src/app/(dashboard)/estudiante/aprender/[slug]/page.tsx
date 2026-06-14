@@ -8,7 +8,7 @@ export default async function LearningPage({ params }: { params: { slug: string 
   const session = await getAuthSession()
 
   if (!session) {
-    redirect('/login')
+    redirect(`/cursos/${params.slug}?login=1`)
   }
 
   const token = session.user?.accessToken ?? null
@@ -27,7 +27,7 @@ export default async function LearningPage({ params }: { params: { slug: string 
     const code = err?.code || err?.error
 
     if (code === 'UNCISCRIBED') {
-      redirect(`/cursos/${params.slug}`)
+      redirect(`/cursos/${params.slug}?sin-acceso=1`)
     }
 
     notFound()

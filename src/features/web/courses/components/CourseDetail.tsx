@@ -105,8 +105,12 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
   const sinAcceso = searchParams.get('sin-acceso') === '1'
 
   useEffect(() => {
-    if (searchParams.get('login') === '1' && !session) {
-      openLogin(`/estudiante/aprender/${course.slug}`)
+    const callbackUrl = searchParams.get('callbackUrl') || searchParams.get('login') === '1'
+      ? `/estudiante/aprender/${course.slug}`
+      : null
+
+    if ((searchParams.get('login') === '1' || searchParams.get('callbackUrl')) && !session) {
+      openLogin(callbackUrl ?? undefined)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

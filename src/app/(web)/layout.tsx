@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 
 import { unstable_cache } from 'next/cache'
 
@@ -9,6 +9,7 @@ import WebFooter from '@/utils/components/layout/web/WebFooter'
 import WebHeader from '@/utils/components/layout/web/WebHeader'
 import LeftSidebar from '@/utils/components/layout/web/LeftSidebar'
 import MobileBottomNav from '@/utils/components/layout/web/MobileBottomNav'
+import LoginRedirectHandler from '@/utils/components/layout/web/LoginRedirectHandler'
 
 const getCategorias = unstable_cache(
   () =>
@@ -31,6 +32,9 @@ const WebLayout = async ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthModalProvider>
+      <Suspense fallback={null}>
+        <LoginRedirectHandler />
+      </Suspense>
       <div className="web-layout min-h-screen bg-background flex flex-col">
         <WebHeader initialCategories={categories} platformName={platformName} platformSlogan={platformSlogan} />
         <div className="flex flex-1" style={{ paddingTop: 'var(--navbar-height)' }}>

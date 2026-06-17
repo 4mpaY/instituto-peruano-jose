@@ -324,7 +324,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                 {/* ── Video player / Exam area ── */}
                 <Grid item xs={12} key={currentView === 'exam' ? `exam-${currentExamenId}` : `video-${currentLesson?.id || 'none'}`}>
                     {currentView === 'exam' && currentExamenId ? (
-                        /* aspect-ratio box */
+
                         <Box sx={{
                             position: 'relative',
                             paddingTop: '56.25%',

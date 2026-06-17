@@ -193,19 +193,6 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
     const TAB = (label: string) => TABS.indexOf(label)
 
     const renderMainContent = () => {
-        if (currentView === 'exam' && currentExamenId) {
-            return (
-                <Grid item xs={12} key="exam-section">
-                    <ExamSection
-                        examenId={currentExamenId}
-                        onExamPassed={handleExamPassed}
-                        isFinalExam={currentExamenId === examenId}
-                        onContinue={handleContinueAfterExam}
-                    />
-                </Grid>
-            )
-        }
-
         if (currentView === 'completion' && storeCourse) {
             return (
                 <Grid item xs={12} key="completion-section">
@@ -233,7 +220,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
         return (
             <>
                 {/* ── Lesson info row ── */}
-                {currentLesson && (
+                {currentView === 'lesson' && currentLesson && (
                     <Grid item xs={12}>
                         <Box sx={{
                             display: 'flex',
@@ -308,7 +295,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                 )}
 
                 {/* ── Material de clase ── */}
-                {currentLesson?.recursos && currentLesson.recursos.length > 0 && currentLesson.recursos[0]?.url && (
+                {currentView === 'lesson' && currentLesson?.recursos && currentLesson.recursos.length > 0 && currentLesson.recursos[0]?.url && (
                     <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center', my: 1 }}>
                         <Button
                             variant="contained"
@@ -334,33 +321,67 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                     </Grid>
                 )}
 
-                {/* ── Video player ── */}
-                <Grid item xs={12} key={`video-${currentLesson?.id || 'none'}`}>
-                    <Box sx={{
-                        borderRadius: '16px',
-                        overflow: 'hidden',
-                        bgcolor: '#0A0A0A',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-                        position: { xs: 'sticky', md: 'relative' },
-                        top: 0,
-                        zIndex: 6,
-                    }}>
-                        {currentLesson?.es_en_vivo ? (
-                            <LiveLessonPlaceholder
-                                titulo={currentLesson.titulo}
-                                esEnVivo={true}
-                                fechaProgramada={currentLesson.fecha_programada}
-                                fechaFin={currentLesson.fecha_fin}
-                                enlaceReunion={currentLesson.enlace_reunion}
-                            />
-                        ) : (
-                            <VideoPlayer url={currentLesson?.video_url || undefined} tipo="VIDEO" onEnded={handleVideoEnded} />
-                        )}
-                    </Box>
+                {/* ── Video player / Exam area ── */}
+                <Grid item xs={12} key={currentView === 'exam' ? `exam-${currentExamenId}` : `video-${currentLesson?.id || 'none'}`}>
+                    {currentView === 'exam' && currentExamenId ? (
+                        /* aspect-ratio box */
+                        <Box sx={{
+                            position: 'relative',
+                            paddingTop: '56.25%',
+                            borderRadius: '16px',
+                            border: '1.5px solid',
+                            borderColor: 'divider',
+                            overflow: 'hidden',
+                        }}>
+                            {/* scroll container */}
+                            <Box sx={{
+                                position: 'absolute',
+                                inset: 0,
+                                overflowY: 'auto',
+                            }}>
+                                {/* growth box: fills container for small content, grows for large content */}
+                                <Box sx={{
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    '& > *': { flex: '1 0 auto' },
+                                }}>
+                                    <ExamSection
+                                        examenId={currentExamenId}
+                                        onExamPassed={handleExamPassed}
+                                        isFinalExam={currentExamenId === examenId}
+                                        onContinue={handleContinueAfterExam}
+                                    />
+                                </Box>
+                            </Box>
+                        </Box>
+                    ) : (
+                        <Box sx={{
+                            borderRadius: '16px',
+                            overflow: 'hidden',
+                            bgcolor: '#0A0A0A',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                            position: { xs: 'sticky', md: 'relative' },
+                            top: 0,
+                            zIndex: 6,
+                        }}>
+                            {currentLesson?.es_en_vivo ? (
+                                <LiveLessonPlaceholder
+                                    titulo={currentLesson.titulo}
+                                    esEnVivo={true}
+                                    fechaProgramada={currentLesson.fecha_programada}
+                                    fechaFin={currentLesson.fecha_fin}
+                                    enlaceReunion={currentLesson.enlace_reunion}
+                                />
+                            ) : (
+                                <VideoPlayer url={currentLesson?.video_url || undefined} tipo="VIDEO" onEnded={handleVideoEnded} />
+                            )}
+                        </Box>
+                    )}
                 </Grid>
 
                 {/* ── Navigation bar ── */}
-                <Grid item xs={12}>
+                {currentView === 'lesson' && <Grid item xs={12}>
                     <Box sx={{
                         display: 'flex',
                         alignItems: 'center',
@@ -449,7 +470,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                             </span>
                         </Tooltip>
                     </Box>
-                </Grid>
+                </Grid>}
 
                 {/* ── Tabs ── */}
                 <Grid item xs={12} sx={{ position: { xs: 'sticky', md: 'relative' }, top: { xs: 'calc((100vw * 9)/16)', md: 0 }, zIndex: 5, bgcolor: 'background.paper' }}>

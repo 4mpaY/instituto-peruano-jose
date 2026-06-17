@@ -116,8 +116,8 @@ interface StateCardProps {
 }
 
 const StateCard = ({ icon, iconColor, bgColor, borderColor, title, subtitle, children }: StateCardProps) => (
-    <Card variant="outlined" sx={{ borderRadius: '16px', overflow: 'hidden', borderColor }}>
-        <Box sx={{ p: 5, bgcolor: bgColor, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <Card variant="outlined" sx={{ borderRadius: '16px', overflow: 'hidden', borderColor, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ p: 5, bgcolor: bgColor, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, justifyContent: 'center' }}>
             <Box sx={{
                 width: 72, height: 72, borderRadius: '50%',
                 bgcolor: `${iconColor}20`,

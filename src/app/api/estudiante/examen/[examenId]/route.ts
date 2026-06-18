@@ -57,7 +57,7 @@ export async function GET(request: Request, { params }: { params: { examenId: st
     const examenExpirado = !!(fechaFin && ahora > fechaFin)
 
     if ((examen as any).fecha_inicio && ahora < (examen as any).fecha_inicio) {
-      const fechaStr = (examen as any).fecha_inicio.toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Lima' })
+      const fechaStr = (examen as any).fecha_inicio.toLocaleString('es-PE', { day: '2-digit', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Lima' })
 
       return ApiResponse.error(request, `Este examen estará disponible desde el ${fechaStr}`, 403)
     }

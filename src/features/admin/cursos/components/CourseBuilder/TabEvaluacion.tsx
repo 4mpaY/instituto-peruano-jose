@@ -239,8 +239,8 @@ export function TabEvaluacion({ cursoId }: TabEvaluacionProps) {
                     </Typography>
                 </Paper>
             ) : (
-                <TableContainer component={Paper}>
-                    <Table size='small'>
+                <TableContainer component={Paper} sx={{ maxHeight: '62vh', overflow: 'auto' }}>
+                    <Table size='small' stickyHeader>
                         <TableHead>
                             <TableRow sx={{ bgcolor: 'action.hover' }}>
                                 <TableCell>Módulo</TableCell>

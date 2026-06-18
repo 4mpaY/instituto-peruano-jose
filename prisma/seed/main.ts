@@ -339,6 +339,63 @@ async function main() {
 
   console.log('✅ Cupones creados')
 
+  // ─── 50 INSCRITOS EN MARKETING DIGITAL ───────────────────────────────────────
+
+  const cursoMarketing = await prisma.curso.findUnique({
+    where: { slug: 'marketing-digital-redes-sociales' }
+  })
+
+  if (cursoMarketing) {
+    const nombres = ['Carlos', 'Ana', 'Luis', 'Rosa', 'Miguel', 'Lucía', 'Jorge', 'Carmen', 'Pedro', 'Elena',
+      'Ricardo', 'Sofía', 'Alberto', 'Patricia', 'Fernando', 'Valeria', 'Alejandro', 'Diana', 'Manuel', 'Claudia',
+      'Sergio', 'Monica', 'Daniel', 'Andrea', 'Eduardo', 'Natalia', 'Oscar', 'Gabriela', 'Raúl', 'Verónica',
+      'Antonio', 'Isabel', 'Javier', 'Lorena', 'Roberto', 'Paola', 'Enrique', 'Cecilia', 'Víctor', 'Mariela',
+      'Héctor', 'Sandra', 'Pablo', 'Roxana', 'Marcos', 'Silvia', 'Gonzalo', 'Vanessa', 'Rodrigo', 'Fernanda']
+
+    const apellidos = ['García', 'Rodríguez', 'López', 'Martínez', 'González', 'Pérez', 'Sánchez', 'Ramírez',
+      'Torres', 'Flores', 'Rivera', 'Gómez', 'Díaz', 'Cruz', 'Herrera', 'Morales', 'Vargas', 'Castillo',
+      'Reyes', 'Gutiérrez', 'Mendoza', 'Quispe', 'Huanca', 'Mamani', 'Ccopa', 'Condori', 'Apaza', 'Calisaya',
+      'Chávez', 'Vásquez', 'Ramos', 'Paredes', 'Salinas', 'Campos', 'Rojas', 'Medina', 'Ortiz', 'Delgado',
+      'Pizarro', 'Alvarado', 'Meza', 'Cárdenas', 'Aguilar', 'Espinoza', 'Lozano', 'Coronel', 'Bravo', 'Guerrero',
+      'Ibáñez', 'Fuentes']
+
+    const estudiantePassword = await bcrypt.hash('Alumno123!', 10)
+
+    for (let i = 0; i < 50; i++) {
+      const correo = `estudiante${i + 1}@gmail.com`
+      const nombre = nombres[i]
+      const apellido = apellidos[i]
+
+      const estudiante = await prisma.usuario.upsert({
+        where: { correo },
+        update: {},
+        create: {
+          correo,
+          contrasena: estudiantePassword,
+          nombre,
+          apellido,
+          numero_documento: `1000000${String(i + 10).padStart(2, '0')}`,
+          celular: `9${String(10000000 + i).padStart(8, '0')}`,
+          rol: Rol.ESTUDIANTE,
+          esta_activo: true
+        }
+      })
+
+      await prisma.inscripcion.upsert({
+        where: { usuario_id_curso_id: { usuario_id: estudiante.id, curso_id: cursoMarketing.id } },
+        update: {},
+        create: {
+          usuario_id: estudiante.id,
+          curso_id: cursoMarketing.id,
+          estado: 'ACTIVO',
+          inscrito_en: new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000)
+        }
+      })
+    }
+
+    console.log('✅ 50 inscritos creados en Marketing Digital')
+  }
+
   // ─── RESUMEN ─────────────────────────────────────────────────────────────────
 
   console.log('')

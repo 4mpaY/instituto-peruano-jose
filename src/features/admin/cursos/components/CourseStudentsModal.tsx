@@ -207,8 +207,8 @@ export default function CourseStudentsModal({
             <CircularProgress />
           </Box>
         ) : (
-          <TableContainer component={Paper} variant='outlined'>
-            <Table size='small'>
+          <TableContainer component={Paper} variant='outlined' sx={{ maxHeight: '62vh', overflow: 'auto' }}>
+            <Table size='small' stickyHeader>
               <TableHead>
                 <TableRow>
                   <TableCell>F. Inscripción</TableCell>

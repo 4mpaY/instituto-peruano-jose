@@ -469,6 +469,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     return (
         <Wrapper>
             {el.isEligible ? (
+
                 /* Elegible */
                 <Box sx={{ textAlign: 'center' }}>
                     <Box sx={{
@@ -508,6 +509,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                     )}
                 </Box>
             ) : (
+
                 /* No elegible → mostrar progreso */
                 <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>

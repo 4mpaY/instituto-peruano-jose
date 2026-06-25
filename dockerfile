@@ -62,7 +62,7 @@ ARG NEXT_PUBLIC_PAYPAL_CLIENT_ID
 ENV NEXT_PUBLIC_PAYPAL_CLIENT_ID=$NEXT_PUBLIC_PAYPAL_CLIENT_ID
 
 # Generar el cliente de Prisma para producción
-RUN pnpm run db:client:generate
+RUN pnpm run db:generate
 
 # Compilar Next.js (esto generará .next/standalone si next.config.js está bien configurado)
 RUN pnpm run build

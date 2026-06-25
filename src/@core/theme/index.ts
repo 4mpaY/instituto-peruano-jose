@@ -1,6 +1,3 @@
-// Next Imports
-import { Plus_Jakarta_Sans } from 'next/font/google'
-
 // MUI Imports
 import type { Theme } from '@mui/material/styles'
 
@@ -16,11 +13,12 @@ import shadows from './shadows'
 import customShadows from './customShadows'
 import typography from './typography'
 
-export const plus_jakarta_sans = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700', '800'],
-  variable: '--font-plus-jakarta-sans'
-})
+// Font loaded via CSS @import in globals.css (no build-time network request)
+export const plus_jakarta_sans = {
+  variable: '--font-plus-jakarta-sans',
+  className: 'font-plus-jakarta-sans',
+  style: { fontFamily: "'Plus Jakarta Sans', sans-serif" }
+}
 
 const theme = (settings: Settings, mode: SystemMode, direction: Theme['direction']): Theme => {
   return {

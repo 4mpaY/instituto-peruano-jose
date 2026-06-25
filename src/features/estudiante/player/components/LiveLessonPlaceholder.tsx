@@ -184,7 +184,6 @@ function JoinButton({
   enlaceReunion,
   isLive,
   isEnded,
-  platform,
   info,
 }: {
   enlaceReunion: string

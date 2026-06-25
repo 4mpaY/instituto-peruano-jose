@@ -296,7 +296,7 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
             <Grid item xs={12}>
                 <Typography variant='h6' sx={{ mb: 1 }}>Asesor Académico (WhatsApp)</Typography>
                 <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
-                    Número de WhatsApp al que se redirigirá al estudiante al presionar "Contactar al asesor académico".
+                    Número de WhatsApp al que se redirigirá al estudiante al presionar &quot;Contactar al asesor académico&quot;.
                     Ingresa solo dígitos incluyendo el código de país (ej: <strong>51959436827</strong>).
                     Si se deja vacío, se usará el celular del profesor.
                 </Typography>

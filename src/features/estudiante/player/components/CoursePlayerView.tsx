@@ -35,7 +35,7 @@ interface CoursePlayerViewProps {
     initialExamenId?: string
 }
 
-const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialLessonId, initialExamenId }: CoursePlayerViewProps) => {
+const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialLessonId }: CoursePlayerViewProps) => {
     const theme = useTheme()
     const isMobile = useMediaQuery(theme.breakpoints.down('lg'))
     const [sidebarOpen, setSidebarOpen] = useState(!isMobile)
@@ -391,7 +391,8 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                 </Grid>
 
                 {/* ── Navigation bar ── */}
-                {currentView === 'lesson' && <Grid item xs={12}>
+                {currentView === 'lesson' && (
+                    <Grid item xs={12}>
                     <Box sx={{
                         display: 'flex',
                         alignItems: 'center',
@@ -480,7 +481,8 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                             </span>
                         </Tooltip>
                     </Box>
-                </Grid>}
+                    </Grid>
+                )}
 
                 {/* ── Tabs ── */}
                 <Grid item xs={12} sx={{ position: { xs: 'sticky', md: 'relative' }, top: { xs: 'calc((100vw * 9)/16)', md: 0 }, zIndex: 5, bgcolor: 'background.paper' }}>

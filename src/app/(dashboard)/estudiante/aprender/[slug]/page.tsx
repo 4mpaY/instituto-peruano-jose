@@ -34,6 +34,7 @@ export default async function LearningPage({
 
   // Establecemos el número telefónico del asesor, priorizando 'numero_asesor' y usando 'profesor.celular' como fallback
   let phoneNumberProfesor = '51959436827'
+
   if (cursoData?.numero_asesor) {
     phoneNumberProfesor = cursoData.numero_asesor
   } else if (cursoData?.profesor?.celular) {

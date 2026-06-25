@@ -81,7 +81,6 @@ const CourseCard = ({
   nivel,
   tipo_emision,
   fecha_inicio,
-  creado_en,
   duracion,
   es_comprado,
   video_presentacion

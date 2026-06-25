@@ -209,6 +209,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                     <CertificateSection
                         cursoId={storeCourse.id}
                         completarAutomatico={(course as any).completar_automatico ?? false}
+                        phoneNumberProfesor={phoneNumberProfesor}
                         onAllLessonsCompleted={() => {
                             const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
 

@@ -141,7 +141,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                 .then(res => {
                     if (res.data.status) setCertificado(res.data.result.certificado)
                 })
-                .catch(() => {})
+                .catch(() => { })
                 .finally(() => setGenerating(false))
         }
     }, [loading, certificado, pagoPendiente, elegibilidad, cursoId])
@@ -398,10 +398,6 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
             ? `https://wa.me/${phone}?text=${encodeURIComponent(`Hola, quiero obtener mi certificado del curso "${cursoTitulo || ''}". Por favor, indícame los pasos para realizar el pago.`)}`
             : null
 
-        const detailsWaUrl = phone
-            ? `https://wa.me/${phone}?text=${encodeURIComponent('me gustaría tramitar mi certificado del curso que estoy llevando.')}`
-            : null
-
         return (
             <Wrapper>
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 3 }}>
@@ -441,31 +437,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                                         '&:hover': { bgcolor: '#b45309', boxShadow: 'none' }
                                     }}
                                 >
-                                    Contactar asesor
-                                </Button>
-                            )}
-                            {detailsWaUrl && (
-                                <Button
-                                    component="a"
-                                    href={detailsWaUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    variant="outlined"
-                                    size="small"
-                                    startIcon={<i className="tabler-brand-whatsapp" />}
-                                    sx={{
-                                        borderRadius: '10px',
-                                        textTransform: 'none',
-                                        fontWeight: 600,
-                                        borderColor: '#d97706',
-                                        color: '#d97706',
-                                        '&:hover': {
-                                            borderColor: '#b45309',
-                                            bgcolor: 'rgba(217,119,6,0.04)'
-                                        }
-                                    }}
-                                >
-                                    ver mas detalles
+                                    Ver más detalles
                                 </Button>
                             )}
                         </Box>

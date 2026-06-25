@@ -104,6 +104,9 @@ model Curso {
   vigencia_meses       Int?
   precio_oferta        Decimal?          @db.Decimal(10, 2)
   brochure             String?
+  orden                Int               @default(0)
+  numero_asesor        String?
+  grupo_whatsapp       String?
   certificados         Certificado[]
   categoria            Categoria?        @relation(fields: [categoria_id], references: [id])
   profesor             Usuario           @relation("ProfesorCursos", fields: [profesor_id], references: [id], onDelete: Cascade)

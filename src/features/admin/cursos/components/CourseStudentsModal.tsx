@@ -18,7 +18,9 @@ import {
   Chip,
   IconButton,
   Tooltip,
-  Button
+  Button,
+  TextField,
+  InputAdornment
 } from '@mui/material'
 
 import * as XLSX from 'xlsx'
@@ -39,6 +41,19 @@ interface CertConfirm {
   inscripcionId: string
   alumnoNombre: string
   habilitadoActual: boolean
+}
+
+interface NotaEdit {
+  examenId: string
+  titulo: string
+  nota: number
+}
+
+interface EditNotasState {
+  inscripcionId: string
+  cursoId: string
+  alumnoNombre: string
+  notas: NotaEdit[]
 }
 
 const estadoLabel: Record<string, string> = {
@@ -66,6 +81,8 @@ export default function CourseStudentsModal({
   const [certLoading, setCertLoading] = useState(false)
   const [completarConfirm, setCompletarConfirm] = useState<{ inscripcionId: string; alumnoNombre: string } | null>(null)
   const [completarLoading, setCompletarLoading] = useState(false)
+  const [editNotas, setEditNotas] = useState<EditNotasState | null>(null)
+  const [editNotasLoading, setEditNotasLoading] = useState(false)
 
   const queryClient = useQueryClient()
 
@@ -114,6 +131,26 @@ export default function CourseStudentsModal({
       toast.error(err?.response?.data?.message || 'Error al completar las lecciones')
     } finally {
       setCompletarLoading(false)
+    }
+  }
+
+  const handleSaveNotas = async () => {
+    if (!editNotas) return
+
+    setEditNotasLoading(true)
+
+    try {
+      await axios.patch(
+        `/api/admin/cursos/${editNotas.cursoId}/alumnos/${editNotas.inscripcionId}/notas`,
+        { notas: editNotas.notas.map(n => ({ examenId: n.examenId, nota: n.nota })) }
+      )
+      queryClient.invalidateQueries({ queryKey: CURSO_ALUMNOS_QUERY_KEY(cursoId, searchTerm) })
+      toast.success('Notas actualizadas correctamente')
+      setEditNotas(null)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Error al guardar las notas')
+    } finally {
+      setEditNotasLoading(false)
     }
   }
 
@@ -336,6 +373,27 @@ export default function CourseStudentsModal({
                         />
                       </TableCell>
                       <TableCell>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                        {alumno.total_examenes > 0 && cursoId && (
+                          <Tooltip title='Editar notas'>
+                            <IconButton
+                              size='small'
+                              onClick={() => setEditNotas({
+                                inscripcionId: alumno.inscripcion_id,
+                                cursoId,
+                                alumnoNombre: `${alumno.nombre} ${alumno.apellido}`,
+                                notas: alumno.notas_detalle ?? []
+                              })}
+                              sx={{
+                                bgcolor: 'rgba(59,130,246,0.08)',
+                                color: 'primary.main',
+                                '&:hover': { bgcolor: 'rgba(59,130,246,0.16)' }
+                              }}
+                            >
+                              <i className='tabler-pencil text-[16px]' />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         <Tooltip title='Completar todas las lecciones'>
                           <IconButton
                             size='small'
@@ -352,6 +410,7 @@ export default function CourseStudentsModal({
                             <i className='tabler-checks text-[16px]' />
                           </IconButton>
                         </Tooltip>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))
@@ -402,6 +461,85 @@ export default function CourseStudentsModal({
                 }
               >
                 {completarLoading ? 'Procesando...' : 'Sí, completar todo'}
+              </Button>
+            </Box>
+          </Box>
+        </AppModal>
+      )}
+
+      {/* Modal de edición de notas */}
+      {editNotas && (
+        <AppModal open={!!editNotas} handleClose={() => !editNotasLoading && setEditNotas(null)} sx={{ maxWidth: 480 }}>
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              <Box sx={{
+                width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                bgcolor: 'primary.lightOpacity'
+              }}>
+                <i className='tabler-pencil text-xl' style={{ color: '#025E44' }} />
+              </Box>
+              <Box>
+                <Typography variant='h6' fontWeight={700}>Editar Notas</Typography>
+                <Typography variant='body2' color='text.secondary'>{editNotas.alumnoNombre}</Typography>
+              </Box>
+            </Box>
+
+            <Typography variant='caption' color='text.secondary' sx={{ mb: 2, display: 'block' }}>
+              Escala vigesimal (0 – 20). El promedio ponderado se recalculará automáticamente.
+            </Typography>
+
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mb: 4 }}>
+              {editNotas.notas.map((item, idx) => (
+                <TextField
+                  key={item.examenId}
+                  label={`${item.titulo}`}
+                  type='number'
+                  size='small'
+                  value={item.nota}
+                  inputProps={{ min: 0, max: 20, step: 0.5 }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position='start'>
+                        <Typography variant='caption' color='text.secondary' sx={{ minWidth: 20 }}>
+                          N{idx + 1}
+                        </Typography>
+                      </InputAdornment>
+                    ),
+                    endAdornment: <InputAdornment position='end'>/20</InputAdornment>
+                  }}
+                  onChange={e => {
+                    const val = Math.min(20, Math.max(0, parseFloat(e.target.value) || 0))
+
+                    setEditNotas(prev => prev ? {
+                      ...prev,
+                      notas: prev.notas.map((n, i) => i === idx ? { ...n, nota: val } : n)
+                    } : null)
+                  }}
+                  fullWidth
+                />
+              ))}
+            </Box>
+
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+              <Button
+                variant='tonal'
+                color='secondary'
+                onClick={() => setEditNotas(null)}
+                disabled={editNotasLoading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant='contained'
+                onClick={handleSaveNotas}
+                disabled={editNotasLoading}
+                startIcon={editNotasLoading
+                  ? <CircularProgress size={16} color='inherit' />
+                  : <i className='tabler-device-floppy' />
+                }
+              >
+                {editNotasLoading ? 'Guardando...' : 'Guardar Notas'}
               </Button>
             </Box>
           </Box>

@@ -11,14 +11,14 @@
     "lint:fix": "next lint --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "build:icons": "tsx src/utils/assets/iconify-icons/bundle-icons-css.ts",
-    "db:client:setup": "prisma db pull --schema ./prisma/schema.prisma && prisma generate --schema ./prisma/schema.prisma",
-    "db:client:generate": "prisma generate --schema ./prisma/schema.prisma",
-    "db:migration:dev": "prisma migrate dev --schema ./prisma/schema.prisma",
-    "db:client:push": "prisma db push --schema ./prisma/schema.prisma & prisma generate --schema ./prisma/schema.prisma",
-    "db:migration:deploy": "prisma migrate deploy --schema ./prisma/schema.prisma",
-    "db:main:seed": "dotenv -- tsx ./prisma/seed/main",
-    "db:instituto-peruano:seed": "dotenv -- tsx ./prisma/seed/instituto-peruano",
-    "db:test-evaluaciones:seed": "dotenv -- tsx ./prisma/seed/test-evaluaciones"
+    "db:setup": "prisma db pull && prisma generate",
+    "db:push": "prisma db push & prisma generate",
+    "db:generate": "prisma generate",
+    "db:migration:dev": "prisma migrate dev",
+    "db:migration:deploy": "prisma migrate deploy",
+    "db:seed": "dotenv -- tsx ./prisma/seed/main",
+    "db:seed:notas": "dotenv -e .env -- tsx ./prisma/seed/seed-notas.ts",
+    "db:reset": "dotenv -e .env -- npx prisma migrate reset"
   },
   "prisma": {
     "seed": "tsx prisma/seed_student.ts"

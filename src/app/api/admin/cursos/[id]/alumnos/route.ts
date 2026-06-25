@@ -51,10 +51,11 @@ export async function GET(
     const examenes = await prisma.examen.findMany({
       where: { curso_id: cursoId },
       orderBy: { creado_en: 'asc' },
-      select: { 
-        id: true, 
-        titulo: true, 
-        peso: true
+      select: {
+        id: true,
+        titulo: true,
+        peso: true,
+        puntaje_aprobacion: true
       }
     })
     
@@ -127,6 +128,12 @@ export async function GET(
           : '0.0'
       )
 
+      const notasDetalle = examenes.map(ex => ({
+        examenId: ex.id,
+        titulo: ex.titulo,
+        nota: parseFloat(((mejoresIntentos[ex.id] || 0) * 0.2).toFixed(1))
+      }))
+
       return {
         id: i.usuario.id,
         inscripcion_id: i.id,
@@ -142,6 +149,7 @@ export async function GET(
         evaluaciones_realizadas: evaluacionesRealizadas,
         total_examenes: totalExamenes,
         notas: totalExamenes > 0 ? notas : 'Sin exámenes',
+        notas_detalle: notasDetalle,
         promedio: promedioFinal,
         tiene_certificado: i.usuario.certificados.length > 0
       }
@@ -149,7 +157,7 @@ export async function GET(
 
     const precioCertificado = curso.precio_certificado ? Number(curso.precio_certificado) : null
 
-    return ApiResponse.success(request, { alumnos, total: alumnos.length, totalExamenes, precio_certificado: precioCertificado })
+    return ApiResponse.success(request, { alumnos, total: alumnos.length, totalExamenes, examenes, precio_certificado: precioCertificado })
   } catch (error) {
     return handleApiError(error, request)
   }

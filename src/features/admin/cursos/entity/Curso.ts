@@ -87,6 +87,7 @@ export interface Curso {
   categoria: CursoCategoria | null
   modulos: CursoModulo[]
   brochure: string | null
+  grupo_whatsapp: string | null
   objetivos: string[]
   metodologia: any[]
   beneficios: any[]
@@ -99,4 +100,5 @@ export interface Curso {
   }
   promedio_valoracion: number
   vigencia_meses?: number | null
+  numero_asesor?: string | null
 }

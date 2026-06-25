@@ -29,7 +29,8 @@ export const crearCursoSchema = z.object({
   fecha_inicio: z.string().optional().nullable(),
   fecha_fin: z.string().optional().nullable(),
   vigencia_meses: z.coerce.number().int().positive().optional().nullable(),
-  nivel: z.enum(['BASICO', 'INTERMEDIO', 'AVANZADO']).optional().nullable()
+  nivel: z.enum(['BASICO', 'INTERMEDIO', 'AVANZADO']).optional().nullable(),
+  grupo_whatsapp: z.string().optional().nullable()
 })
 
 export type CrearCursoDto = z.infer<typeof crearCursoSchema>
@@ -67,7 +68,9 @@ export const actualizarCursoSchema = z.object({
   objetivos: z.array(z.string()).optional(),
   metodologia: z.array(z.any()).optional(),
   beneficios: z.array(z.any()).optional(),
-  incluye: z.array(z.any()).optional()
+  incluye: z.array(z.any()).optional(),
+  numero_asesor: z.string().max(20).optional().nullable(),
+  grupo_whatsapp: z.string().optional().nullable()
 })
 
 export type ActualizarCursoDto = z.infer<typeof actualizarCursoSchema>

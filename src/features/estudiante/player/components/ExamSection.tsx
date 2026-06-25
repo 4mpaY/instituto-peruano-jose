@@ -52,6 +52,7 @@ interface ExamSectionProps {
     onExamPassed: () => void
     isFinalExam?: boolean
     onContinue?: () => void
+    phoneNumberProfesor?: string
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -138,7 +139,7 @@ const StateCard = ({ icon, iconColor, bgColor, borderColor, title, subtitle, chi
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue }: ExamSectionProps) => {
+const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, phoneNumberProfesor }: ExamSectionProps) => {
     const queryClient = useQueryClient()
     const [submitting, setSubmitting] = useState(false)
     const [respuestas, setRespuestas] = useState<Record<string, string>>({})
@@ -306,6 +307,10 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue }:
         const fechaStr = dateMatch ? dateMatch[1] : ''
 
         if (isExpired) {
+            const waUrl = phoneNumberProfesor
+                ? `https://wa.me/${phoneNumberProfesor.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, el período de evaluación ha cerrado y no pude rendir el examen. ¿Pueden ayudarme?')}`
+                : null
+
             return (
                 <StateCard
                     icon="tabler-calendar-x"
@@ -314,7 +319,27 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue }:
                     borderColor="rgba(100,116,139,0.25)"
                     title="Período de evaluación cerrado"
                     subtitle="El tiempo para rendir este examen ha concluido y no registras ningún intento."
-                />
+                >
+                    {waUrl && (
+                        <Box sx={{ px: 4, pb: 4, textAlign: 'center' }}>
+                            <Button
+                                variant="contained"
+                                href={waUrl}
+                                target="_blank"
+                                startIcon={<i className="tabler-brand-whatsapp" />}
+                                sx={{
+                                    borderRadius: '20px',
+                                    textTransform: 'none',
+                                    fontWeight: 600,
+                                    px: 3,
+                                    boxShadow: 'none'
+                                }}
+                            >
+                                Contactar con asesor
+                            </Button>
+                        </Box>
+                    )}
+                </StateCard>
             )
         }
 

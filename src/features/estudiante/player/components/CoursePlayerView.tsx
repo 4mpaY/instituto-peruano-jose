@@ -29,11 +29,13 @@ interface CoursePlayerViewProps {
         modulos: any[]
         examenes?: any[]
     }
+    phoneNumberProfesor: string
+    grupoWhatsapp?: string | null
     initialLessonId?: string
+    initialExamenId?: string
 }
 
-const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) => {
-    const waNumber = '51910809055'
+const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialLessonId, initialExamenId }: CoursePlayerViewProps) => {
     const theme = useTheme()
     const isMobile = useMediaQuery(theme.breakpoints.down('lg'))
     const [sidebarOpen, setSidebarOpen] = useState(!isMobile)
@@ -789,6 +791,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                         <CertificateSection
                             cursoId={storeCourse.id}
                             completarAutomatico={(course as any).completar_automatico ?? false}
+                            phoneNumberProfesor={phoneNumberProfesor}
                             onAllLessonsCompleted={() => {
                                 const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
 
@@ -885,7 +888,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                         {isMobile ? (
                             <Box
                                 component="a"
-                                href={`https://wa.me/${waNumber}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
+                                href={`https://wa.me/${phoneNumberProfesor}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
                                 target="_blank"
                                 sx={{
                                     width: 44, height: 44,
@@ -903,7 +906,7 @@ const CoursePlayerView = ({ course, initialLessonId }: CoursePlayerViewProps) =>
                         ) : (
                             <Button
                                 variant="contained"
-                                href={`https://wa.me/${waNumber}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
+                                href={`https://wa.me/${phoneNumberProfesor}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
                                 target="_blank"
                                 sx={{
                                     borderRadius: '20px', textTransform: 'none', fontWeight: 600, px: 2,

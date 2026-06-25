@@ -27,7 +27,7 @@ export const useCursoAlumnos = ({ cursoId, search }: UseCursoAlumnosProps) => {
 
       return await axiosCursoAdmin.getAlumnos(cursoId, search)
     },
-    enabled: !!cursoId, // Solo se ejecuta si hay cursoId
-    staleTime: 1000 * 60 * 5, // 5 minutos
+    enabled: !!cursoId,
+    staleTime: 0
   })
 }

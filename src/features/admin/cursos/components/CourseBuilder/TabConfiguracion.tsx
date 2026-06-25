@@ -39,6 +39,8 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
     const [moneda, setMoneda] = useState(curso.moneda)
     const [precioCertificado, setPrecioCertificado] = useState<number | ''>(curso.precio_certificado ?? '')
     const [vigenciaMeses, setVigenciaMeses] = useState<number | ''>((curso as any).vigencia_meses ?? '')
+    const [numeroAsesor, setNumeroAsesor] = useState(curso.numero_asesor ?? '')
+    const [grupoWhatsapp, setGrupoWhatsapp] = useState(curso.grupo_whatsapp ?? '')
 
     const handleSavePrice = async () => {
         try {
@@ -286,6 +288,89 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
                         Para publicar se requiere al menos 1 módulo con 1 lección publicada.
                     </Typography>
                 )}
+            </Grid>
+
+            <Grid item xs={12}><Divider /></Grid>
+
+            {/* Asesor Académico */}
+            <Grid item xs={12}>
+                <Typography variant='h6' sx={{ mb: 1 }}>Asesor Académico (WhatsApp)</Typography>
+                <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+                    Número de WhatsApp al que se redirigirá al estudiante al presionar "Contactar al asesor académico".
+                    Ingresa solo dígitos incluyendo el código de país (ej: <strong>51959436827</strong>).
+                    Si se deja vacío, se usará el celular del profesor.
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                    <CustomTextField
+                        label='Número WhatsApp del asesor'
+                        value={numeroAsesor}
+                        onChange={e => setNumeroAsesor(e.target.value.replace(/\D/g, ''))}
+                        sx={{ width: 260 }}
+                        inputProps={{ maxLength: 20 }}
+                        helperText='Solo dígitos, sin espacios ni guiones'
+                        placeholder='51959436827'
+                    />
+                    <Button
+                        variant='contained'
+                        onClick={async () => {
+                            try {
+                                await editMutation.mutateAsync({
+                                    id: curso.id,
+                                    data: { numero_asesor: numeroAsesor.trim() || null }
+                                })
+                                enqueueSnackbar('Número del asesor actualizado', { variant: 'success' })
+                                onSuccess()
+                            } catch (error: any) {
+                                enqueueSnackbar(error?.message || 'Error al guardar', { variant: 'error' })
+                            }
+                        }}
+                        disabled={editMutation.isPending}
+                        startIcon={<i className='tabler-device-floppy' />}
+                        sx={{ mt: 3.5 }}
+                    >
+                        Guardar
+                    </Button>
+                </Box>
+            </Grid>
+
+            <Grid item xs={12}><Divider /></Grid>
+
+            {/* Grupo de WhatsApp */}
+            <Grid item xs={12}>
+                <Typography variant='h6' sx={{ mb: 1 }}>Grupo de WhatsApp</Typography>
+                <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+                    Enlace de invitación al grupo de WhatsApp del curso. Se mostrará como botón en el player del estudiante.
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                    <CustomTextField
+                        label='Enlace del grupo'
+                        value={grupoWhatsapp}
+                        onChange={e => setGrupoWhatsapp(e.target.value)}
+                        sx={{ width: 400 }}
+                        placeholder='https://chat.whatsapp.com/...'
+                        helperText='Deja vacío para ocultar el botón a los estudiantes'
+                    />
+                    <Button
+                        variant='contained'
+                        onClick={async () => {
+                            try {
+                                await editMutation.mutateAsync({
+                                    id: curso.id,
+                                    data: { grupo_whatsapp: grupoWhatsapp.trim() || null }
+                                })
+                                enqueueSnackbar('Grupo de WhatsApp actualizado', { variant: 'success' })
+                                onSuccess()
+                            } catch (error: any) {
+                                enqueueSnackbar(error?.message || 'Error al guardar', { variant: 'error' })
+                            }
+                        }}
+                        disabled={editMutation.isPending}
+                        startIcon={<i className='tabler-device-floppy' />}
+                        sx={{ mt: 3.5 }}
+                    >
+                        Guardar
+                    </Button>
+                </Box>
             </Grid>
         </Grid>
     )

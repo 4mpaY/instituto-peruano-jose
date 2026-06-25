@@ -30,6 +30,7 @@ interface CertificateSectionProps {
     cursoId: string
     completarAutomatico?: boolean
     onAllLessonsCompleted?: () => void
+    phoneNumberProfesor?: string
 }
 
 const ScoreRing = ({ value, min, label }: { value: number; min: number; label: string }) => {
@@ -40,7 +41,7 @@ const ScoreRing = ({ value, min, label }: { value: number; min: number; label: s
     const color = approved ? '#16a34a' : value >= min * 0.6 ? '#d97706' : '#dc2626'
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'row', sm: 'column' }, alignItems: 'center', gap: 1 }}>
             <Box sx={{ position: 'relative', width: 72, height: 72 }}>
                 <CircularProgress
                     variant="determinate"
@@ -69,17 +70,19 @@ const ScoreRing = ({ value, min, label }: { value: number; min: number; label: s
                     </Typography>
                 </Box>
             </Box>
-            <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', textAlign: 'center', fontSize: '0.68rem' }}>
-                {label}
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.62rem' }}>
-                Mín. {notaMin}/20
-            </Typography>
+            <Box>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', textAlign: { xs: 'left', sm: 'center' }, fontSize: '0.68rem', display: 'block' }}>
+                    {label}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.62rem', display: 'block', textAlign: { xs: 'left', sm: 'center' } }}>
+                    Mín. {notaMin}/20
+                </Typography>
+            </Box>
         </Box>
     )
 }
 
-const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsCompleted }: CertificateSectionProps) => {
+const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsCompleted, phoneNumberProfesor }: CertificateSectionProps) => {
     const [loading, setLoading] = useState(true)
     const [generating, setGenerating] = useState(false)
     const [downloading, setDownloading] = useState(false)
@@ -88,7 +91,6 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     const [elegibilidad, setElegibilidad] = useState<Elegibilidad | null>(null)
     const [fetchError, setFetchError] = useState(false)
     const [pagoPendiente, setPagoPendiente] = useState(false)
-    const [precioCertificado, setPrecioCertificado] = useState<number | null>(null)
     const [cursoTitulo, setCursoTitulo] = useState<string | null>(null)
     const [whatsappNumero, setWhatsappNumero] = useState<string | null>(null)
     const autoGeneradoRef = useRef(false)
@@ -108,7 +110,6 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                     setCertificado(res.data.result.certificado ?? null)
                     setElegibilidad(res.data.result.elegibilidad ?? null)
                     setPagoPendiente(res.data.result.pagoPendiente ?? false)
-                    setPrecioCertificado(res.data.result.precioCertificado ?? null)
                     setCursoTitulo(res.data.result.cursoTitulo ?? null)
                     setWhatsappNumero(resPago?.data?.result?.whatsapp_numero || null)
                 } else {
@@ -391,11 +392,14 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
 
     // ── Certificado con costo pendiente de pago ─────────────────────
     if (pagoPendiente) {
-        const moneda = 'S/'
-        const precioFmt = precioCertificado ? `${moneda} ${Number(precioCertificado).toFixed(2)}` : ''
+        const phone = (phoneNumberProfesor || whatsappNumero || '').replace(/\D/g, '')
 
-        const waUrl = whatsappNumero
-            ? `https://wa.me/${whatsappNumero.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, quiero obtener mi certificado del curso "${cursoTitulo || ''}"${precioFmt ? ` (${precioFmt})` : ''}. Por favor, indícame los pasos para realizar el pago.`)}`
+        const waUrl = phone
+            ? `https://wa.me/${phone}?text=${encodeURIComponent(`Hola, quiero obtener mi certificado del curso "${cursoTitulo || ''}". Por favor, indícame los pasos para realizar el pago.`)}`
+            : null
+
+        const detailsWaUrl = phone
+            ? `https://wa.me/${phone}?text=${encodeURIComponent('me gustaría tramitar mi certificado del curso que estoy llevando.')}`
             : null
 
         return (
@@ -413,45 +417,58 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                             <Typography variant="h6" sx={{ fontWeight: 800, color: '#d97706' }}>
                                 Certificado disponible
                             </Typography>
-                            {precioFmt && (
-                                <Chip
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.6 }}>
+                            Has completado el curso. Para solicitar la emisión de tu certificado, es necesario haber aprobado satisfactoriamente el curso y realizar el pago correspondiente. Posteriormente, deberás comunicarte con nosotros para habilitar la descarga de tu certificado.
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                            {waUrl && (
+                                <Button
+                                    component="a"
+                                    href={waUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    variant="contained"
                                     size="small"
-                                    label={precioFmt}
+                                    startIcon={<i className="tabler-brand-whatsapp" />}
                                     sx={{
-                                        bgcolor: 'rgba(245,158,11,0.12)',
-                                        color: '#d97706',
-                                        fontWeight: 800,
-                                        fontSize: '0.8rem'
+                                        bgcolor: '#d97706',
+                                        color: '#fff',
+                                        borderRadius: '10px',
+                                        textTransform: 'none',
+                                        fontWeight: 700,
+                                        boxShadow: 'none',
+                                        '&:hover': { bgcolor: '#b45309', boxShadow: 'none' }
                                     }}
-                                />
+                                >
+                                    Contactar asesor
+                                </Button>
+                            )}
+                            {detailsWaUrl && (
+                                <Button
+                                    component="a"
+                                    href={detailsWaUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    variant="outlined"
+                                    size="small"
+                                    startIcon={<i className="tabler-brand-whatsapp" />}
+                                    sx={{
+                                        borderRadius: '10px',
+                                        textTransform: 'none',
+                                        fontWeight: 600,
+                                        borderColor: '#d97706',
+                                        color: '#d97706',
+                                        '&:hover': {
+                                            borderColor: '#b45309',
+                                            bgcolor: 'rgba(217,119,6,0.04)'
+                                        }
+                                    }}
+                                >
+                                    ver mas detalles
+                                </Button>
                             )}
                         </Box>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                            Has completado el curso. Para obtener tu certificado, realiza el pago
-                            {precioFmt ? ` de ${precioFmt}` : ''} y comunícate con nosotros para que habilitemos tu descarga.
-                        </Typography>
-                        {waUrl && (
-                            <Button
-                                component="a"
-                                href={waUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                variant="contained"
-                                size="small"
-                                startIcon={<i className="tabler-brand-whatsapp" />}
-                                sx={{
-                                    bgcolor: '#d97706',
-                                    color: '#fff',
-                                    borderRadius: '10px',
-                                    textTransform: 'none',
-                                    fontWeight: 700,
-                                    boxShadow: 'none',
-                                    '&:hover': { bgcolor: '#b45309', boxShadow: 'none' }
-                                }}
-                            >
-                                Contactar asesor
-                            </Button>
-                        )}
                     </Box>
                 </Box>
             </Wrapper>
@@ -480,7 +497,6 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     return (
         <Wrapper>
             {el.isEligible ? (
-
                 /* Elegible */
                 <Box sx={{ textAlign: 'center' }}>
                     <Box sx={{
@@ -520,7 +536,6 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                     )}
                 </Box>
             ) : (
-
                 /* No elegible → mostrar progreso */
                 <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>

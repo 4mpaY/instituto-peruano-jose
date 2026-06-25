@@ -1,6 +1,6 @@
 /**
  * Seed de prueba para el sistema de edición de notas.
- * Agrega 4 exámenes al curso de Costos y Presupuestos,
+ * Agrega 4 exámenes al curso de Marketing Digital,
  * inscribe al alumno de prueba y crea intentos con notas variadas.
  *
  * Ejecutar: pnpm db:seed:notas
@@ -19,13 +19,13 @@ async function main() {
   const alumno = await prisma.usuario.findUnique({ where: { correo: 'alumno@gmail.com' } })
 
   if (!alumno) {
-    throw new Error('❌ No existe alumno@gmail.com — ejecuta primero pnpm db:main:seed')
+    throw new Error('❌ No existe alumno@gmail.com — ejecuta primero pnpm db:seed')
   }
 
-  const curso = await prisma.curso.findUnique({ where: { slug: 'costos-presupuestos-obra-s10' } })
+  const curso = await prisma.curso.findUnique({ where: { slug: 'marketing-digital-redes-sociales' } })
 
   if (!curso) {
-    throw new Error('❌ No existe el curso "costos-presupuestos-obra-s10" — ejecuta primero pnpm db:main:seed')
+    throw new Error('❌ No existe el curso "marketing-digital-redes-sociales" — ejecuta primero pnpm db:seed')
   }
 
   console.log(`✅ Curso encontrado: ${curso.titulo}`)
@@ -41,159 +41,169 @@ async function main() {
   // ── Crear 4 exámenes con preguntas ────────────────────────────────────────
   const examenesData = [
     {
-      titulo: '[TEST] Evaluación 01 — Fundamentos de Costos',
+      titulo: '[TEST] Evaluación 01 — Fundamentos del Marketing Digital',
       peso: 25,
       preguntas: [
         {
-          texto: '¿Qué representa el costo directo en un presupuesto de obra?',
-          opciones: opciones(0, [
-            'El costo de materiales, mano de obra y equipos directamente utilizados',
-            'Los gastos administrativos de la empresa',
-            'Las utilidades del contratista',
-            'El IGV aplicado al presupuesto'
-          ])
-        },
-        {
-          texto: '¿Qué significa APU?',
+          texto: '¿Qué es el marketing digital?',
           opciones: opciones(2, [
-            'Administración de Proyectos Urbanos',
-            'Actualización de Precios Unitarios',
-            'Análisis de Precios Unitarios',
-            'Asignación de Presupuesto Universal'
+            'La distribución física de productos en tiendas',
+            'La publicidad impresa en medios tradicionales',
+            'El conjunto de estrategias de marketing aplicadas en canales digitales e internet',
+            'El diseño gráfico de logotipos y marcas'
           ])
         },
         {
-          texto: '¿Cuál es la unidad de medida típica para excavación de zanjas?',
-          opciones: opciones(1, ['m²', 'm³', 'ml', 'und'])
+          texto: '¿Qué representa el embudo de ventas (funnel) en marketing digital?',
+          opciones: opciones(0, [
+            'El recorrido del cliente desde el conocimiento de la marca hasta la compra',
+            'Una herramienta para filtrar correos no deseados',
+            'El proceso de diseño de una página web',
+            'La gestión del inventario en un e-commerce'
+          ])
         },
         {
-          texto: '¿Qué incluye el costo indirecto de una obra?',
+          texto: '¿Cuál es el objetivo principal del SEO?',
           opciones: opciones(3, [
-            'Materiales de construcción',
-            'Mano de obra calificada',
-            'Alquiler de equipos pesados',
-            'Gastos generales y utilidades'
+            'Enviar correos masivos a clientes potenciales',
+            'Crear anuncios pagados en Google',
+            'Gestionar perfiles en redes sociales',
+            'Mejorar el posicionamiento orgánico de un sitio web en motores de búsqueda'
+          ])
+        },
+        {
+          texto: '¿Qué es el KPI en marketing digital?',
+          opciones: opciones(1, [
+            'Un tipo de anuncio en redes sociales',
+            'Un indicador clave de rendimiento que mide el éxito de una estrategia',
+            'Una plataforma de gestión de contenidos',
+            'Un formato de archivo para imágenes digitales'
           ])
         }
       ]
     },
     {
-      titulo: '[TEST] Evaluación 02 — Metrados y Partidas',
+      titulo: '[TEST] Evaluación 02 — Redes Sociales y Contenido',
       peso: 25,
       preguntas: [
         {
-          texto: '¿Qué son los metrados en un proyecto de construcción?',
-          opciones: opciones(1, [
-            'El presupuesto total del proyecto',
-            'La cuantificación de los trabajos a ejecutar por partidas',
-            'Los planos de la obra',
-            'El contrato de obra'
-          ])
-        },
-        {
-          texto: '¿Qué norma regula la elaboración de metrados en Perú?',
-          opciones: opciones(2, ['NTE E.030', 'NTE E.060', 'NTE E.020', 'RNE Título V'])
-        },
-        {
-          texto: '¿Cómo se calcula el volumen de concreto en columnas rectangulares?',
+          texto: '¿Qué es el engagement en redes sociales?',
           opciones: opciones(0, [
-            'Sección transversal × altura de la columna',
-            'Perímetro × altura',
-            'Área total × cantidad de estribos',
-            'Peso del acero / densidad del concreto'
+            'El nivel de interacción (likes, comentarios, compartidos) que genera una publicación',
+            'El número total de seguidores de una cuenta',
+            'El presupuesto invertido en publicidad',
+            'La frecuencia de publicación en una red social'
           ])
         },
         {
-          texto: '¿Qué es una partida en un presupuesto de obra?',
+          texto: '¿Cuál es la principal ventaja del marketing de contenidos?',
+          opciones: opciones(2, [
+            'Genera resultados inmediatos en ventas',
+            'No requiere ningún tipo de inversión',
+            'Atrae y fideliza audiencias aportando valor, generando confianza a largo plazo',
+            'Permite impactar únicamente a usuarios jóvenes'
+          ])
+        },
+        {
+          texto: '¿Qué es un buyer persona?',
           opciones: opciones(3, [
-            'Un documento legal del contrato',
-            'Un plano de detalle estructural',
-            'Un reporte de avance diario',
-            'Un trabajo específico con unidad de medida, metrado y precio unitario'
+            'Un influencer contratado para promocionar una marca',
+            'Un bot automatizado para responder mensajes',
+            'El equipo de ventas de una empresa',
+            'Una representación semi-ficticia del cliente ideal basada en datos reales'
+          ])
+        },
+        {
+          texto: '¿Qué métrica mide el alcance de una publicación en redes sociales?',
+          opciones: opciones(1, [
+            'CTR (Click Through Rate)',
+            'Reach o Alcance — número de usuarios únicos que vieron el contenido',
+            'ROI (Return on Investment)',
+            'CPC (Costo por Clic)'
           ])
         }
       ]
     },
     {
-      titulo: '[TEST] Evaluación 03 — S10 Presupuestos',
+      titulo: '[TEST] Evaluación 03 — Publicidad Digital (Facebook & Google Ads)',
       peso: 25,
       preguntas: [
         {
-          texto: '¿Para qué sirve el software S10 en obras de construcción?',
+          texto: '¿Qué es el CPC en publicidad digital?',
           opciones: opciones(0, [
-            'Elaborar presupuestos y análisis de precios unitarios',
-            'Diseñar estructuras en 3D',
-            'Calcular análisis sísmico',
-            'Dibujar planos de arquitectura'
+            'El costo que paga el anunciante cada vez que un usuario hace clic en su anuncio',
+            'El número de veces que se muestra un anuncio',
+            'El porcentaje de usuarios que compran tras ver un anuncio',
+            'El total de impresiones de una campaña'
           ])
         },
         {
-          texto: '¿Qué se ingresa primero al crear un proyecto en S10?',
+          texto: '¿Cuál es la principal diferencia entre Facebook Ads y Google Ads?',
           opciones: opciones(2, [
-            'Los subcontratos',
-            'La fórmula polinómica',
-            'Los datos generales del proyecto (nombre, fecha, moneda)',
-            'Los recursos de mano de obra'
+            'Google Ads es gratuito y Facebook Ads es de pago',
+            'Facebook Ads solo funciona en móviles',
+            'Google Ads capta demanda existente (intención de búsqueda); Facebook Ads genera demanda mediante segmentación de audiencias',
+            'Ambas plataformas funcionan de forma idéntica'
           ])
         },
         {
-          texto: '¿Qué es un recurso en S10?',
-          opciones: opciones(1, [
-            'Un plano de detalle',
-            'Material, mano de obra o equipo usado en las partidas',
-            'Un proveedor de materiales',
-            'Un subcontratista'
-          ])
-        },
-        {
-          texto: '¿Cómo se actualiza el precio de un recurso en S10 para todos los APU al mismo tiempo?',
+          texto: '¿Qué es el Pixel de Facebook?',
           opciones: opciones(3, [
-            'Editando cada APU manualmente',
-            'Reimportando el proyecto desde cero',
-            'Usando el módulo de cronograma',
-            'Actualizando el precio en la base de recursos del proyecto'
+            'Una unidad de medida de resolución de imágenes',
+            'Un formato de anuncio en Instagram',
+            'El tamaño mínimo de una foto en Facebook',
+            'Un fragmento de código que rastrea las acciones de los usuarios en un sitio web para optimizar anuncios'
+          ])
+        },
+        {
+          texto: '¿Qué indica un CTR alto en una campaña de anuncios?',
+          opciones: opciones(1, [
+            'Que el anuncio tiene un costo elevado',
+            'Que una alta proporción de usuarios que ven el anuncio hacen clic en él',
+            'Que la campaña ha gastado todo su presupuesto',
+            'Que el anuncio no está llegando a la audiencia correcta'
           ])
         }
       ]
     },
     {
-      titulo: '[TEST] Evaluación 04 — MS Project y Control',
+      titulo: '[TEST] Evaluación 04 — Analítica y Métricas Digitales',
       peso: 25,
       preguntas: [
         {
-          texto: '¿Qué representa la ruta crítica en MS Project?',
+          texto: '¿Para qué sirve Google Analytics?',
           opciones: opciones(0, [
-            'La secuencia de actividades que determina la duración mínima del proyecto',
-            'Las actividades con mayor holgura',
-            'El presupuesto más alto del proyecto',
-            'Las actividades completadas a la fecha'
+            'Medir y analizar el comportamiento de los visitantes de un sitio web',
+            'Crear anuncios pagados en buscadores',
+            'Diseñar páginas de aterrizaje (landing pages)',
+            'Gestionar campañas de email marketing'
           ])
         },
         {
-          texto: '¿Qué muestra la curva S en el control de una obra?',
+          texto: '¿Qué es la tasa de conversión?',
           opciones: opciones(2, [
-            'El número de trabajadores por semana',
-            'Los precios unitarios históricos',
-            'El avance planificado vs. real acumulado en el tiempo',
-            'La forma física de la obra'
+            'El porcentaje de usuarios que abandonan el sitio web',
+            'El número de visitas totales de una página',
+            'El porcentaje de visitantes que realizan la acción deseada (compra, registro, etc.)',
+            'El costo total de una campaña publicitaria'
           ])
         },
         {
-          texto: '¿Cuándo se genera una ampliación de plazo en un contrato de obra?',
-          opciones: opciones(1, [
-            'Cuando el contratista trabaja más lento',
-            'Cuando ocurren causas no atribuibles al contratista que afectan la ruta crítica',
-            'Cuando se termina el presupuesto',
-            'Cuando llueve más de 2 días seguidos'
-          ])
-        },
-        {
-          texto: '¿Qué es el EVM (Earned Value Management)?',
+          texto: '¿Qué es el ROI en marketing digital?',
           opciones: opciones(3, [
-            'Un tipo de contrato de obra',
-            'Un software de diseño estructural',
-            'Un método de valorización mensual',
-            'Una metodología para medir el desempeño de costo y plazo de un proyecto'
+            'Un tipo de anuncio en display',
+            'La cantidad de clics en un enlace',
+            'El número de nuevos seguidores obtenidos',
+            'El retorno sobre la inversión: ganancia neta generada respecto al costo de la campaña'
+          ])
+        },
+        {
+          texto: '¿Qué es un A/B test en marketing digital?',
+          opciones: opciones(1, [
+            'Una técnica de diseño gráfico para comparar colores',
+            'Un experimento que compara dos versiones de un elemento (anuncio, landing, email) para determinar cuál tiene mejor rendimiento',
+            'Una prueba de velocidad de carga de una página web',
+            'Un método para auditar cuentas de redes sociales'
           ])
         }
       ]
@@ -259,7 +269,6 @@ async function main() {
     const puntajePorcentaje = notaVigesimal * 5 // convertir 0-20 → 0-100
     const aprobado = puntajePorcentaje >= 60
 
-    // Eliminar intentos anteriores del seed para este alumno+examen
     await prisma.intentoExamen.deleteMany({
       where: { usuario_id: alumno.id, examen_id: examen.id }
     })
@@ -295,12 +304,12 @@ async function main() {
   console.log('✅ Seed de notas completado!')
   console.log('')
   console.log('📊 Resumen del alumno de prueba:')
-  console.log(`   Alumno:   alumno@gmail.com / Alumno123@`)
+  console.log(`   Alumno:   alumno@gmail.com / Alumno123!`)
   console.log(`   Curso:    ${curso.titulo}`)
   console.log(`   N1: ${notasVigesimales[0]}/20  N2: ${notasVigesimales[1]}/20  N3: ${notasVigesimales[2]}/20  N4: ${notasVigesimales[3]}/20`)
   console.log(`   Promedio: ${promedioVigesimal}/20 — ${estadoNota}`)
   console.log('')
-  console.log('👉 Ve a Admin → Cursos → "Elaboración de Costos..." → ícono de personas')
+  console.log('👉 Ve a Admin → Cursos → "Marketing Digital..." → ícono de personas')
   console.log('   Ahí verás el ícono de lápiz azul en la columna Acciones para editar notas.')
 }
 

@@ -112,15 +112,13 @@ const CourseCard = ({
     return '#3b82f6' // Azul para otros
   }
 
-  // Lógica de fecha solicitada por el usuario
+  // Solo mostrar fecha para cursos síncronos y mixtos (los asíncronos no tienen fecha relevante)
   const getDisplayDate = () => {
-    const dateToUse = (tipo_emision === 'SINCRONO' || tipo_emision === 'MIXTO')
-      ? fecha_inicio
-      : creado_en
+    if (tipo_emision !== 'SINCRONO' && tipo_emision !== 'MIXTO') return null
 
-    if (!dateToUse) return null
+    if (!fecha_inicio) return null
 
-    const date = new Date(dateToUse)
+    const date = new Date(fecha_inicio)
 
     return (
       <HydratedDate

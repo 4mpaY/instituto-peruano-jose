@@ -52,7 +52,7 @@ interface ExamSectionProps {
     onExamPassed: () => void
     isFinalExam?: boolean
     onContinue?: () => void
-    phoneNumberProfesor?: string
+    contactoUrl?: string
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -113,10 +113,11 @@ interface StateCardProps {
     borderColor: string
     title: string
     subtitle?: string
+    action?: React.ReactNode
     children?: React.ReactNode
 }
 
-const StateCard = ({ icon, iconColor, bgColor, borderColor, title, subtitle, children }: StateCardProps) => (
+const StateCard = ({ icon, iconColor, bgColor, borderColor, title, subtitle, action, children }: StateCardProps) => (
     <Card variant="outlined" sx={{ borderRadius: '16px', overflow: 'hidden', borderColor, height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Box sx={{ p: 5, bgcolor: bgColor, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, justifyContent: 'center' }}>
             <Box sx={{
@@ -132,6 +133,7 @@ const StateCard = ({ icon, iconColor, bgColor, borderColor, title, subtitle, chi
                     {subtitle}
                 </Typography>
             )}
+            {action && <Box sx={{ mt: 2.5 }}>{action}</Box>}
         </Box>
         {children}
     </Card>
@@ -139,7 +141,7 @@ const StateCard = ({ icon, iconColor, bgColor, borderColor, title, subtitle, chi
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, phoneNumberProfesor }: ExamSectionProps) => {
+const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, contactoUrl }: ExamSectionProps) => {
     const queryClient = useQueryClient()
     const [submitting, setSubmitting] = useState(false)
     const [respuestas, setRespuestas] = useState<Record<string, string>>({})
@@ -307,10 +309,6 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, p
         const fechaStr = dateMatch ? dateMatch[1] : ''
 
         if (isExpired) {
-            const waUrl = phoneNumberProfesor
-                ? `https://wa.me/${phoneNumberProfesor.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, el período de evaluación ha cerrado y no pude rendir el examen. ¿Pueden ayudarme?')}`
-                : null
-
             return (
                 <StateCard
                     icon="tabler-calendar-x"
@@ -319,27 +317,24 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, p
                     borderColor="rgba(100,116,139,0.25)"
                     title="Período de evaluación cerrado"
                     subtitle="El tiempo para rendir este examen ha concluido y no registras ningún intento."
-                >
-                    {waUrl && (
-                        <Box sx={{ px: 4, pb: 4, textAlign: 'center' }}>
-                            <Button
-                                variant="contained"
-                                href={waUrl}
-                                target="_blank"
-                                startIcon={<i className="tabler-brand-whatsapp" />}
-                                sx={{
-                                    borderRadius: '20px',
-                                    textTransform: 'none',
-                                    fontWeight: 600,
-                                    px: 3,
-                                    boxShadow: 'none'
-                                }}
-                            >
-                                Contactar con asesor
-                            </Button>
-                        </Box>
-                    )}
-                </StateCard>
+                    action={contactoUrl ? (
+                        <Button
+                            variant="contained"
+                            href={contactoUrl}
+                            target="_blank"
+                            startIcon={<i className="tabler-brand-whatsapp" />}
+                            sx={{
+                                borderRadius: '20px',
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                px: 3,
+                                boxShadow: 'none'
+                            }}
+                        >
+                            Contactar con asesor
+                        </Button>
+                    ) : undefined}
+                />
             )
         }
 

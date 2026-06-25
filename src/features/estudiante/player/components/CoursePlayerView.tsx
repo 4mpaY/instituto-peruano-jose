@@ -354,6 +354,9 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                                         onExamPassed={handleExamPassed}
                                         isFinalExam={currentExamenId === examenId}
                                         onContinue={handleContinueAfterExam}
+                                        contactoUrl={phoneNumberProfesor && storeCourse
+                                            ? `https://wa.me/${phoneNumberProfesor}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`
+                                            : undefined}
                                     />
                                 </Box>
                             </Box>
@@ -849,40 +852,39 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                     </Typography>
 
                     <Stack direction="row" spacing={1}>
-                        {(course as any).brochure && (
+                        {grupoWhatsapp && (
                             isMobile ? (
                                 <Box
                                     component="a"
-                                    href={(course as any).brochure}
+                                    href={grupoWhatsapp}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     sx={{
                                         width: 44, height: 44,
                                         borderRadius: '12px',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        bgcolor: 'primary.main',
+                                        bgcolor: '#25D366',
                                         color: 'white',
-                                        boxShadow: '0 2px 8px rgba(2,94,68,0.3)',
+                                        boxShadow: '0 2px 8px rgba(37,211,102,0.35)',
                                         flexShrink: 0,
-                                        '&:hover': { bgcolor: '#014d36' }
+                                        '&:hover': { bgcolor: '#1ebe5d' }
                                     }}
                                 >
-                                    <i className="tabler-download" style={{ fontSize: '1.3rem' }} />
+                                    <i className="tabler-brand-whatsapp" style={{ fontSize: '1.4rem' }} />
                                 </Box>
                             ) : (
                                 <Button
-                                    variant="outlined"
-                                    href={(course as any).brochure}
+                                    variant="contained"
+                                    href={grupoWhatsapp}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    startIcon={<i className="tabler-download" style={{ fontSize: '1rem' }} />}
                                     sx={{
                                         borderRadius: '20px', textTransform: 'none', fontWeight: 600, px: 2,
-                                        borderColor: 'primary.main', color: 'primary.main',
-                                        '&:hover': { borderColor: 'primary.main', color: 'primary.main', bgcolor: 'rgba(2,94,68,0.04)' }
+                                        bgcolor: '#25D366', color: 'white', boxShadow: 'none',
+                                        '&:hover': { bgcolor: '#1ebe5d', boxShadow: 'none' }
                                     }}
                                 >
-                                    Descargar Brochure
+                                    <i className="tabler-brand-whatsapp" style={{ color: 'white', fontSize: 20, marginRight: 6 }} />                                    Grupo de WhatsApp
                                 </Button>
                             )
                         )}

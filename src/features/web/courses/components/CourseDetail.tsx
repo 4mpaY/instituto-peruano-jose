@@ -112,7 +112,7 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
     if ((searchParams.get('login') === '1' || searchParams.get('callbackUrl')) && !session) {
       openLogin(callbackUrl ?? undefined)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleFreeEnroll = async () => {
@@ -176,11 +176,11 @@ const CourseDetail = ({ course }: CourseDetailProps) => {
 
   const displayDate = isLive
     ? {
-        label: 'Inicio',
-        value: course.fecha_inicio
-          ? <HydratedDate date={course.fecha_inicio} format="date" options={{ day: '2-digit', month: '2-digit', year: 'numeric' }} />
-          : 'Próximamente'
-      }
+      label: 'Inicio',
+      value: course.fecha_inicio
+        ? <HydratedDate date={course.fecha_inicio} format="date" options={{ day: '2-digit', month: '2-digit', year: 'numeric' }} />
+        : 'Próximamente'
+    }
     : null
 
   const defaultBeneficios = [

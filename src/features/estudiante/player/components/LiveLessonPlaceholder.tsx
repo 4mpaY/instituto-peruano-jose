@@ -396,16 +396,18 @@ const LiveLessonPlaceholder = ({
             )}
 
             {/* Join button (ended) */}
-            <Stack spacing={1} alignItems="center">
-              <PlatformBadge platform={platform} info={platformInfo} />
-              <JoinButton
-                enlaceReunion={enlaceReunion || '#'}
-                isLive={false}
-                isEnded={true}
-                platform={platform}
-                info={platformInfo}
-              />
-            </Stack>
+            {enlaceReunion && (
+              <Stack spacing={1} alignItems="center">
+                <PlatformBadge platform={platform} info={platformInfo} />
+                <JoinButton
+                  enlaceReunion={enlaceReunion}
+                  isLive={false}
+                  isEnded={true}
+                  platform={platform}
+                  info={platformInfo}
+                />
+              </Stack>
+            )}
           </>
         )}
 
@@ -457,16 +459,18 @@ const LiveLessonPlaceholder = ({
             )}
 
             {/* Join button (upcoming) */}
-            <Stack spacing={1} alignItems="center">
-              <PlatformBadge platform={platform} info={platformInfo} />
-              <JoinButton
-                enlaceReunion={enlaceReunion || '#'}
-                isLive={false}
-                isEnded={false}
-                platform={platform}
-                info={platformInfo}
-              />
-            </Stack>
+            {enlaceReunion && (
+              <Stack spacing={1} alignItems="center">
+                <PlatformBadge platform={platform} info={platformInfo} />
+                <JoinButton
+                  enlaceReunion={enlaceReunion}
+                  isLive={false}
+                  isEnded={false}
+                  platform={platform}
+                  info={platformInfo}
+                />
+              </Stack>
+            )}
           </>
         )}
 
@@ -483,16 +487,18 @@ const LiveLessonPlaceholder = ({
               </Typography>
             )}
 
-            <Stack spacing={1.5} alignItems="center">
-              <PlatformBadge platform={platform} info={platformInfo} />
-              <JoinButton
-                enlaceReunion={enlaceReunion || '#'}
-                isLive={true}
-                isEnded={false}
-                platform={platform}
-                info={platformInfo}
-              />
-            </Stack>
+            {enlaceReunion && (
+              <Stack spacing={1.5} alignItems="center">
+                <PlatformBadge platform={platform} info={platformInfo} />
+                <JoinButton
+                  enlaceReunion={enlaceReunion}
+                  isLive={true}
+                  isEnded={false}
+                  platform={platform}
+                  info={platformInfo}
+                />
+              </Stack>
+            )}
           </>
         )}
       </Stack>

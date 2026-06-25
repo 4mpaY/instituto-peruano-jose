@@ -111,6 +111,10 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
         setSidebarOpen(!isMobile)
     }, [isMobile, mounted])
 
+    useEffect(() => {
+        if (isMobile && mounted) window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, [currentLessonId, currentExamenId]) // eslint-disable-line react-hooks/exhaustive-deps
+
     const handleLessonSelect = (lessonId: string) => {
         setCurrentLessonId(lessonId)
         if (isMobile) setActiveTab(TAB('Temario'))
@@ -327,40 +331,40 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                 {/* ── Video player / Exam area ── */}
                 <Grid item xs={12} key={currentView === 'exam' ? `exam-${currentExamenId}` : `video-${currentLesson?.id || 'none'}`}>
                     {currentView === 'exam' && currentExamenId ? (
-
-                        <Box sx={{
-                            position: 'relative',
-                            paddingTop: '56.25%',
-                            borderRadius: '16px',
-                            border: '1.5px solid',
-                            borderColor: 'divider',
-                            overflow: 'hidden',
-                        }}>
-                            {/* scroll container */}
+                        isMobile ? (
+                            <ExamSection
+                                examenId={currentExamenId}
+                                onExamPassed={handleExamPassed}
+                                isFinalExam={currentExamenId === examenId}
+                                onContinue={handleContinueAfterExam}
+                                contactoUrl={phoneNumberProfesor && storeCourse
+                                    ? `https://wa.me/${phoneNumberProfesor}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`
+                                    : undefined}
+                            />
+                        ) : (
                             <Box sx={{
-                                position: 'absolute',
-                                inset: 0,
-                                overflowY: 'auto',
+                                position: 'relative',
+                                paddingTop: '56.25%',
+                                borderRadius: '16px',
+                                border: '1.5px solid',
+                                borderColor: 'divider',
+                                overflow: 'hidden',
                             }}>
-                                {/* growth box: fills container for small content, grows for large content */}
-                                <Box sx={{
-                                    height: '100%',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    '& > *': { flex: '1 0 auto' },
-                                }}>
-                                    <ExamSection
-                                        examenId={currentExamenId}
-                                        onExamPassed={handleExamPassed}
-                                        isFinalExam={currentExamenId === examenId}
-                                        onContinue={handleContinueAfterExam}
-                                        contactoUrl={phoneNumberProfesor && storeCourse
-                                            ? `https://wa.me/${phoneNumberProfesor}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`
-                                            : undefined}
-                                    />
+                                <Box sx={{ position: 'absolute', inset: 0, overflowY: 'auto' }}>
+                                    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', '& > *': { flex: '1 0 auto' } }}>
+                                        <ExamSection
+                                            examenId={currentExamenId}
+                                            onExamPassed={handleExamPassed}
+                                            isFinalExam={currentExamenId === examenId}
+                                            onContinue={handleContinueAfterExam}
+                                            contactoUrl={phoneNumberProfesor && storeCourse
+                                                ? `https://wa.me/${phoneNumberProfesor}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`
+                                                : undefined}
+                                        />
+                                    </Box>
                                 </Box>
                             </Box>
-                        </Box>
+                        )
                     ) : (
                         <Box sx={{
                             borderRadius: '16px',
@@ -822,8 +826,8 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
         <Box sx={{
             display: 'flex',
             flexDirection: 'column',
-            height: 'calc(100dvh - 64px)',
-            overflow: 'hidden',
+            height: { xs: 'auto', md: 'calc(100dvh - 64px)' },
+            overflow: { xs: 'visible', md: 'hidden' },
             position: 'relative',
             ml: { xs: 'calc(50% - 50vw)', md: 'auto' },
             mr: { xs: 'calc(50% - 50vw)', md: 'auto' },
@@ -889,23 +893,25 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                             )
                         )}
                         {isMobile ? (
-                            <Box
-                                component="a"
-                                href={`https://wa.me/${phoneNumberProfesor}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
-                                target="_blank"
-                                sx={{
-                                    width: 44, height: 44,
-                                    borderRadius: '12px',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    bgcolor: '#25D366',
-                                    color: 'white',
-                                    boxShadow: '0 2px 8px rgba(37,211,102,0.35)',
-                                    flexShrink: 0,
-                                    '&:hover': { bgcolor: '#1ebe5d' }
-                                }}
-                            >
-                                <i className="tabler-brand-whatsapp" style={{ fontSize: '1.4rem' }} />
-                            </Box>
+                            <Tooltip title="Contactar al asesor académico" placement="bottom" arrow>
+                                <Box
+                                    component="a"
+                                    href={`https://wa.me/${phoneNumberProfesor}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
+                                    target="_blank"
+                                    sx={{
+                                        width: 44, height: 44,
+                                        borderRadius: '12px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        bgcolor: 'primary.main',
+                                        color: 'white',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                                        flexShrink: 0,
+                                        '&:hover': { bgcolor: 'primary.dark' }
+                                    }}
+                                >
+                                    <i className="tabler-headset" style={{ fontSize: '1.4rem' }} />
+                                </Box>
+                            </Tooltip>
                         ) : (
                             <Button
                                 variant="contained"
@@ -916,7 +922,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                                     color: 'white', boxShadow: 'none',
                                 }}
                             >
-                                <i className="tabler-brand-whatsapp" style={{ color: 'white', fontSize: 20, marginRight: 6 }} />
+                                <i className="tabler-headset" style={{ color: 'white', fontSize: 20, marginRight: 6 }} />
                                 Contactar al asesor académico
                             </Button>
                         )}
@@ -925,12 +931,12 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
             )}
 
             {/* ── Content + Sidebar ── */}
-            <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden', position: 'relative' }}>
+            <Box sx={{ display: 'flex', flexGrow: 1, overflow: { xs: 'visible', md: 'hidden' }, position: 'relative' }}>
 
                 {/* Main scrollable area */}
                 <Box sx={{
                     flexGrow: 1,
-                    overflowY: { xs: 'auto', md: 'scroll' },
+                    overflowY: { xs: 'visible', md: 'scroll' },
                     overflowX: 'hidden',
                     transition: 'all 0.3s',
                 }}>

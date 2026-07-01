@@ -49,6 +49,7 @@ export function TabInformacion({ curso, profesores, onSuccess }: TabInformacionP
     video_presentacion: curso.video_presentacion || '',
     brochure: curso.brochure || '',
     grupo_whatsapp: curso.grupo_whatsapp || '',
+    numero_asesor: curso.numero_asesor || '',
     fecha_inicio: curso.fecha_inicio ? toLocalDateInputValue(curso.fecha_inicio) : '',
     fecha_fin: curso.fecha_fin ? toLocalDateInputValue(curso.fecha_fin) : '',
     nivel: curso.nivel || ''
@@ -74,6 +75,7 @@ export function TabInformacion({ curso, profesores, onSuccess }: TabInformacionP
           video_presentacion: form.video_presentacion || null,
           brochure: form.brochure || null,
           grupo_whatsapp: form.grupo_whatsapp || null,
+          numero_asesor: form.numero_asesor.trim() || null,
           fecha_inicio: form.fecha_inicio ? sanitizeDatetimeInput(form.fecha_inicio) : null,
           fecha_fin: form.fecha_fin ? sanitizeDatetimeInput(form.fecha_fin) : null,
           nivel: (form.nivel || null) as 'BASICO' | 'INTERMEDIO' | 'AVANZADO' | null
@@ -319,11 +321,26 @@ export function TabInformacion({ curso, profesores, onSuccess }: TabInformacionP
       <Grid item xs={12} sm={6}>
         <CustomTextField
           fullWidth
-          label='Grupo de WhatsApp (enlace)'
+          label='Grupos de WhatsApp (enlace)'
           name='grupo_whatsapp'
           value={form.grupo_whatsapp}
           onChange={handleChange}
           placeholder='https://chat.whatsapp.com/...'
+          InputProps={{
+            startAdornment: <InputAdornment position='start'><i className='tabler-users-group text-xl text-textSecondary' /></InputAdornment>
+          }}
+        />
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <CustomTextField
+          fullWidth
+          label='WhatsApp (número de contacto)'
+          name='numero_asesor'
+          value={form.numero_asesor}
+          onChange={e => setForm(prev => ({ ...prev, numero_asesor: e.target.value.replace(/\D/g, '') }))}
+          placeholder='51959436827'
+          inputProps={{ maxLength: 20 }}
+          helperText='Solo dígitos con código de país'
           InputProps={{
             startAdornment: <InputAdornment position='start'><i className='tabler-brand-whatsapp text-xl text-textSecondary' /></InputAdornment>
           }}

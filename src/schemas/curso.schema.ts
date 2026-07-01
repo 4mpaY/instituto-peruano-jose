@@ -30,6 +30,7 @@ export const crearCursoSchema = z.object({
   fecha_fin: z.string().optional().nullable(),
   vigencia_meses: z.coerce.number().int().positive().optional().nullable(),
   nivel: z.enum(['BASICO', 'INTERMEDIO', 'AVANZADO']).optional().nullable(),
+  numero_asesor: z.string().max(20).optional().nullable(),
   grupo_whatsapp: z.string().optional().nullable()
 })
 

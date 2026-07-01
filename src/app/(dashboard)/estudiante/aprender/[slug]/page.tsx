@@ -32,8 +32,7 @@ export default async function LearningPage({
     }
   })
 
-  // Establecemos el número telefónico del asesor, priorizando 'numero_asesor' y usando 'profesor.celular' como fallback
-  let phoneNumberProfesor = '51959436827'
+  let phoneNumberProfesor: string | null = null
 
   if (cursoData?.numero_asesor) {
     phoneNumberProfesor = cursoData.numero_asesor
@@ -41,7 +40,7 @@ export default async function LearningPage({
     phoneNumberProfesor = cursoData.profesor.celular
   }
 
-  const grupoWhatsapp = cursoData?.grupo_whatsapp ?? null
+  const grupoWhatsapp = cursoData?.grupo_whatsapp?.trim() || null
 
   const token = session.user?.accessToken ?? null
 
@@ -51,8 +50,6 @@ export default async function LearningPage({
 
   try {
     const data = await axiosPlayer.getPlayerData(params.slug)
-
-    console.log(data)
 
     return (
       <CoursePlayerView

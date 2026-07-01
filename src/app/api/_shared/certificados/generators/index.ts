@@ -62,18 +62,31 @@ export const PLANTILLAS = {
 export type PlantillaId = keyof typeof PLANTILLAS
 
 /**
+ * Resuelve la plantilla activa desde configuración.
+ * Por defecto usa Instituto Peruano (plantilla oficial de este tenant).
+ */
+export function resolvePlantillaCertificado(configs: Record<string, string>): PlantillaId {
+  const id = configs.CERTIFICADO_PLANTILLA
+
+  if (id && id in PLANTILLAS) return id as PlantillaId
+
+  return 'instituto_peruano'
+}
+
+/**
  * Devuelve la función generadora correspondiente a la plantilla.
- * Si el slug no existe, devuelve el generador clásico como fallback seguro.
+ * Si el slug no existe, devuelve Instituto Peruano como fallback seguro.
  */
 export function getGenerator(plantilla: string): GeneratorFn {
   switch (plantilla) {
-    case 'clasico_resumido': return generarClasicoResumido
-    case 'corporativo':      return generarCorporativo
-    case 'moderno':          return generarModerno
-    case 'elegante':         return generarElegante
+    case 'clasico':           return generarClasico
+    case 'clasico_resumido':  return generarClasicoResumido
+    case 'corporativo':       return generarCorporativo
+    case 'moderno':           return generarModerno
+    case 'elegante':          return generarElegante
     case 'instituto_peruano': return generarInstitutoPeruano
-    case 'minimalista':      return generarMinimalista
-    default:                 return generarClasico
+    case 'minimalista':       return generarMinimalista
+    default:                  return generarInstitutoPeruano
   }
 }
 

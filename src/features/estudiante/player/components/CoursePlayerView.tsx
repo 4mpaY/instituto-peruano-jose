@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 
 import axios from 'axios'
 import { toast } from 'react-toastify'
@@ -29,11 +29,15 @@ interface CoursePlayerViewProps {
         modulos: any[]
         examenes?: any[]
     }
-    phoneNumberProfesor: string
+    phoneNumberProfesor?: string | null
     grupoWhatsapp?: string | null
     initialLessonId?: string
     initialExamenId?: string
 }
+
+const WhatsappGroupsIcon = () => (
+    <i className="tabler-users-group" style={{ fontSize: '1.5rem', color: '#fff' }} />
+)
 
 const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialLessonId }: CoursePlayerViewProps) => {
     const theme = useTheme()
@@ -58,6 +62,9 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
     } = useCourseStore()
 
     const [mounted, setMounted] = useState(false)
+    const mainScrollRef = useRef<HTMLDivElement>(null)
+    const whatsappGrupoUrl = grupoWhatsapp?.trim() || null
+    const whatsappDirecto = phoneNumberProfesor?.replace(/\D/g, '') || null
 
     useEffect(() => {
         setMounted(true)
@@ -112,8 +119,16 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
     }, [isMobile, mounted])
 
     useEffect(() => {
-        if (isMobile && mounted) window.scrollTo({ top: 0, behavior: 'smooth' })
-    }, [currentLessonId, currentExamenId]) // eslint-disable-line react-hooks/exhaustive-deps
+        if (!mounted) return
+
+        const scrollToTop = () => {
+            mainScrollRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+            window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+        }
+
+        scrollToTop()
+        requestAnimationFrame(scrollToTop)
+    }, [currentLessonId, currentExamenId, currentView, mounted])
 
     const handleLessonSelect = (lessonId: string) => {
         setCurrentLessonId(lessonId)
@@ -267,7 +282,14 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                                         />
                                     )}
                                 </Stack>
-                                <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.25, fontSize: { xs: '1.1rem', md: '1.3rem' } }}>
+                                <Typography variant="h5" sx={{
+                                    fontWeight: 800,
+                                    color: 'text.primary',
+                                    lineHeight: 1.25,
+                                    fontSize: { xs: '1.1rem', md: '1.3rem' },
+                                    wordBreak: 'break-word',
+                                    overflowWrap: 'anywhere',
+                                }}>
                                     {currentLesson.titulo}
                                 </Typography>
                             </Box>
@@ -338,7 +360,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                                 isFinalExam={currentExamenId === examenId}
                                 onContinue={handleContinueAfterExam}
                                 contactoUrl={phoneNumberProfesor && storeCourse
-                                    ? `https://wa.me/${phoneNumberProfesor}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`
+                                    ? `https://wa.me/${phoneNumberProfesor.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`
                                     : undefined}
                             />
                         ) : (
@@ -358,7 +380,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                                             isFinalExam={currentExamenId === examenId}
                                             onContinue={handleContinueAfterExam}
                                             contactoUrl={phoneNumberProfesor && storeCourse
-                                                ? `https://wa.me/${phoneNumberProfesor}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`
+                                                ? `https://wa.me/${phoneNumberProfesor.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`
                                                 : undefined}
                                         />
                                     </Box>
@@ -371,7 +393,19 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                             overflow: 'hidden',
                             bgcolor: '#0A0A0A',
                             boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-                            position: { xs: 'sticky', md: 'relative' },
+                            maxHeight: {
+                                xs: currentLesson?.es_en_vivo ? '70vh' : 'unset',
+                                md: 'unset',
+                            },
+                            overflowY: {
+                                xs: currentLesson?.es_en_vivo ? 'auto' : 'hidden',
+                                md: 'hidden',
+                            },
+                            WebkitOverflowScrolling: 'touch',
+                            position: {
+                                xs: currentLesson?.es_en_vivo ? 'relative' : 'sticky',
+                                md: 'relative',
+                            },
                             top: 0,
                             zIndex: 6,
                         }}>
@@ -485,7 +519,18 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                 )}
 
                 {/* ── Tabs ── */}
-                <Grid item xs={12} sx={{ position: { xs: 'sticky', md: 'relative' }, top: { xs: 'calc((100vw * 9)/16)', md: 0 }, zIndex: 5, bgcolor: 'background.paper' }}>
+                <Grid item xs={12} sx={{
+                    position: {
+                        xs: currentLesson?.es_en_vivo ? 'relative' : 'sticky',
+                        md: 'relative',
+                    },
+                    top: {
+                        xs: currentLesson?.es_en_vivo ? 'auto' : 'calc((100vw * 9)/16)',
+                        md: 0,
+                    },
+                    zIndex: 5,
+                    bgcolor: 'background.paper',
+                }}>
                     <Tabs
                         value={activeTab}
                         onChange={(_, v) => setActiveTab(v)}
@@ -617,7 +662,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                             const failed = attempted && !approved
                             const exhausted = !approved && (ex.intentos_realizados || 0) >= (ex.intentos_maximos || 1)
                             const expiredWithAttempts = !!lockedExpired && attempted
-                            const isActive = currentExamenId === ex.id && currentView === 'exam'
+                            const isActive = currentExamenId === ex.id && currentView === 'exam' && !lockedExpired && !lockedFuture && !lockedProgress
                             const isLocked = lockedProgress || (lockedFuture && !expiredWithAttempts) || (lockedExpired && !expiredWithAttempts) || exhausted
 
                             const modName = storeCourse?.modulos.find((m: any) => m.id === ex.modulo_id)?.titulo
@@ -625,11 +670,11 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                             const btnConfig = (() => {
                                 if (approved) return { label: 'Ver resultado', bg: '#16a34a' }
                                 if (exhausted) return { label: 'Ver resultado', bg: '#ea580c' }
-                                if (isActive) return { label: 'En curso', bg: '#d97706' }
                                 if (expiredWithAttempts) return { label: 'Ver resultado', bg: '#64748b' }
-                                if (lockedFuture) return { label: 'Próximamente', bg: '#3b82f6' }
                                 if (lockedExpired) return { label: 'Expirado', bg: '#dc2626' }
+                                if (lockedFuture) return { label: 'Próximamente', bg: '#3b82f6' }
                                 if (lockedProgress) return { label: 'Bloqueado', bg: '#94a3b8' }
+                                if (isActive) return { label: 'En curso', bg: '#d97706' }
 
                                 return { label: failed ? 'Reintentar' : 'Iniciar', bg: failed ? '#dc2626' : '#025E44' }
                             })()
@@ -858,75 +903,55 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                     </Typography>
 
                     <Stack direction="row" spacing={1}>
-                        {grupoWhatsapp && (
-                            isMobile ? (
-                                <Box
-                                    component="a"
-                                    href={grupoWhatsapp}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    sx={{
-                                        width: 44, height: 44,
-                                        borderRadius: '12px',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        bgcolor: '#25D366',
-                                        color: 'white',
-                                        boxShadow: '0 2px 8px rgba(37,211,102,0.35)',
-                                        flexShrink: 0,
-                                        '&:hover': { bgcolor: '#1ebe5d' }
-                                    }}
-                                >
-                                    <i className="tabler-brand-whatsapp" style={{ fontSize: '1.4rem' }} />
-                                </Box>
-                            ) : (
-                                <Button
-                                    variant="contained"
-                                    href={grupoWhatsapp}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    sx={{
-                                        borderRadius: '20px', textTransform: 'none', fontWeight: 600, px: 2,
-                                        bgcolor: '#25D366', color: 'white', boxShadow: 'none',
-                                        '&:hover': { bgcolor: '#1ebe5d', boxShadow: 'none' }
-                                    }}
-                                >
-                                    <i className="tabler-brand-whatsapp" style={{ color: 'white', fontSize: 20, marginRight: 6 }} />                                    Grupo de WhatsApp
-                                </Button>
-                            )
-                        )}
-                        {isMobile ? (
-                            <Tooltip title="Contactar al asesor académico" placement="bottom" arrow>
-                                <Box
-                                    component="a"
-                                    href={`https://wa.me/${phoneNumberProfesor}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
-                                    target="_blank"
-                                    sx={{
-                                        width: 44, height: 44,
-                                        borderRadius: '12px',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        bgcolor: 'primary.main',
-                                        color: 'white',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                                        flexShrink: 0,
-                                        '&:hover': { bgcolor: 'primary.dark' }
-                                    }}
-                                >
-                                    <i className="tabler-headset" style={{ fontSize: '1.4rem' }} />
-                                </Box>
-                            </Tooltip>
-                        ) : (
-                            <Button
-                                variant="contained"
-                                href={`https://wa.me/${phoneNumberProfesor}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
-                                target="_blank"
+                        <Tooltip
+                            title={whatsappGrupoUrl ? 'Grupos de WhatsApp' : 'Grupo de WhatsApp no configurado'}
+                            placement="bottom"
+                            arrow
+                        >
+                            <Box
+                                component={whatsappGrupoUrl ? 'a' : 'div'}
+                                {...(whatsappGrupoUrl ? {
+                                    href: whatsappGrupoUrl,
+                                    target: '_blank',
+                                    rel: 'noopener noreferrer',
+                                } : {})}
                                 sx={{
-                                    borderRadius: '20px', textTransform: 'none', fontWeight: 600, px: 2,
-                                    color: 'white', boxShadow: 'none',
+                                    width: 44, height: 44,
+                                    borderRadius: '12px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    bgcolor: '#25D366',
+                                    color: 'white',
+                                    boxShadow: whatsappGrupoUrl ? '0 2px 8px rgba(37,211,102,0.35)' : 'none',
+                                    flexShrink: 0,
+                                    opacity: whatsappGrupoUrl ? 1 : 0.55,
+                                    cursor: whatsappGrupoUrl ? 'pointer' : 'default',
+                                    ...(whatsappGrupoUrl && { '&:hover': { bgcolor: '#1ebe5d' } }),
                                 }}
                             >
-                                <i className="tabler-headset" style={{ color: 'white', fontSize: 20, marginRight: 6 }} />
-                                Contactar al asesor académico
-                            </Button>
+                                <WhatsappGroupsIcon />
+                            </Box>
+                        </Tooltip>
+                        {whatsappDirecto && (
+                            <Tooltip title="WhatsApp" placement="bottom" arrow>
+                                <Box
+                                    component="a"
+                                    href={`https://wa.me/${whatsappDirecto}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={{
+                                        width: 44, height: 44,
+                                        borderRadius: '12px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        bgcolor: '#128C7E',
+                                        color: 'white',
+                                        boxShadow: '0 2px 8px rgba(18,140,126,0.35)',
+                                        flexShrink: 0,
+                                        '&:hover': { bgcolor: '#0f7569' }
+                                    }}
+                                >
+                                    <i className="tabler-brand-whatsapp" style={{ fontSize: '1.5rem', color: '#fff' }} />
+                                </Box>
+                            </Tooltip>
                         )}
                     </Stack>
                 </Box>
@@ -936,7 +961,9 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
             <Box sx={{ display: 'flex', flexGrow: 1, overflow: { xs: 'visible', md: 'hidden' }, position: 'relative' }}>
 
                 {/* Main scrollable area */}
-                <Box sx={{
+                <Box
+                    ref={mainScrollRef}
+                    sx={{
                     flexGrow: 1,
                     overflowY: { xs: 'visible', md: 'scroll' },
                     overflowX: 'hidden',

@@ -70,7 +70,9 @@ export const CourseCreatePage = ({ profesores }: CourseCreatePageProps) => {
     video_presentacion: null,
     brochure: null,
     fecha_inicio: null,
-    vigencia_meses: null
+    vigencia_meses: null,
+    grupo_whatsapp: null,
+    numero_asesor: null
   }
 
   const handleSubmit = async (values: CrearCursoDto, { setSubmitting }: FormikHelpers<CrearCursoDto>) => {
@@ -357,6 +359,55 @@ export const CourseCreatePage = ({ profesores }: CourseCreatePageProps) => {
                           disabled={isSubmitting}
                           InputProps={{ inputProps: { min: 1 } }}
                           helperText='Si indicas un número, los alumnos tendrán acceso por esa cantidad de meses desde su inscripción.'
+                        />
+                      </Grid>
+
+                      <Grid item xs={12}><Divider /></Grid>
+
+                      <Grid item xs={12}>
+                        <Typography variant='h6' sx={{ mb: 1 }}>WhatsApp</Typography>
+                        <Typography variant='body2' color='text.secondary' sx={{ mb: 3 }}>
+                          Estos enlaces se mostrarán como iconos en la parte superior del player de lecciones.
+                        </Typography>
+                      </Grid>
+
+                      <Grid item xs={12} sm={6}>
+                        <CustomTextField
+                          fullWidth
+                          label='Grupos de WhatsApp (enlace)'
+                          name='grupo_whatsapp'
+                          placeholder='https://chat.whatsapp.com/...'
+                          value={values.grupo_whatsapp || ''}
+                          onChange={handleChange}
+                          disabled={isSubmitting}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position='start'>
+                                <i className='tabler-users-group text-xl text-textSecondary' />
+                              </InputAdornment>
+                            )
+                          }}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} sm={6}>
+                        <CustomTextField
+                          fullWidth
+                          label='WhatsApp (número de contacto)'
+                          name='numero_asesor'
+                          placeholder='51959436827'
+                          value={values.numero_asesor || ''}
+                          onChange={e => setFieldValue('numero_asesor', e.target.value.replace(/\D/g, ''))}
+                          disabled={isSubmitting}
+                          inputProps={{ maxLength: 20 }}
+                          helperText='Solo dígitos con código de país. Si se deja vacío, se usará el celular del profesor.'
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position='start'>
+                                <i className='tabler-brand-whatsapp text-xl text-textSecondary' />
+                              </InputAdornment>
+                            )
+                          }}
                         />
                       </Grid>
                     </Grid>

@@ -62,6 +62,9 @@ const toVeinte = (pct: number) => Math.round((pct / 100) * 20)
 const fmtFecha = (val: string) =>
     new Date(val).toLocaleString('es-PE', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })
 
+const isExamenExpirado = (fechaFin?: string | null) =>
+    !!fechaFin && new Date(fechaFin).getTime() < Date.now()
+
 const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -199,9 +202,16 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
         setYaAprobado(queryData.yaAprobado)
         setIntentosRestantes(queryData.intentosRestantes)
 
-        // Solo cargar resultado anterior si el alumno no está en medio de un intento
-        if (queryData.resultadoAnterior && !resultadoRef.current && !examenIniciadoRef.current) {
+        const expirado = isExamenExpirado(queryData.examen?.fecha_fin)
+
+        if (expirado) {
+            setExamenIniciado(false)
+            examenIniciadoRef.current = false
+        }
+
+        if (queryData.resultadoAnterior && !examenIniciadoRef.current) {
             setResultado(queryData.resultadoAnterior)
+            resultadoRef.current = queryData.resultadoAnterior
         }
     }, [queryData])
 
@@ -226,6 +236,12 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
     }, [examenIniciado, tiempoRestante])
 
     const handleStartExam = () => {
+        if (isExamenExpirado(examen?.fecha_fin)) {
+            toast.error('El período de evaluación ha finalizado')
+
+            return
+        }
+
         examenIniciadoRef.current = true
         resultadoRef.current = null
         setExamenIniciado(true)
@@ -433,6 +449,51 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
         )
     }
 
+    const examenExpirado = isExamenExpirado(examen.fecha_fin)
+
+    if (examenExpirado && !resultado && !yaAprobado && !queryData?.resultadoAnterior) {
+        return (
+            <StateCard
+                icon="tabler-calendar-x"
+                iconColor="#64748b"
+                bgColor="rgba(100,116,139,0.06)"
+                borderColor="rgba(100,116,139,0.25)"
+                title="Período de evaluación cerrado"
+                subtitle="El tiempo para rendir este examen ha concluido y no registras ningún intento."
+                action={contactoUrl ? (
+                    <Button
+                        variant="contained"
+                        href={contactoUrl}
+                        target="_blank"
+                        startIcon={<i className="tabler-brand-whatsapp" />}
+                        sx={{
+                            borderRadius: '20px',
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            px: 3,
+                            boxShadow: 'none'
+                        }}
+                    >
+                        Contactar con asesor
+                    </Button>
+                ) : undefined}
+            />
+        )
+    }
+
+    if (examenExpirado && examenIniciado) {
+        return (
+            <StateCard
+                icon="tabler-calendar-x"
+                iconColor="#64748b"
+                bgColor="rgba(100,116,139,0.06)"
+                borderColor="rgba(100,116,139,0.25)"
+                title="Período de evaluación cerrado"
+                subtitle="El tiempo para rendir este examen ha concluido."
+            />
+        )
+    }
+
     // ── Already approved (no recent result) ──────────────────────────────────
     if (yaAprobado && !resultado) {
         return (
@@ -553,7 +614,7 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
                             </Stack>
                         )
                     ) : (
-                        resultado.intentosRestantes > 0 ? (
+                        resultado.intentosRestantes > 0 && !examenExpirado ? (
                             <Stack spacing={1} alignItems="center">
                                 <Typography variant="body2" color="text.secondary">
                                     Te quedan <strong>{resultado.intentosRestantes}</strong> intento{resultado.intentosRestantes !== 1 ? 's' : ''}.

@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 
 import { buildCertificadoData } from '@/app/api/_shared/certificados/buildCertificadoData'
 import { getConfigs } from '@/utils/libs/config'
-import { getGenerator } from '@/app/api/_shared/certificados/generators'
+import { getGenerator, resolvePlantillaCertificado } from '@/app/api/_shared/certificados/generators'
 import { handleApiError } from '@/utils/libs/validation'
 import prisma from '@/utils/libs/prisma'
 import { requireAdmin } from '@/utils/libs/auth-helpers'
@@ -128,7 +128,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     certData.gerenteGeneral = gerenteGeneral
 
     // ── Seleccionar plantilla y generar PDF ───────────────────────────
-    const plantilla = configs.CERTIFICADO_PLANTILLA || 'clasico'
+    const plantilla = resolvePlantillaCertificado(configs)
     const generarPDF = getGenerator(plantilla)
     const pdfBuffer = await generarPDF(certData)
 
@@ -137,7 +137,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `${previewFlag ? 'inline' : 'attachment'}; filename="certificado-${certificado.codigo_verificacion}.pdf"`,
-        'Content-Length': pdfBuffer.byteLength.toString()
+        'Content-Length': pdfBuffer.byteLength.toString(),
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        Pragma: 'no-cache'
       }
     })
   } catch (error) {

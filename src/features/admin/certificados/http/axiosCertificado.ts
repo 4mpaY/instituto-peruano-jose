@@ -40,7 +40,7 @@ export class AxiosCertificado extends AxiosInternalHttpClient {
   async downloadPdf(id: string, preview = false): Promise<Blob> {
     try {
       const res = await this.client.get(`/${id}/download`, {
-        params: { preview },
+        params: { preview, _t: Date.now() },
         responseType: 'blob'
       })
 

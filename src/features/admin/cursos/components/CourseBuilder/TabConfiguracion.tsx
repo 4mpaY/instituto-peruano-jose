@@ -292,17 +292,17 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
 
             <Grid item xs={12}><Divider /></Grid>
 
-            {/* Asesor Académico */}
+            {/* WhatsApp directo */}
             <Grid item xs={12}>
-                <Typography variant='h6' sx={{ mb: 1 }}>Asesor Académico (WhatsApp)</Typography>
+                <Typography variant='h6' sx={{ mb: 1 }}>WhatsApp (contacto directo)</Typography>
                 <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
-                    Número de WhatsApp al que se redirigirá al estudiante al presionar &quot;Contactar al asesor académico&quot;.
+                    Número de WhatsApp que se abrirá al presionar el icono de WhatsApp en el player de lecciones.
                     Ingresa solo dígitos incluyendo el código de país (ej: <strong>51959436827</strong>).
                     Si se deja vacío, se usará el celular del profesor.
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
                     <CustomTextField
-                        label='Número WhatsApp del asesor'
+                        label='Número de WhatsApp'
                         value={numeroAsesor}
                         onChange={e => setNumeroAsesor(e.target.value.replace(/\D/g, ''))}
                         sx={{ width: 260 }}
@@ -335,11 +335,11 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
 
             <Grid item xs={12}><Divider /></Grid>
 
-            {/* Grupo de WhatsApp */}
+            {/* Grupos de WhatsApp */}
             <Grid item xs={12}>
-                <Typography variant='h6' sx={{ mb: 1 }}>Grupo de WhatsApp</Typography>
+                <Typography variant='h6' sx={{ mb: 1 }}>Grupos de WhatsApp</Typography>
                 <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
-                    Enlace de invitación al grupo de WhatsApp del curso. Se mostrará como botón en el player del estudiante.
+                    Enlace de invitación al grupo de WhatsApp del curso. Se mostrará como icono en la parte superior del player del estudiante.
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
                     <CustomTextField

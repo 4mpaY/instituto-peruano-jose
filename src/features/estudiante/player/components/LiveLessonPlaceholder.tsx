@@ -315,13 +315,14 @@ const LiveLessonPlaceholder = ({
     <Paper
       sx={{
         width: '100%',
-        aspectRatio: '16/9',
+        aspectRatio: { xs: 'unset', md: '16/9' },
+        minHeight: { xs: 240, md: 'unset' },
         bgcolor: '#0f172a',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: { xs: 0, md: '16px' },
+        justifyContent: { xs: 'flex-start', md: 'center' },
+        borderRadius: '16px',
         overflow: 'hidden',
         position: 'relative',
         color: 'white',
@@ -367,7 +368,15 @@ const LiveLessonPlaceholder = ({
         </Box>
 
         {/* Title */}
-        <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1.2, color: 'common.white', fontSize: { xs: '1.4rem', sm: '1.8rem' } }}>
+        <Typography variant="h4" sx={{
+          fontWeight: 900,
+          lineHeight: 1.2,
+          color: 'common.white',
+          fontSize: { xs: '1.4rem', sm: '1.8rem' },
+          wordBreak: 'break-word',
+          overflowWrap: 'anywhere',
+          width: '100%',
+        }}>
           {titulo}
         </Typography>
 

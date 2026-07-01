@@ -80,6 +80,12 @@ function SectionLabel({ children }: { children: string }) {
 
 const PLANTILLAS_CERTIFICADO = [
   {
+    id: 'instituto_peruano',
+    nombre: 'Instituto Peruano',
+    descripcion: 'Diseño oficial IPG: barras verdes, logos IPG/CCL, temario por lección.',
+    thumbnail: '/images/plantillas-certificado/instituto_peruano.png',
+  },
+  {
     id: 'clasico',
     nombre: 'Clásico',
     descripcion: 'Panel lateral con gradiente. Ideal para institutos y academias.',
@@ -120,7 +126,7 @@ const PLANTILLAS_CERTIFICADO = [
 function CertificadosSettings({ config, onInputChange }: { config: any; onInputChange: (clave: string, valor: string) => void }) {
   const { data: usuariosData, isLoading } = useUsuarios({ limit: '1000' })
   const candidatos = (usuariosData?.usuarios || []).filter(u => u.rol === Rol.ADMIN || u.rol === Rol.PROFESOR)
-  const plantillaActiva = config.CERTIFICADO_PLANTILLA || 'clasico'
+  const plantillaActiva = config.CERTIFICADO_PLANTILLA || 'instituto_peruano'
 
   return (
     <Stack spacing={4}>
@@ -413,7 +419,7 @@ export function ConfiguracionView({ initialData }: ConfiguracionViewProps) {
     CULQI_RSA_ID: '',
     CULQI_RSA_PUBLIC_KEY: '',
     CERTIFICADO_GERENTE_GENERAL_ID: '',
-    CERTIFICADO_PLANTILLA: 'clasico',
+    CERTIFICADO_PLANTILLA: 'instituto_peruano',
     PAGO_MANUAL_ENABLED: 'false',
     PAGO_MANUAL_WHATSAPP_NUMERO: '',
     PAGO_MANUAL_WHATSAPP_MENSAJE: '',

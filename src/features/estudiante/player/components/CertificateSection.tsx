@@ -192,6 +192,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
 
         try {
             const res = await axios.get(`/api/estudiante/certificado/${certificado.id}/pdf`, {
+                params: { _t: Date.now() },
                 responseType: 'blob'
             })
 

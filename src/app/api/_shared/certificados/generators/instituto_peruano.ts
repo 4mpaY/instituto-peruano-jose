@@ -179,22 +179,28 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   // ── Cuerpo central ────────────────────────────────────────────────────
   const cx = W / 2
   const textMaxW = W - margin * 2 - 60
-  const bodyStartY = sepY + 2
+  const bodyStartY = sepY + 1
 
-  // Zona inferior fija: firmas + bloque APROBADO/Firmado siempre a la misma distancia
+  const ptToMm = 0.352778
+  const advanceY = (lineCount: number, fontSizePt: number, gapMm: number) =>
+    lineCount * fontSizePt * ptToMm * 1.06 + gapMm
+
+  const NOMBRE_SIZE = 30
+  const CURSO_SIZE = 20
+  const DESC_SIZE = 10.6
+
+  // Zona inferior fija: más espacio entre "Firmado..." y las firmas
   const sigLineY = H - BAR_H - 30
-  const firmadoY = sigLineY - 28
-  const aprobadoY = firmadoY - 16
-  const contentMaxY = aprobadoY - 20
+  const firmadoY = sigLineY - 40
+  const aprobadoY = firmadoY - 8
 
-  const SP = {
-    afterCertificado: 8,
-    afterOtorgado: 3,
-    afterNombre: 0,
-    afterPorHaberIntro: 4,
-    afterCurso: 2,
-    afterDesc: 2,
-    afterPorcuanto: 1,
+  const GAP = {
+    afterCertificado: -3,
+    afterOtorgado: 4,
+    afterNombre: 1,
+    afterPorHaber: 5,
+    afterCurso: 1,
+    afterDesc: 1,
   }
 
   const fechaFirmadaTxt = new Date(fechaEmisionVal).toLocaleDateString('es-PE', {
@@ -206,43 +212,6 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   const descripcion = `Emitido por el ${nombreInstitucion}, con una duración de ${cursoDuracion || '---'}, realizado desde el ${fechaInicioTxt} hasta el ${fechaFinTxt}.`
   const porcuanto = 'Por cuanto: Para que conste y sea reconocido, se otorga el presente certificado en calidad de:'
 
-  type BodyScale = {
-    nombreSize: number
-    cursoSize: number
-    nombreLh: number
-    cursoLh: number
-    descSize: number
-    descLh: number
-  }
-  const bodyScales: BodyScale[] = [
-    { nombreSize: 30, cursoSize: 20, nombreLh: 10, cursoLh: 8, descSize: 10.6, descLh: 5.8 },
-    { nombreSize: 26, cursoSize: 18, nombreLh: 9, cursoLh: 7.5, descSize: 10.6, descLh: 5.6 },
-    { nombreSize: 22, cursoSize: 16, nombreLh: 8, cursoLh: 7, descSize: 10, descLh: 5.4 },
-    { nombreSize: 19, cursoSize: 14, nombreLh: 7, cursoLh: 6.5, descSize: 9.5, descLh: 5.2 },
-    { nombreSize: 16, cursoSize: 12, nombreLh: 6, cursoLh: 6, descSize: 9, descLh: 5 },
-    { nombreSize: 14, cursoSize: 11, nombreLh: 5.5, cursoLh: 5.5, descSize: 8.5, descLh: 4.8 },
-    { nombreSize: 12, cursoSize: 10, nombreLh: 5, cursoLh: 5, descSize: 8, descLh: 4.5 },
-  ]
-
-  const countLines = (text: string, fontSize: number, maxW: number) => {
-    doc.setFontSize(fontSize)
-
-    return doc.splitTextToSize(text, maxW).length
-  }
-
-  const estimateBodyEndY = (scale: BodyScale) => {
-    let endY = bodyStartY + SP.afterCertificado + SP.afterOtorgado
-    endY += countLines(nombreCompleto, scale.nombreSize, textMaxW) * scale.nombreLh + SP.afterNombre
-    endY += SP.afterPorHaberIntro
-    endY += countLines(cursoTitulo, scale.cursoSize, textMaxW) * scale.cursoLh + SP.afterCurso
-    endY += countLines(descripcion, scale.descSize, textMaxW - 10) * scale.descLh + SP.afterDesc
-    endY += countLines(porcuanto, scale.descSize, textMaxW - 10) * scale.descLh + SP.afterPorcuanto
-
-    return endY
-  }
-
-  const bodyScale = bodyScales.find(scale => estimateBodyEndY(scale) <= contentMaxY) ?? bodyScales[bodyScales.length - 1]
-
   let y = bodyStartY
 
   // "CERTIFICADO"
@@ -250,51 +219,51 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   doc.text('CERTIFICADO', cx, y, { align: 'center' })
-  y += SP.afterCertificado
+  y += advanceY(1, 47, GAP.afterCertificado)
 
   // "Otorgado a:"
-  doc.setFontSize(10.6)
+  doc.setFontSize(DESC_SIZE)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   doc.text('Otorgado a:', cx, y, { align: 'center' })
-  y += SP.afterOtorgado
+  y += advanceY(1, DESC_SIZE, GAP.afterOtorgado)
 
-  // Nombre del estudiante
-  doc.setFontSize(bodyScale.nombreSize)
+  // Nombre del estudiante — 30pt fijo
+  doc.setFontSize(NOMBRE_SIZE)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
   const nombreLines = doc.splitTextToSize(nombreCompleto, textMaxW)
 
   doc.text(nombreLines, cx, y, { align: 'center' })
-  y += nombreLines.length * bodyScale.nombreLh + SP.afterNombre
+  y += advanceY(nombreLines.length, NOMBRE_SIZE, GAP.afterNombre)
 
   // Texto "Por haber concluido..."
-  doc.setFontSize(10.6)
+  doc.setFontSize(DESC_SIZE)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   doc.text('Por haber concluido y aprobado con éxito el curso de especialización de:', cx, y, { align: 'center' })
-  y += SP.afterPorHaberIntro
+  y += advanceY(1, DESC_SIZE, GAP.afterPorHaber)
 
-  // Nombre del curso
-  doc.setFontSize(bodyScale.cursoSize)
+  // Nombre del curso — 20pt fijo
+  doc.setFontSize(CURSO_SIZE)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   const cursoLines = doc.splitTextToSize(cursoTitulo, textMaxW)
 
   doc.text(cursoLines, cx, y, { align: 'center' })
-  y += cursoLines.length * bodyScale.cursoLh + SP.afterCurso
+  y += advanceY(cursoLines.length, CURSO_SIZE, GAP.afterCurso)
 
   // Descripción institucional
-  doc.setFontSize(bodyScale.descSize)
+  doc.setFontSize(DESC_SIZE)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   const descLines = doc.splitTextToSize(descripcion, textMaxW - 10)
 
   doc.text(descLines, cx, y, { align: 'center' })
-  y += descLines.length * bodyScale.descLh + SP.afterDesc
+  y += advanceY(descLines.length, DESC_SIZE, GAP.afterDesc)
 
   // "Por cuanto..."
-  doc.setFontSize(bodyScale.descSize)
+  doc.setFontSize(DESC_SIZE)
   const porcuantoLines = doc.splitTextToSize(porcuanto, textMaxW - 10)
 
   doc.text(porcuantoLines, cx, y, { align: 'center' })

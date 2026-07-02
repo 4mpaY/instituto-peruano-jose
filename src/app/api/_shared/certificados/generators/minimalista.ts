@@ -4,13 +4,43 @@ import { join } from 'path'
 import { fetchImageBuffer, compressImageForPdf, resolveLogoDimensions, formatDateLong } from './utils'
 import type { GeneratorFn, ModuloData } from './types'
 
-function extractBullets(html: string | null | undefined): string[] {
-  if (!html) return []
-  const matches = html.match(/<li[^>]*>([\s\S]*?)<\/li>/gi)
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .trim()
+}
 
-  if (!matches) return []
-  
-return matches.map(m => m.replace(/<[^>]+>/g, '').trim()).filter(Boolean)
+/** Extrae subtemas del contenido de una lección (HTML, viñetas o texto plano). */
+function extractSubtemas(contenido: string | null | undefined): string[] {
+  if (!contenido?.trim()) return []
+
+  const liMatches = contenido.match(/<li[^>]*>([\s\S]*?)<\/li>/gi)
+
+  if (liMatches?.length) {
+    return liMatches.map(m => stripHtml(m)).filter(Boolean)
+  }
+
+  const plain = stripHtml(contenido)
+  const rawLines = plain.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+
+  const items = rawLines
+    .map(line => line.replace(/^[\s•\-*·–—]+/, '').replace(/^\d+[\.)]\s*/, '').trim())
+    .filter(Boolean)
+
+  if (items.length > 1) return items
+
+  if (items.length === 1 && /[;|]/.test(items[0])) {
+    return items[0].split(/[;|]/).map(s => s.trim()).filter(Boolean)
+  }
+
+  return items
 }
 
 async function loadFontBase64(relativePath: string): Promise<string | null> {
@@ -39,6 +69,7 @@ export const generarMinimalista: GeneratorFn = async data => {
     fechaEmisionVal, fechaInicioVal, fechaFinVal,
     gerenteGeneral, profesorSnapshot,
     qrDataUrl,
+    codigoVerificacion,
     modulos,
     notasPorModulo, notaInscripcion,
   } = data
@@ -357,52 +388,74 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   }
 
   // QR esquina superior derecha
+  const ptToMm = 0.352778
+
+  /** Texto bajo el QR: "Verifica su autenticidad" + código. Devuelve Y inferior del bloque. */
+  const drawQrVerificationLabels = (qrX: number, qrY: number, qrSize: number): number => {
+    const cx = qrX + qrSize / 2
+
+    doc.setFontSize(7.6)
+    setNormal()
+    doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+    doc.text('Verifica su', cx, qrY + qrSize + 4, { align: 'center' })
+    doc.text('autenticidad', cx, qrY + qrSize + 8, { align: 'center' })
+
+    doc.setFontSize(6)
+    setNormal()
+    const codeLines = doc.splitTextToSize(codigoVerificacion, qrSize + 10)
+    const codeY = qrY + qrSize + 12
+    const codeLh = 6 * ptToMm * 1.06
+
+    doc.text(codeLines, cx, codeY, { align: 'center' })
+
+    return codeY + codeLines.length * codeLh
+  }
+
   doc.addImage(blackQrBuf, 'PNG', qrX, qrY, qrSize, qrSize)
-  doc.setFontSize(7.6)
-  setNormal()
-  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-  doc.text('Verifica su',  qrX + qrSize / 2, qrY + qrSize + 4, { align: 'center' })
-  doc.text('autenticidad', qrX + qrSize / 2, qrY + qrSize + 8, { align: 'center' })
+  drawQrVerificationLabels(qrX, qrY, qrSize)
 
-  // Layout vertical
-  const sigLineY   = H - BAR_H - 32               // ~174mm
-  const contentTop = qrY + qrSize + 12             // ~49mm
-  const contentEnd = sigLineY - 22
+  /** Avance vertical mínimo según tamaño de fuente — sin solapamiento */
+  const advanceY = (lineCount: number, fontSizePt: number, gapMm: number) =>
+    lineCount * fontSizePt * ptToMm * 1.06 + gapMm
 
-  // Pre-compute variable element heights
-  doc.setFontSize(30); setBold()
-  const nombreLines = doc.splitTextToSize(nombreCompleto, W - margin * 2 - 40)
-  const NAME_H = nombreLines.length * 12
+  // Tamaños fijos (sin reducir fuentes)
+  const NOMBRE_SIZE = 30
+  const CURSO_SIZE = 20
+  const DESC_SIZE = 10.6
+  const descLh = DESC_SIZE * ptToMm * 1.06
 
-  doc.setFontSize(20); setSB()
-  const cursoLines = doc.splitTextToSize(cursoTitulo, W - margin * 2 - 60)
-  const cursoH = cursoLines.length * 8.5
+  // Layout vertical — bloque superior compacto, bloque inferior fijo con más aire antes de firmas
+  const textMaxW = W - margin * 2 - 40
+  const textMaxWCurso = W - margin * 2 - 60
+  const contentTop = qrY + qrSize + 8
+  const sigLineY = H - BAR_H - 32
+  const minFirmadoToSig = 40
+  const maxFirmadoY = sigLineY - minFirmadoToSig
+  const gapAprobFirmado = 3
+  const gapPorcuantoAprob = 5
+  const maxYAfterPorcuanto =
+    maxFirmadoY - gapPorcuantoAprob - advanceY(1, DESC_SIZE, gapAprobFirmado)
+
+  const GAP = {
+    afterCertificado: -5,
+    afterOtorgado: 8,
+    afterNombre: -1,
+    afterPorHaber: 5,
+    afterCurso: 1,
+    afterDesc: 1,
+  }
 
   const fechaInicioTxt = formatDateLong(fechaInicioVal)
-  const fechaFinTxt    = formatDateLong(fechaFinVal)
+  const fechaFinTxt = formatDateLong(fechaFinVal)
+  const duracionTxt = cursoDuracion?.match(/hora/i) ? (cursoDuracion || '---') : `${cursoDuracion || '---'} horas académicas`
 
   const descSegs: Seg[] = [
     { text: 'Emitido por el ' },
     { text: `${nombreInstitucion},`, bold: true },
-    { text: ` con una duración de ${cursoDuracion || '---'} horas académicas, realizado desde el ${fechaInicioTxt} hasta el ${fechaFinTxt}.` },
+    { text: ` con una duración de ${duracionTxt}, realizado desde el ${fechaInicioTxt} hasta el ${fechaFinTxt}.` },
   ]
 
-  const lineH106 = 5.8
-
-  doc.setFontSize(10.6); setNormal()
-
-  const descEstH = doc.splitTextToSize(
-    descSegs.map(s => s.text).join(''), W - margin * 2 - 40
-  ).length * lineH106
-
-  doc.setFontSize(10.6); setNormal()
-  const porcuantoTxt   = 'Por cuanto: Para que conste y sea reconocido, se otorga el presente certificado en calidad de:'
-  const porcuantoLines = doc.splitTextToSize(porcuantoTxt, W - margin * 2 - 40)
-  const porcuantoH = porcuantoLines.length * lineH106
-
-  const CERT_H = 16; const OTO_H = 5; const PORH_H = 5; const APR_H = 5; const FIRM_H = 5
-  const fixedH = CERT_H + OTO_H + 8 + NAME_H + PORH_H + 8 + cursoH + descEstH + porcuantoH + APR_H + FIRM_H
-  const gap = Math.min(5, Math.max(2, (contentEnd - contentTop - fixedH) / 4))
+  const porcuantoTxt = 'Por cuanto: Para que conste y sea reconocido, se otorga el presente certificado en calidad de:'
 
   let y = contentTop
 
@@ -410,54 +463,80 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   doc.setFontSize(47); setEL()
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   doc.text('CERTIFICADO', cx, y, { align: 'center' })
-  y += CERT_H
+  y += advanceY(1, 47, GAP.afterCertificado)
 
   // "Otorgado a:" — Regular 10.6pt, gray
-  doc.setFontSize(10.6); setNormal()
+  doc.setFontSize(DESC_SIZE); setNormal()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   doc.text('Otorgado a:', cx, y, { align: 'center' })
-  y += OTO_H + 8
+  y += advanceY(1, DESC_SIZE, GAP.afterOtorgado)
 
   // Nombre del estudiante — Bold 30pt, teal
-  doc.setFontSize(30); setBold()
+  doc.setFontSize(NOMBRE_SIZE); setBold()
   doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
+  const nombreLines = doc.splitTextToSize(nombreCompleto, textMaxW)
+
   doc.text(nombreLines, cx, y, { align: 'center' })
-  y += NAME_H + gap
+  y += advanceY(nombreLines.length, NOMBRE_SIZE, GAP.afterNombre)
 
   // "Por haber concluido..." — Regular 10.6pt
-  doc.setFontSize(10.6); setNormal()
+  doc.setFontSize(DESC_SIZE); setNormal()
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   doc.text('Por haber concluido y aprobado con éxito el curso de especialización de:', cx, y, { align: 'center' })
-  y += PORH_H + 8
+  y += advanceY(1, DESC_SIZE, GAP.afterPorHaber)
 
   // Nombre del curso — SemiBold 20pt
-  doc.setFontSize(20); setSB()
+  doc.setFontSize(CURSO_SIZE); setSB()
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
+  const cursoLines = doc.splitTextToSize(cursoTitulo, textMaxWCurso)
+
   doc.text(cursoLines, cx, y, { align: 'center' })
-  y += cursoH + gap
+  y += advanceY(cursoLines.length, CURSO_SIZE, GAP.afterCurso)
 
-  // Descripción con institución en Bold inline — 10.6pt
-  doc.setFontSize(10.6)
-  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-  y += renderMixed(descSegs, cx, y, W - margin * 2 - 40, lineH106)
-  y += gap * 0.5
+  // Descripción — interlineado compacto si el contenido es largo
+  doc.setFontSize(DESC_SIZE); setNormal()
+  const porcuantoLines = doc.splitTextToSize(porcuantoTxt, textMaxW)
+  let descRenderLh = descLh
+  const descPlain = descSegs.map(s => s.text).join('')
+  const descLineCount = doc.splitTextToSize(descPlain, textMaxW).length
+  const reservedPorH = porcuantoLines.length * descLh
 
-  // "Por cuanto..." — Regular 10.6pt, gray
-  doc.setFontSize(10.6); setNormal()
-  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-  doc.text(porcuantoLines, cx, y, { align: 'center' })
-  y += porcuantoH + gap * 1.5
+  if (y + descLineCount * descLh + GAP.afterDesc + reservedPorH > maxYAfterPorcuanto) {
+    descRenderLh = descLh * 0.88
+  }
 
-  // "APROBADO" — SemiBold 10.6pt, gray
-  doc.setFontSize(10.6); setSB()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-  doc.text('APROBADO', cx, y, { align: 'center' })
-  y += APR_H + 1
+  y += renderMixed(descSegs, cx, y, textMaxW, descRenderLh)
+  y += GAP.afterDesc
 
-  // "Firmado, el..." — Regular 10.6pt, gray
-  doc.setFontSize(10.6); setNormal()
+  // "Por cuanto..." — sin invadir APROBADO
+  doc.setFontSize(DESC_SIZE); setNormal()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-  doc.text(`Firmado, el ${fechaFirmadaTxt}.`, cx, y, { align: 'center' })
+
+  let porLh = descRenderLh
+
+  if (y + porcuantoLines.length * porLh > maxYAfterPorcuanto) {
+    porLh = Math.max((maxYAfterPorcuanto - y) / porcuantoLines.length, descLh * 0.75)
+  }
+
+  for (const line of porcuantoLines) {
+    doc.text(line, cx, y, { align: 'center' })
+    y += porLh
+  }
+
+  // "APROBADO" — debajo de "...en calidad de:"
+  const aprobadoDrawY = y + gapPorcuantoAprob
+
+  doc.setFontSize(DESC_SIZE); setSB()
+  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+  doc.text('APROBADO', cx, aprobadoDrawY, { align: 'center' })
+
+  // "Firmado, el..." — debajo de APROBADO, respetando espacio con las firmas
+  const firmadoDrawY = aprobadoDrawY + advanceY(1, DESC_SIZE, gapAprobFirmado)
+
+  doc.setFontSize(DESC_SIZE); setNormal()
+  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+  doc.text(`Firmado, el ${fechaFirmadaTxt}.`, cx, firmadoDrawY, { align: 'center' })
 
   // Firmas: gerente izquierda, docente derecha
   await drawSignatureBlock(cx - 62, sigLineY, gerenteGeneral,  'Gerente General')
@@ -476,10 +555,7 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   const qr2Y    = BAR_H + 5
 
   doc.addImage(blackQrBuf, 'PNG', qr2X, qr2Y, qr2Size, qr2Size)
-  doc.setFontSize(7.6); setNormal()
-  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-  doc.text('Verifica su',  qr2X + qr2Size / 2, qr2Y + qr2Size + 4, { align: 'center' })
-  doc.text('autenticidad', qr2X + qr2Size / 2, qr2Y + qr2Size + 8, { align: 'center' })
+  const qr2BlockBottom = drawQrVerificationLabels(qr2X, qr2Y, qr2Size)
 
   // "CERTIFICADO" — Regular Normal, green, 28pt — baseline ~5mm de gap visual desde barra
   const titleY = BAR_H + 12
@@ -522,70 +598,131 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   }
 
   // Separador
-  const sepY = Math.max(infoY, qr2Y + qr2Size + 8) + 3
+  const sepY = Math.max(infoY, qr2BlockBottom) + 3
 
   doc.setDrawColor(LGRAY.r, LGRAY.g, LGRAY.b)
   doc.setLineWidth(0.3)
   doc.line(p2M, sepY - 2, W - p2M, sepY - 2)
 
-  // ── Temario dos columnas ─────────────────────────────────────────────
-  const allLecciones = (modulos as ModuloData[])
+  // ── Temario: módulos, lecciones y subtemas del contenido ─────────────
+  const sortedModulos = (modulos as ModuloData[])
     .sort((a, b) => a.orden - b.orden)
-    .flatMap(m => m.lecciones.sort((a, b) => a.orden - b.orden))
+    .map(m => ({ ...m, lecciones: [...m.lecciones].sort((a, b) => a.orden - b.orden) }))
 
   const colW     = (W - p2M * 2 - 10) / 2
   const colLeft  = p2M
   const colRight = p2M + colW + 10
+  const subIndent = 3
 
   const globalIndex = new Map<string, number>()
+  let globalLessonNum = 0
 
-  allLecciones.forEach((l, i) => globalIndex.set(l.id, i + 1))
+  sortedModulos.forEach(m => {
+    m.lecciones.forEach(l => {
+      globalLessonNum += 1
+      globalIndex.set(l.id, globalLessonNum)
+    })
+  })
 
-  const half      = Math.ceil(allLecciones.length / 2)
-  const leftLecs  = allLecciones.slice(0, half)
-  const rightLecs = allLecciones.slice(half)
+  const calcModuloHeight = (modulo: ModuloData): number => {
+    doc.setFontSize(8)
+    const modLines = doc.splitTextToSize(
+      `MÓDULO ${String(modulo.orden + 1).padStart(2, '0')}: ${modulo.titulo.toUpperCase()}`,
+      colW
+    )
+    let h = modLines.length * 4 + 3
 
-  const renderLecciones = (list: typeof allLecciones, startX: number, startY: number) => {
-    let cy = startY
+    for (const lec of modulo.lecciones) {
+      doc.setFontSize(7.5)
+      const titleLines = doc.splitTextToSize(lec.titulo.toUpperCase(), colW - subIndent)
 
-    for (const lec of list) {
-      const bullets  = extractBullets(lec.contenido)
-      const num      = globalIndex.get(lec.id) ?? 0
-      const numLabel = `LECCIÓN ${String(num).padStart(2, '0')}:`
+      h += 4.5 + titleLines.length * 4 + 1
 
-      // Label de lección — SemiBold, teal
-      doc.setFontSize(7.5); setSB()
-      doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
-      doc.text(numLabel, startX, cy)
-      cy += 4.5
+      doc.setFontSize(7)
 
-      // Título — Bold, dark
-      const titleLines = doc.splitTextToSize(lec.titulo.toUpperCase(), colW)
+      for (const subtema of extractSubtemas(lec.contenido)) {
+        const bLines = doc.splitTextToSize(`• ${subtema}`, colW - subIndent)
 
-      doc.setFontSize(7.5); setBold()
-      doc.setTextColor(DARK.r, DARK.g, DARK.b)
-      doc.text(titleLines, startX, cy)
-      cy += titleLines.length * 4 + 1
-
-      // Bullets — Regular Normal, gray
-      doc.setFontSize(7); setNormal()
-      doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-
-      for (const bullet of bullets) {
-        const bLines = doc.splitTextToSize(`• ${bullet}`, colW)
-
-        if (cy + bLines.length * 3.8 > bottomLimit) break
-        doc.text(bLines, startX, cy)
-        cy += bLines.length * 3.8
+        h += bLines.length * 3.8
       }
 
-      cy += 4
-      if (cy > bottomLimit) break
+      h += 3
+    }
+
+    return h + 2
+  }
+
+  const totalModH = sortedModulos.reduce((sum, m) => sum + calcModuloHeight(m), 0)
+  const leftTarget = totalModH / 2
+  let leftFilled = 0
+  const leftModulos: ModuloData[] = []
+  const rightModulos: ModuloData[] = []
+
+  for (const mod of sortedModulos) {
+    if (leftFilled < leftTarget || leftModulos.length === 0) {
+      leftModulos.push(mod)
+      leftFilled += calcModuloHeight(mod)
+    } else {
+      rightModulos.push(mod)
     }
   }
 
-  renderLecciones(leftLecs,  colLeft,  sepY + 5)
-  renderLecciones(rightLecs, colRight, sepY + 5)
+  const renderModulos = (list: ModuloData[], startX: number, startY: number) => {
+    let cy = startY
+
+    for (const mod of list) {
+      if (cy > bottomLimit) break
+
+      const modLabel = `MÓDULO ${String(mod.orden + 1).padStart(2, '0')}: ${mod.titulo.toUpperCase()}`
+      const modLines = doc.splitTextToSize(modLabel, colW)
+
+      if (cy + modLines.length * 4 + 3 > bottomLimit) break
+
+      doc.setFontSize(8); setSB()
+      doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
+      doc.text(modLines, startX, cy)
+      cy += modLines.length * 4 + 3
+
+      for (const lec of mod.lecciones) {
+        if (cy > bottomLimit) break
+
+        const num = globalIndex.get(lec.id) ?? 0
+        const numLabel = `LECCIÓN ${String(num).padStart(2, '0')}:`
+
+        doc.setFontSize(7.5); setSB()
+        doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
+        doc.text(numLabel, startX + subIndent, cy)
+        cy += 4.5
+
+        const titleLines = doc.splitTextToSize(lec.titulo.toUpperCase(), colW - subIndent)
+
+        doc.setFontSize(7.5); setBold()
+        doc.setTextColor(DARK.r, DARK.g, DARK.b)
+        doc.text(titleLines, startX + subIndent, cy)
+        cy += titleLines.length * 4 + 1
+
+        const subtemas = extractSubtemas(lec.contenido)
+
+        doc.setFontSize(7); setNormal()
+        doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+
+        for (const subtema of subtemas) {
+          const bLines = doc.splitTextToSize(`• ${subtema}`, colW - subIndent * 2)
+
+          if (cy + bLines.length * 3.8 > bottomLimit) return
+          doc.text(bLines, startX + subIndent * 2, cy)
+          cy += bLines.length * 3.8
+        }
+
+        cy += 3
+      }
+
+      cy += 2
+    }
+  }
+
+  renderModulos(leftModulos,  colLeft,  sepY + 5)
+  renderModulos(rightModulos, colRight, sepY + 5)
 
   await drawFooter()
 

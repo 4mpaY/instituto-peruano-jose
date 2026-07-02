@@ -182,6 +182,7 @@ export const generarInstitutoPeruano: GeneratorFn = async data => {
   const bodyStartY = sepY + 1
 
   const ptToMm = 0.352778
+
   const advanceY = (lineCount: number, fontSizePt: number, gapMm: number) =>
     lineCount * fontSizePt * ptToMm * 1.06 + gapMm
 

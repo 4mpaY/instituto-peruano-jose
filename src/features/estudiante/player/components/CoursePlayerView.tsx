@@ -228,7 +228,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                     <CertificateSection
                         cursoId={storeCourse.id}
                         completarAutomatico={(course as any).completar_automatico ?? false}
-                        phoneNumberProfesor={phoneNumberProfesor}
+                        phoneNumberProfesor={phoneNumberProfesor ?? undefined}
                         onAllLessonsCompleted={() => {
                             const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
 
@@ -846,7 +846,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                         <CertificateSection
                             cursoId={storeCourse.id}
                             completarAutomatico={(course as any).completar_automatico ?? false}
-                            phoneNumberProfesor={phoneNumberProfesor}
+                            phoneNumberProfesor={phoneNumberProfesor ?? undefined}
                             onAllLessonsCompleted={() => {
                                 const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
 

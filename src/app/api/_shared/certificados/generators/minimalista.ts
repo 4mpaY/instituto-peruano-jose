@@ -433,6 +433,7 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   const maxFirmadoY = sigLineY - minFirmadoToSig
   const gapAprobFirmado = 3
   const gapPorcuantoAprob = 5
+
   const maxYAfterPorcuanto =
     maxFirmadoY - gapPorcuantoAprob - advanceY(1, DESC_SIZE, gapAprobFirmado)
 
@@ -626,10 +627,12 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
 
   const calcModuloHeight = (modulo: ModuloData): number => {
     doc.setFontSize(8)
+
     const modLines = doc.splitTextToSize(
       `MÓDULO ${String(modulo.orden + 1).padStart(2, '0')}: ${modulo.titulo.toUpperCase()}`,
       colW
     )
+
     let h = modLines.length * 4 + 3
 
     for (const lec of modulo.lecciones) {

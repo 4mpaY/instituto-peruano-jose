@@ -430,8 +430,8 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                     <Box sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 1.5,
-                        py: 1.5,
+                        gap: { xs: 1.5, md: 2 },
+                        py: { xs: 1.5, md: 2 },
                         mt: 1,
                         borderTop: '1px solid',
                         borderBottom: '1px solid',
@@ -441,16 +441,17 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                             <span>
                                 <Button
                                     variant="outlined"
-                                    size="small"
+                                    size={isMobile ? 'small' : 'large'}
                                     disabled={!prevLesson}
                                     onClick={() => prevLesson && handleLessonSelect(prevLesson.id)}
                                     startIcon={<i className="tabler-chevron-left text-base" />}
                                     sx={{
-                                        borderRadius: '10px',
+                                        borderRadius: '12px',
                                         textTransform: 'none',
                                         fontWeight: 600,
-                                        fontSize: '0.82rem',
-                                        px: { xs: 1.5, sm: 2 },
+                                        fontSize: { xs: '0.82rem', md: '0.95rem' },
+                                        px: { xs: 1.5, md: 3 },
+                                        py: { xs: 0.5, md: 1.25 },
                                         flexShrink: 0,
                                         borderColor: 'divider',
                                         color: 'text.secondary',
@@ -466,7 +467,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                             <Button
                                 fullWidth
                                 variant={currentLesson.completada ? 'outlined' : 'contained'}
-                                size="small"
+                                size={isMobile ? 'small' : 'large'}
                                 onClick={() => handleLessonComplete(currentLesson.id, !currentLesson.completada)}
                                 startIcon={
                                     <i className={currentLesson.completada
@@ -475,11 +476,11 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                                     } />
                                 }
                                 sx={{
-                                    borderRadius: '10px',
+                                    borderRadius: '12px',
                                     textTransform: 'none',
                                     fontWeight: 700,
-                                    fontSize: '0.85rem',
-                                    py: 0.75,
+                                    fontSize: { xs: '0.85rem', md: '1rem' },
+                                    py: { xs: 0.75, md: 1.35 },
                                     ...(currentLesson.completada
                                         ? { borderColor: 'success.main', color: 'success.main', '&:hover': { bgcolor: 'rgba(46,125,50,0.05)' } }
                                         : { bgcolor: '#025E44', '&:hover': { bgcolor: '#014d36' }, boxShadow: 'none' }
@@ -494,16 +495,17 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                             <span>
                                 <Button
                                     variant="outlined"
-                                    size="small"
+                                    size={isMobile ? 'small' : 'large'}
                                     disabled={!nextLesson}
                                     onClick={() => nextLesson && handleLessonSelect(nextLesson.id)}
                                     endIcon={<i className="tabler-chevron-right text-base" />}
                                     sx={{
-                                        borderRadius: '10px',
+                                        borderRadius: '12px',
                                         textTransform: 'none',
                                         fontWeight: 600,
-                                        fontSize: '0.82rem',
-                                        px: { xs: 1.5, sm: 2 },
+                                        fontSize: { xs: '0.82rem', md: '0.95rem' },
+                                        px: { xs: 1.5, md: 3 },
+                                        py: { xs: 0.5, md: 1.25 },
                                         flexShrink: 0,
                                         borderColor: 'divider',
                                         color: 'text.secondary',
@@ -557,7 +559,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                 </Grid>
 
                 {/* ── Tab content ── */}
-                <Grid item xs={12} sx={{ pt: 2, pb: { xs: 10, md: 4 }, px: { xs: 1, sm: 0 } }}>
+                <Grid item xs={12} sx={{ pt: 2, pb: { xs: 10, md: 4 }, px: { xs: 2, sm: 4, md: 8, lg: 10, xl: 12 } }}>
 
                     {/* Temario (mobile, primer tab) */}
                     {activeTab === TAB('Temario') && TAB('Temario') !== -1 && (
@@ -891,67 +893,129 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    px: { xs: 2, sm: 4, lg: 8 },
+                    gap: 2,
+                    pl: { xs: 2, sm: 6, md: 8, lg: 12, xl: 14 },
+                    pr: { xs: 2, sm: 6, md: 8, lg: 12, xl: 14 },
                     py: { xs: 2, md: 3 },
+                    flexShrink: 0,
                 }}>
                     <Typography
                         variant="h4"
                         noWrap
-                        sx={{ fontWeight: 700, color: 'text.primary', maxWidth: { xs: '55%', md: '65%' } }}
+                        sx={{ fontWeight: 700, color: 'text.primary', maxWidth: { xs: '55%', md: '65%' }, minWidth: 0 }}
                     >
                         {storeCourse.titulo}
                     </Typography>
 
-                    <Stack direction="row" spacing={1}>
-                        <Tooltip
-                            title={whatsappGrupoUrl ? 'Grupos de WhatsApp' : 'Grupo de WhatsApp no configurado'}
-                            placement="bottom"
-                            arrow
-                        >
-                            <Box
-                                component={whatsappGrupoUrl ? 'a' : 'div'}
-                                {...(whatsappGrupoUrl ? {
-                                    href: whatsappGrupoUrl,
-                                    target: '_blank',
-                                    rel: 'noopener noreferrer',
-                                } : {})}
-                                sx={{
-                                    width: 44, height: 44,
-                                    borderRadius: '12px',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    bgcolor: '#25D366',
-                                    color: 'white',
-                                    boxShadow: whatsappGrupoUrl ? '0 2px 8px rgba(37,211,102,0.35)' : 'none',
-                                    flexShrink: 0,
-                                    opacity: whatsappGrupoUrl ? 1 : 0.55,
-                                    cursor: whatsappGrupoUrl ? 'pointer' : 'default',
-                                    ...(whatsappGrupoUrl && { '&:hover': { bgcolor: '#1ebe5d' } }),
-                                }}
-                            >
-                                <WhatsappGroupsIcon />
-                            </Box>
-                        </Tooltip>
-                        {whatsappDirecto && (
-                            <Tooltip title="WhatsApp" placement="bottom" arrow>
-                                <Box
-                                    component="a"
-                                    href={`https://wa.me/${whatsappDirecto}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                    <Stack direction="row" spacing={1.5} sx={{ flexShrink: 0 }}>
+                        {isMobile ? (
+                            <>
+                                <Tooltip
+                                    title={whatsappGrupoUrl ? 'Grupos de WhatsApp' : 'Grupo de WhatsApp no configurado'}
+                                    placement="bottom"
+                                    arrow
+                                >
+                                    <Box
+                                        component={whatsappGrupoUrl ? 'a' : 'div'}
+                                        {...(whatsappGrupoUrl ? {
+                                            href: whatsappGrupoUrl,
+                                            target: '_blank',
+                                            rel: 'noopener noreferrer',
+                                        } : {})}
+                                        sx={{
+                                            width: 44, height: 44,
+                                            borderRadius: '12px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            bgcolor: '#25D366',
+                                            color: 'white',
+                                            boxShadow: whatsappGrupoUrl ? '0 2px 8px rgba(37,211,102,0.35)' : 'none',
+                                            flexShrink: 0,
+                                            opacity: whatsappGrupoUrl ? 1 : 0.55,
+                                            cursor: whatsappGrupoUrl ? 'pointer' : 'default',
+                                            ...(whatsappGrupoUrl && { '&:hover': { bgcolor: '#1ebe5d' } }),
+                                        }}
+                                    >
+                                        <WhatsappGroupsIcon />
+                                    </Box>
+                                </Tooltip>
+                                {whatsappDirecto && (
+                                    <Tooltip title="WhatsApp" placement="bottom" arrow>
+                                        <Box
+                                            component="a"
+                                            href={`https://wa.me/${whatsappDirecto}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            sx={{
+                                                width: 44, height: 44,
+                                                borderRadius: '12px',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                bgcolor: '#128C7E',
+                                                color: 'white',
+                                                boxShadow: '0 2px 8px rgba(18,140,126,0.35)',
+                                                flexShrink: 0,
+                                                '&:hover': { bgcolor: '#0f7569' }
+                                            }}
+                                        >
+                                            <i className="tabler-brand-whatsapp" style={{ fontSize: '1.5rem', color: '#fff' }} />
+                                        </Box>
+                                    </Tooltip>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <Button
+                                    variant="contained"
+                                    {...(whatsappGrupoUrl ? {
+                                        href: whatsappGrupoUrl,
+                                        target: '_blank',
+                                        rel: 'noopener noreferrer',
+                                    } : {})}
+                                    disabled={!whatsappGrupoUrl}
+                                    startIcon={<WhatsappGroupsIcon />}
                                     sx={{
-                                        width: 44, height: 44,
-                                        borderRadius: '12px',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        bgcolor: '#128C7E',
+                                        borderRadius: '20px',
+                                        textTransform: 'none',
+                                        fontWeight: 600,
+                                        px: 2.5,
+                                        py: 1,
+                                        bgcolor: '#25D366',
                                         color: 'white',
-                                        boxShadow: '0 2px 8px rgba(18,140,126,0.35)',
-                                        flexShrink: 0,
-                                        '&:hover': { bgcolor: '#0f7569' }
+                                        boxShadow: 'none',
+                                        whiteSpace: 'nowrap',
+                                        opacity: whatsappGrupoUrl ? 1 : 0.55,
+                                        '&:hover': { bgcolor: '#1ebe5d', boxShadow: 'none' },
+                                        '&.Mui-disabled': { bgcolor: '#25D366', color: 'white', opacity: 0.55 },
                                     }}
                                 >
-                                    <i className="tabler-brand-whatsapp" style={{ fontSize: '1.5rem', color: '#fff' }} />
-                                </Box>
-                            </Tooltip>
+                                    Grupo de WhatsApp
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    {...(whatsappDirecto ? {
+                                        href: `https://wa.me/${whatsappDirecto}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`,
+                                        target: '_blank',
+                                        rel: 'noopener noreferrer',
+                                    } : {})}
+                                    disabled={!whatsappDirecto}
+                                    startIcon={<i className="tabler-brand-whatsapp" style={{ color: 'white', fontSize: 20 }} />}
+                                    sx={{
+                                        borderRadius: '20px',
+                                        textTransform: 'none',
+                                        fontWeight: 600,
+                                        px: 2.5,
+                                        py: 1,
+                                        bgcolor: '#128C7E',
+                                        color: 'white',
+                                        boxShadow: 'none',
+                                        whiteSpace: 'nowrap',
+                                        opacity: whatsappDirecto ? 1 : 0.55,
+                                        '&:hover': { bgcolor: '#0f7569', boxShadow: 'none' },
+                                        '&.Mui-disabled': { bgcolor: '#128C7E', color: 'white', opacity: 0.55 },
+                                    }}
+                                >
+                                    Contactar al asesor académico
+                                </Button>
+                            </>
                         )}
                     </Stack>
                 </Box>
@@ -964,12 +1028,14 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                 <Box
                     ref={mainScrollRef}
                     sx={{
-                    flexGrow: 1,
-                    overflowY: { xs: 'visible', md: 'scroll' },
-                    overflowX: 'hidden',
-                    transition: 'all 0.3s',
-                }}>
-                    <Box sx={{ px: { xs: 2, sm: 4, lg: 8 }, pt: { xs: 2, md: 3 }, pb: 4 }}>
+                        flexGrow: 1,
+                        minWidth: 0,
+                        overflowY: { xs: 'visible', md: 'scroll' },
+                        overflowX: 'hidden',
+                        transition: 'all 0.3s',
+                    }}
+                >
+                    <Box sx={{ px: { xs: 2, sm: 6, md: 8, lg: 12, xl: 14 }, pt: { xs: 2, md: 3 }, pb: 4 }}>
                         <Grid container spacing={0}>
                             {renderMainContent()}
                         </Grid>

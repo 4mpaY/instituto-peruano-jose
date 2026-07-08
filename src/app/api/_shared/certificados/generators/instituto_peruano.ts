@@ -8,14 +8,44 @@ const DARK   = { r: 30,  g: 30,  b: 30  }
 const GRAY   = { r: 100, g: 100, b: 100 }
 const LGRAY  = { r: 220, g: 220, b: 220 }
 
-/** Extrae los textos de los <li> de un HTML */
-function extractBullets(html: string | null | undefined): string[] {
-  if (!html) return []
-  const matches = html.match(/<li[^>]*>([\s\S]*?)<\/li>/gi)
+/** Elimina etiquetas HTML y normaliza entidades. */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .trim()
+}
 
-  if (!matches) return []
-  
-return matches.map(m => m.replace(/<[^>]+>/g, '').trim()).filter(Boolean)
+/** Extrae subtemas del contenido de una lección (HTML, viñetas o texto plano). */
+function extractSubtemas(contenido: string | null | undefined): string[] {
+  if (!contenido?.trim()) return []
+
+  const liMatches = contenido.match(/<li[^>]*>([\s\S]*?)<\/li>/gi)
+
+  if (liMatches?.length) {
+    return liMatches.map(m => stripHtml(m)).filter(Boolean)
+  }
+
+  const plain = stripHtml(contenido)
+  const rawLines = plain.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+
+  const items = rawLines
+    .map(line => line.replace(/^[\s•\-*·–—]+/, '').replace(/^\d+[\.)]\s*/, '').trim())
+    .filter(Boolean)
+
+  if (items.length > 1) return items
+
+  if (items.length === 1 && /[;|]/.test(items[0])) {
+    return items[0].split(/[;|]/).map(s => s.trim()).filter(Boolean)
+  }
+
+  return items
 }
 
 /**
@@ -383,14 +413,26 @@ return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
   doc.text('Verifica su', qr2X + qr2Size / 2, qr2Y + qr2Size + 4, { align: 'center' })
   doc.text('autenticidad', qr2X + qr2Size / 2, qr2Y + qr2Size + 8, { align: 'center' })
 
+  doc.setFontSize(6)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
+  const qr2Cx = qr2X + qr2Size / 2
+  const codeLines = doc.splitTextToSize(codigoVerificacion, qr2Size + 10)
+  const codeY = qr2Y + qr2Size + 12
+  const codeLh = 6 * 0.352778 * 1.06
+
+  doc.text(codeLines, qr2Cx, codeY, { align: 'center' })
+  const qr2BlockBottom = codeY + codeLines.length * codeLh
+
   // ── Separador horizontal ──────────────────────────────────────────────
-  const lessonStartY = Math.max(infoY, qr2Y + qr2Size + 10) + 4
+  const temarioSepY = Math.max(infoY, qr2BlockBottom) + 4
 
   doc.setDrawColor(LGRAY.r, LGRAY.g, LGRAY.b)
   doc.setLineWidth(0.3)
-  doc.line(margin, lessonStartY - 2, W - margin, lessonStartY - 2)
+  doc.line(margin, temarioSepY, W - margin, temarioSepY)
 
   // ── Temario: lecciones en 2 columnas ─────────────────────────────────
+  const lessonStartY = temarioSepY + 6
   const allLecciones = (modulos as ModuloData[])
     .sort((a, b) => a.orden - b.orden)
     .flatMap(m => m.lecciones.sort((a, b) => a.orden - b.orden))
@@ -398,6 +440,7 @@ return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
   const colW = (W - margin * 2 - 10) / 2
   const colLeft  = margin
   const colRight = margin + colW + 10
+  const subIndent = 3
   const footerReserve = BAR_H + 22  // espacio para logos + fecha
 
   const bottomLimit = H - footerReserve
@@ -418,7 +461,7 @@ return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
     let cy = startY
 
     for (const lec of list) {
-      const bullets = extractBullets(lec.contenido)
+      const subtemas = extractSubtemas(lec.contenido)
       const num = globalIndex.get(lec.id) ?? 0
       const numLabel = `LECCIÓN ${String(num).padStart(2, '0')}:`
 
@@ -430,24 +473,24 @@ return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
       cy += 4.5
 
       // Título en negrita oscuro
-      const titleLines = doc.splitTextToSize(lec.titulo.toUpperCase(), colW - 6)
+      const titleLines = doc.splitTextToSize(lec.titulo.toUpperCase(), colW - subIndent)
 
       doc.setFontSize(7.5)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(DARK.r, DARK.g, DARK.b)
-      doc.text(titleLines, startX, cy)
+      doc.text(titleLines, startX + subIndent, cy)
       cy += titleLines.length * 4 + 1
 
-      // Bullets en gris normal
+      // Subtemas del contenido
       doc.setFontSize(7)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
 
-      for (const bullet of bullets) {
-        const bLines = doc.splitTextToSize(`• ${bullet}`, colW - 6)
+      for (const subtema of subtemas) {
+        const bLines = doc.splitTextToSize(`• ${subtema}`, colW - subIndent * 2)
 
         if (cy + bLines.length * 3.8 > bottomLimit) break
-        doc.text(bLines, startX, cy)
+        doc.text(bLines, startX + subIndent * 2, cy)
         cy += bLines.length * 3.8
       }
 

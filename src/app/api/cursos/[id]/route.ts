@@ -61,6 +61,7 @@ const cursoInclude = {
           recursos: true,
           es_vista_previa: true,
           contenido: true,
+          subtemas: true,
           estado: true,
           es_en_vivo: true,
           fecha_programada: true,

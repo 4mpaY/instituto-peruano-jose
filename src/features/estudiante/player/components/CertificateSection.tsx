@@ -9,6 +9,7 @@ import {
 } from '@mui/material'
 
 import HydratedDate from '@/utils/components/HydratedDate'
+import AppModal from '@/utils/components/AppModal'
 
 interface CertificateData {
     id: string
@@ -24,6 +25,220 @@ interface Elegibilidad {
     promedioMinimo: number
     isEligible: boolean
     totalExamenes: number
+}
+
+interface PlantillaPreview {
+    id: string
+    nombre: string
+    thumbnail: string
+    habilitado: boolean
+}
+
+const CertificadoPreviewGrid = ({
+    plantillas,
+    certificadoId,
+    onDownload,
+    downloadingPlantilla,
+    onCardClick,
+}: {
+    plantillas: PlantillaPreview[]
+    certificadoId?: string
+    onDownload?: (plantillaId: string) => void
+    downloadingPlantilla?: string | null
+    onCardClick?: (plantilla: PlantillaPreview) => void
+}) => {
+    const habilitadas = plantillas.filter(p => p.habilitado)
+
+    if (habilitadas.length === 0) return null
+
+    return (
+        <Box sx={{ mt: 3 }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 1.5 }}>
+                Certificados habilitados
+            </Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: habilitadas.length > 1 ? '1fr 1fr' : '1fr' }, gap: 2 }}>
+                {habilitadas.map((p) => (
+                    <Box
+                        key={p.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => onCardClick?.(p)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') onCardClick?.(p)
+                        }}
+                        sx={{
+                            position: 'relative',
+                            aspectRatio: '297 / 210',
+                            borderRadius: 2,
+                            overflow: 'hidden',
+                            border: '2px solid',
+                            borderColor: p.id === 'colegio_ingenieros' ? 'error.light' : 'success.light',
+                            boxShadow: 1,
+                            cursor: onCardClick ? 'pointer' : 'default',
+                            backgroundImage: `url(${p.thumbnail})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            backgroundRepeat: 'no-repeat',
+                            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                            '&:hover': onCardClick ? { transform: 'translateY(-2px)', boxShadow: 4 } : undefined,
+                        }}
+                    >
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: p.id === 'colegio_ingenieros'
+                                    ? 'linear-gradient(to top, rgba(220,38,38,0.82) 0%, rgba(220,38,38,0.28) 42%, rgba(0,0,0,0.04) 100%)'
+                                    : 'linear-gradient(to top, rgba(22,163,74,0.82) 0%, rgba(22,163,74,0.28) 42%, rgba(0,0,0,0.04) 100%)',
+                            }}
+                        />
+                        <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: 1.5, zIndex: 1 }}>
+                            <Typography variant="caption" fontWeight={700} sx={{ color: '#fff', display: 'block', mb: certificadoId ? 1 : 0 }}>
+                                {p.nombre}
+                            </Typography>
+                            {certificadoId && onDownload && (
+                                <Button
+                                    variant="contained"
+                                    size="small"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        onDownload(p.id)
+                                    }}
+                                    disabled={downloadingPlantilla === p.id}
+                                    startIcon={downloadingPlantilla === p.id
+                                        ? <CircularProgress size={12} color="inherit" />
+                                        : <i className="tabler-download" />
+                                    }
+                                    sx={{
+                                        bgcolor: '#fff',
+                                        color: p.id === 'colegio_ingenieros' ? 'error.main' : 'success.dark',
+                                        borderRadius: '8px',
+                                        textTransform: 'none',
+                                        fontWeight: 700,
+                                        fontSize: '0.68rem',
+                                        py: 0.25,
+                                        boxShadow: 'none',
+                                        '&:hover': { bgcolor: 'rgba(255,255,255,0.9)', boxShadow: 'none' },
+                                    }}
+                                >
+                                    {downloadingPlantilla === p.id ? 'Descargando...' : 'Descargar PDF'}
+                                </Button>
+                            )}
+                        </Box>
+                    </Box>
+                ))}
+            </Box>
+        </Box>
+    )
+}
+
+const CertificadoPreviewModal = ({
+    open,
+    onClose,
+    plantilla,
+    certificadoId,
+    onDownload,
+    downloading,
+}: {
+    open: boolean
+    onClose: () => void
+    plantilla: PlantillaPreview | null
+    certificadoId?: string
+    onDownload?: (plantillaId: string) => void
+    downloading?: boolean
+}) => {
+    const [previewLoading, setPreviewLoading] = useState(false)
+
+    const previewSrc =
+        open && plantilla && certificadoId
+            ? `/api/estudiante/certificado/${certificadoId}/pdf?preview=true&plantilla=${plantilla.id}`
+            : null
+
+    useEffect(() => {
+        if (previewSrc) setPreviewLoading(true)
+    }, [previewSrc])
+
+    const handleClose = () => {
+        onClose()
+    }
+
+    if (!plantilla) return null
+
+    const accentColor = plantilla.id === 'colegio_ingenieros' ? 'error.main' : 'success.main'
+
+    return (
+        <AppModal open={open} handleClose={handleClose} sx={{ maxWidth: 960, width: 'calc(100% - 32px)', p: { xs: 3, sm: 4 } }}>
+            <Box sx={{ pr: 4, mb: 2 }}>
+                <Typography variant="h6" fontWeight={700}>
+                    {plantilla.nombre}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                    Vista previa del certificado
+                </Typography>
+            </Box>
+
+            <Box
+                sx={{
+                    position: 'relative',
+                    width: '100%',
+                    aspectRatio: '297 / 210',
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'action.hover',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}
+            >
+                {previewLoading && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5, position: 'absolute' }}>
+                        <CircularProgress size={36} />
+                        <Typography variant="body2" color="text.secondary">
+                            Generando vista previa...
+                        </Typography>
+                    </Box>
+                )}
+                {previewSrc ? (
+                    <iframe
+                        src={previewSrc}
+                        title={`Vista previa ${plantilla.nombre}`}
+                        style={{ width: '100%', height: '100%', border: 'none', display: previewLoading ? 'none' : 'block' }}
+                        onLoad={() => setPreviewLoading(false)}
+                    />
+                ) : (
+                    <Box
+                        component="img"
+                        src={plantilla.thumbnail}
+                        alt={plantilla.nombre}
+                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                )}
+            </Box>
+
+            {certificadoId && onDownload && (
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2.5 }}>
+                    <Button
+                        variant="contained"
+                        onClick={() => onDownload(plantilla.id)}
+                        disabled={downloading}
+                        startIcon={downloading ? <CircularProgress size={16} color="inherit" /> : <i className="tabler-download" />}
+                        sx={{
+                            bgcolor: accentColor,
+                            borderRadius: '10px',
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            boxShadow: 'none',
+                            '&:hover': { boxShadow: 'none', opacity: 0.9 },
+                        }}
+                    >
+                        {downloading ? 'Descargando...' : 'Descargar PDF'}
+                    </Button>
+                </Box>
+            )}
+        </AppModal>
+    )
 }
 
 interface CertificateSectionProps {
@@ -91,6 +306,9 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     const [elegibilidad, setElegibilidad] = useState<Elegibilidad | null>(null)
     const [fetchError, setFetchError] = useState(false)
     const [pagoPendiente, setPagoPendiente] = useState(false)
+    const [plantillasPreview, setPlantillasPreview] = useState<PlantillaPreview[]>([])
+    const [downloadingPlantilla, setDownloadingPlantilla] = useState<string | null>(null)
+    const [previewPlantilla, setPreviewPlantilla] = useState<PlantillaPreview | null>(null)
     const [cursoTitulo, setCursoTitulo] = useState<string | null>(null)
     const [whatsappNumero, setWhatsappNumero] = useState<string | null>(null)
     const autoGeneradoRef = useRef(false)
@@ -110,6 +328,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                     setCertificado(res.data.result.certificado ?? null)
                     setElegibilidad(res.data.result.elegibilidad ?? null)
                     setPagoPendiente(res.data.result.pagoPendiente ?? false)
+                    setPlantillasPreview(res.data.result.plantillasPreview ?? [])
                     setCursoTitulo(res.data.result.cursoTitulo ?? null)
                     setWhatsappNumero(resPago?.data?.result?.whatsapp_numero || null)
                 } else {
@@ -158,6 +377,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
             if (res.data.status) {
                 setElegibilidad(res.data.result.elegibilidad ?? null)
                 setPagoPendiente(res.data.result.pagoPendiente ?? false)
+                setPlantillasPreview(res.data.result.plantillasPreview ?? [])
                 setCertificado(res.data.result.certificado ?? null)
                 autoGeneradoRef.current = false
             }
@@ -185,33 +405,50 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         }
     }
 
-    const handleDescargar = async () => {
+    const buildPdfDownloadUrl = (plantillaId?: string) => {
+        const params = new URLSearchParams({ _t: String(Date.now()) })
+        if (plantillaId) params.set('plantilla', plantillaId)
+        return `/api/estudiante/certificado/${certificado!.id}/pdf?${params.toString()}`
+    }
+
+    const handleDescargar = (plantillaId?: string) => {
         if (!certificado) return
 
         setDownloading(true)
+        if (plantillaId) setDownloadingPlantilla(plantillaId)
 
-        try {
-            const res = await axios.get(`/api/estudiante/certificado/${certificado.id}/pdf`, {
-                params: { _t: Date.now() },
-                responseType: 'blob'
-            })
+        const suffix = plantillaId === 'colegio_ingenieros' ? '-cid' : plantillaId === 'minimalista' ? '-ipg' : ''
+        const url = buildPdfDownloadUrl(plantillaId)
+        const filename = `certificado${suffix}-${certificado.codigoVerificacion}.pdf`
 
-            const url = window.URL.createObjectURL(new Blob([res.data]))
-            const link = document.createElement('a')
+        const link = document.createElement('a')
+        link.href = url
+        link.setAttribute('download', filename)
+        link.rel = 'noopener'
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
 
-            link.href = url
-            link.setAttribute('download', `certificado-${certificado.codigoVerificacion}.pdf`)
-            document.body.appendChild(link)
-            link.click()
-            link.remove()
-            window.URL.revokeObjectURL(url)
-            toast.success('Certificado descargado correctamente')
-        } catch {
-            toast.error('Error al descargar el certificado')
-        } finally {
+        toast.success('Descarga iniciada')
+
+        window.setTimeout(() => {
             setDownloading(false)
-        }
+            setDownloadingPlantilla(null)
+        }, 1200)
     }
+
+    const tienePreviewsHabilitados = plantillasPreview.some(p => p.habilitado)
+
+    const previewModal = (
+        <CertificadoPreviewModal
+            open={!!previewPlantilla}
+            onClose={() => setPreviewPlantilla(null)}
+            plantilla={previewPlantilla}
+            certificadoId={certificado?.id}
+            onDownload={certificado ? handleDescargar : undefined}
+            downloading={downloadingPlantilla === previewPlantilla?.id}
+        />
+    )
 
     // ── Wrapper visual ──────────────────────────────────────────────
     const Wrapper = ({ children }: { children: React.ReactNode }) => {
@@ -335,63 +572,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         )
     }
 
-    // ── Ya tiene certificado ────────────────────────────────────────
-    if (certificado) {
-        return (
-            <Wrapper>
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 3 }}>
-                    {/* Ícono decorativo */}
-                    <Box sx={{
-                        width: 80, height: 80, borderRadius: '20px', flexShrink: 0,
-                        background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                        <i className="tabler-award" style={{ fontSize: '2.2rem', color: '#fff' }} />
-                    </Box>
-
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 800, color: 'success.dark', mb: 0.5 }}>
-                            ¡Felicidades!
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                            {certificado.nombreCompleto} · Emitido el{' '}
-                            <HydratedDate date={certificado.emitidoEn} options={{ day: '2-digit', month: 'long', year: 'numeric' }} />
-                        </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 2, flexWrap: 'wrap' }}>
-                            <i className="tabler-fingerprint" style={{ fontSize: '0.85rem', color: '#64748b' }} />
-                            <Typography variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 700, color: 'primary.main', fontSize: '0.72rem' }}>
-                                {certificado.codigoVerificacion}
-                            </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-                            <Button
-                                variant="contained"
-                                size="small"
-                                onClick={handleDescargar}
-                                disabled={downloading}
-                                startIcon={downloading ? <CircularProgress size={14} color="inherit" /> : <i className="tabler-download" />}
-                                sx={{ bgcolor: '#025E44', borderRadius: '10px', textTransform: 'none', fontWeight: 700, boxShadow: 'none', '&:hover': { bgcolor: '#014d36', boxShadow: 'none' } }}
-                            >
-                                {downloading ? 'Descargando...' : 'Descargar PDF'}
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                size="small"
-                                href={`/verificar-certificado/${certificado.codigoVerificacion}`}
-                                target="_blank"
-                                startIcon={<i className="tabler-external-link" />}
-                                sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 600 }}
-                            >
-                                Verificar
-                            </Button>
-                        </Box>
-                    </Box>
-                </Box>
-            </Wrapper>
-        )
-    }
-
-    // ── Certificado con costo pendiente de pago ─────────────────────
+    // ── Certificado con costo pendiente de pago (antes que certificado emitido) ──
     if (pagoPendiente) {
         const phone = (phoneNumberProfesor || whatsappNumero || '').replace(/\D/g, '')
 
@@ -448,6 +629,66 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         )
     }
 
+    // ── Ya tiene certificado ────────────────────────────────────────
+    if (certificado) {
+        return (
+            <>
+                <Wrapper>
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 3 }}>
+                        {/* Ícono decorativo */}
+                        <Box sx={{
+                            width: 80, height: 80, borderRadius: '20px', flexShrink: 0,
+                            background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <i className="tabler-award" style={{ fontSize: '2.2rem', color: '#fff' }} />
+                        </Box>
+
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 800, color: 'success.dark', mb: 0.5 }}>
+                                ¡Felicidades!
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                                {certificado.nombreCompleto} · Emitido el{' '}
+                                <HydratedDate date={certificado.emitidoEn} options={{ day: '2-digit', month: 'long', year: 'numeric' }} />
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 2, flexWrap: 'wrap' }}>
+                                <i className="tabler-fingerprint" style={{ fontSize: '0.85rem', color: '#64748b' }} />
+                                <Typography variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 700, color: 'primary.main', fontSize: '0.72rem' }}>
+                                    {certificado.codigoVerificacion}
+                                </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                                {!tienePreviewsHabilitados && (
+                                    <Button
+                                        variant="contained"
+                                        size="small"
+                                        onClick={() => handleDescargar()}
+                                        disabled={downloading}
+                                        startIcon={downloading ? <CircularProgress size={14} color="inherit" /> : <i className="tabler-download" />}
+                                        sx={{ bgcolor: '#025E44', borderRadius: '10px', textTransform: 'none', fontWeight: 700, boxShadow: 'none', '&:hover': { bgcolor: '#014d36', boxShadow: 'none' } }}
+                                    >
+                                        {downloading ? 'Descargando...' : 'Descargar PDF'}
+                                    </Button>
+                                )}
+                            </Box>
+                        </Box>
+                    </Box>
+                </Wrapper>
+                {tienePreviewsHabilitados && (
+                    <CertificadoPreviewGrid
+                        plantillas={plantillasPreview}
+                        certificadoId={certificado.id}
+                        onDownload={handleDescargar}
+                        downloadingPlantilla={downloadingPlantilla}
+                        onCardClick={setPreviewPlantilla}
+                    />
+                )}
+                {previewModal}
+            </>
+        )
+    }
+
     // ── No tiene certificado — mostrar estado de elegibilidad ───────
     const el = elegibilidad
 
@@ -468,48 +709,48 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     const progresoColor = el.progreso >= 100 ? '#16a34a' : '#d97706'
 
     return (
-        <Wrapper>
-            {el.isEligible ? (
+        <>
+            <Wrapper>
+                {el.isEligible ? (
 
-                /* Elegible */
-                <Box sx={{ textAlign: 'center' }}>
-                    <Box sx={{
-                        width: 72, height: 72, borderRadius: '50%', mx: 'auto', mb: 2,
-                        background: 'linear-gradient(135deg, #025E44 0%, #3AB079 100%)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                        {generating
-                            ? <CircularProgress size={32} sx={{ color: '#fff' }} />
-                            : <i className="tabler-award" style={{ fontSize: '2rem', color: '#fff' }} />
-                        }
+                    /* Elegible */
+                    <Box sx={{ textAlign: 'center' }}>
+                        <Box sx={{
+                            width: 72, height: 72, borderRadius: '50%', mx: 'auto', mb: 2,
+                            background: 'linear-gradient(135deg, #025E44 0%, #3AB079 100%)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            {generating
+                                ? <CircularProgress size={32} sx={{ color: '#fff' }} />
+                                : <i className="tabler-award" style={{ fontSize: '2rem', color: '#fff' }} />
+                            }
+                        </Box>
+                        <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>
+                            {generating ? 'Preparando tu certificado...' : '¡Lo lograste! Obtén tu certificado'}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                            {generating
+                                ? 'Estamos generando tu certificado automáticamente.'
+                                : 'Has completado todas las lecciones y alcanzado el promedio requerido.'
+                            }
+                        </Typography>
+                        {el.totalExamenes > 0 && (
+                            <Button
+                                variant="contained"
+                                onClick={handleGenerar}
+                                disabled={generating}
+                                startIcon={generating ? <CircularProgress size={18} color="inherit" /> : <i className="tabler-certificate" />}
+                                sx={{
+                                    bgcolor: '#025E44', borderRadius: '12px', textTransform: 'none',
+                                    fontWeight: 700, fontSize: '0.95rem', px: 4, py: 1.25,
+                                    boxShadow: 'none', '&:hover': { bgcolor: '#014d36', boxShadow: 'none' }
+                                }}
+                            >
+                                {generating ? 'Generando certificado...' : 'Obtener mi Certificado'}
+                            </Button>
+                        )}
                     </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>
-                        {generating ? 'Preparando tu certificado...' : '¡Lo lograste! Obtén tu certificado'}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        {generating
-                            ? 'Estamos generando tu certificado automáticamente.'
-                            : 'Has completado todas las lecciones y alcanzado el promedio requerido.'
-                        }
-                    </Typography>
-                    {/* Sin exámenes → auto-generado, no se muestra el botón */}
-                    {el.totalExamenes > 0 && (
-                        <Button
-                            variant="contained"
-                            onClick={handleGenerar}
-                            disabled={generating}
-                            startIcon={generating ? <CircularProgress size={18} color="inherit" /> : <i className="tabler-certificate" />}
-                            sx={{
-                                bgcolor: '#025E44', borderRadius: '12px', textTransform: 'none',
-                                fontWeight: 700, fontSize: '0.95rem', px: 4, py: 1.25,
-                                boxShadow: 'none', '&:hover': { bgcolor: '#014d36', boxShadow: 'none' }
-                            }}
-                        >
-                            {generating ? 'Generando certificado...' : 'Obtener mi Certificado'}
-                        </Button>
-                    )}
-                </Box>
-            ) : (
+                ) : (
 
                 /* No elegible → mostrar progreso */
                 <Box>
@@ -598,7 +839,15 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                     )}
                 </Box>
             )}
-        </Wrapper>
+            </Wrapper>
+            {el.isEligible && tienePreviewsHabilitados && (
+                <CertificadoPreviewGrid
+                    plantillas={plantillasPreview}
+                    onCardClick={setPreviewPlantilla}
+                />
+            )}
+            {previewModal}
+        </>
     )
 }
 

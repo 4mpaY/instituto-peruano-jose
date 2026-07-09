@@ -76,6 +76,8 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
   const [esVistaPrevia, setEsVistaPrevia] = useState(false)
   const [recursos, setRecursos] = useState<Recurso[]>([])
   const [contenido, setContenido] = useState('')
+  const [subtemas, setSubtemas] = useState<string[]>([])
+  const [nuevoSubtema, setNuevoSubtema] = useState('')
 
   const [newRecurso, setNewRecurso] = useState<Recurso>({ nombre: '', url: '', tipo: 'enlace' })
   const [errors, setErrors] = useState<{ fechaProgramada?: string; fechaFin?: string }>({})
@@ -93,6 +95,7 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
       setEsVistaPrevia(lessonData.es_vista_previa || false)
       setRecursos(lessonData.recursos || [])
       setContenido(lessonData.contenido || '')
+      setSubtemas(Array.isArray(lessonData.subtemas) ? lessonData.subtemas : [])
     } else {
       setTitle('')
       setDuration('')
@@ -104,8 +107,10 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
       setEsVistaPrevia(false)
       setRecursos([])
       setContenido('')
+      setSubtemas([])
     }
 
+    setNuevoSubtema('')
     setErrors({})
   }, [lessonData])
 
@@ -118,6 +123,19 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
 
   const handleRemoveRecurso = (index: number) => {
     setRecursos(recursos.filter((_, i) => i !== index))
+  }
+
+  const handleAddSubtema = () => {
+    const nombre = nuevoSubtema.trim()
+
+    if (!nombre) return
+
+    setSubtemas(prev => [...prev, nombre])
+    setNuevoSubtema('')
+  }
+
+  const handleRemoveSubtema = (index: number) => {
+    setSubtemas(prev => prev.filter((_, i) => i !== index))
   }
 
   const handleSave = () => {
@@ -145,7 +163,8 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
       enlace_reunion: enlaceReunion || null,
       es_vista_previa: esVistaPrevia,
       contenido: contenido || null,
-      recursos: recursos
+      recursos: recursos,
+      subtemas
     })
   }
 
@@ -393,6 +412,82 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
               </Stack>
             </Box>
           )}
+
+          <Divider />
+
+          {/* ── SUBLECCIONES ── */}
+          <Typography variant='subtitle2' sx={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.7rem', color: 'text.secondary' }}>
+            Sublecciones
+          </Typography>
+          <Typography variant='caption' color='text.secondary'>
+            Nombres breves que aparecerán indentados bajo la lección en el temario del certificado.
+          </Typography>
+
+          <Box
+            sx={{
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2,
+              p: 2,
+              bgcolor: 'action.hover'
+            }}
+          >
+            <Typography variant='body2' fontWeight={600}>
+              {title.trim() || 'Título de la lección'}
+            </Typography>
+
+            {subtemas.length > 0 ? (
+              <Stack spacing={0.5} sx={{ mt: 1 }}>
+                {subtemas.map((nombre, i) => (
+                  <Box
+                    key={`${nombre}-${i}`}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      pl: 3
+                    }}
+                  >
+                    <Typography variant='body2' color='text.secondary' sx={{ flex: 1 }}>
+                      {nombre}
+                    </Typography>
+                    <IconButton size='small' color='error' onClick={() => handleRemoveSubtema(i)}>
+                      <i className='tabler-x text-sm' />
+                    </IconButton>
+                  </Box>
+                ))}
+              </Stack>
+            ) : (
+              <Typography variant='caption' color='text.disabled' sx={{ display: 'block', pl: 3, mt: 0.75 }}>
+                Sin sublecciones aún
+              </Typography>
+            )}
+          </Box>
+
+          <Stack direction='row' spacing={1} alignItems='flex-start' sx={{ pl: 3 }}>
+            <CustomTextField
+              fullWidth
+              size='small'
+              placeholder='Ej: Introducción a la normativa'
+              value={nuevoSubtema}
+              onChange={e => setNuevoSubtema(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleAddSubtema()
+                }
+              }}
+            />
+            <Button
+              variant='outlined'
+              onClick={handleAddSubtema}
+              disabled={!nuevoSubtema.trim()}
+              startIcon={<i className='tabler-plus text-base' />}
+              sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+            >
+              Añadir
+            </Button>
+          </Stack>
 
         </Stack>
       </DialogContent>

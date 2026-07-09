@@ -7,21 +7,19 @@ import type { GeneratorFn, ModuloData } from './types'
 async function loadFontBase64(relativePath: string): Promise<string | null> {
   try {
     const buf = await readFile(join(process.cwd(), 'public', relativePath))
-
-    
-return buf.toString('base64')
+    return buf.toString('base64')
   } catch {
     return null
   }
 }
 
 /**
- * Plantilla MINIMALISTA — Dos páginas:
- * - Página 1: Certificado formal con logos, nombre, curso y tabla de firmas.
- * - Página 2: Temario del programa en dos columnas.
+ * Plantilla COLEGIO DE INGENIEROS — Dos páginas:
+ * - Página 1: Certificado formal con borde rojo en forma de "C" cuadrada en el 25% izquierdo.
+ * - Página 2: Temario del programa en dos columnas con barra superior e inferior rojas.
  * Fuente: Poppins (ExtraLight / Regular / SemiBold / Bold).
  */
-export const generarMinimalista: GeneratorFn = async data => {
+export const generarColegioIngenieros: GeneratorFn = async data => {
   const {
     base64Logo, logoUrl, logoBuffer,
     nombreInstitucion,
@@ -36,11 +34,12 @@ export const generarMinimalista: GeneratorFn = async data => {
     notasPorModulo, notaInscripcion,
   } = data
 
+  const RED   = { r: 178, g: 34,  b: 52  }  // Colegio de ingenieros red color
+  const GREEN = RED                         // mapped to RED for styling consistency
+  const TEAL  = RED                         // mapped to RED for styling consistency
   const DARK  = { r: 30,  g: 30,  b: 30  }
   const GRAY  = { r: 100, g: 100, b: 100 }
   const LGRAY = { r: 220, g: 220, b: 220 }
-  const GREEN = { r: 54,  g: 182, b: 88  }
-  const TEAL  = { r: 19,  g: 153, b: 113 }
 
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true })
@@ -49,7 +48,7 @@ export const generarMinimalista: GeneratorFn = async data => {
 
   const margin      = 14   // margen página 1
   const BAR_H       = 3.5
-  const footerH     = 36   // altura reservada para footer en página 2 (row1+gap+row2+gap+text+5mm)
+  const footerH     = 36   // altura reservada para footer en página 2
   const bottomLimit = H - BAR_H - footerH  // límite inferior del temario
 
   // ── Poppins font registration ────────────────────────────────────────
@@ -84,8 +83,6 @@ export const generarMinimalista: GeneratorFn = async data => {
   const setBold    = () => doc.setFont(F, 'bold')
 
   // ── Mixed inline text renderer ───────────────────────────────────────
-  // Renders array of {text, bold?, semibold?} centered at `cx`, wrapping
-  // at maxW. Returns total height consumed.
   type Seg = { text: string; bold?: boolean; semibold?: boolean }
 
   const renderMixed = (segs: Seg[], cx: number, y: number, maxW: number, lh: number): number => {
@@ -102,8 +99,7 @@ export const generarMinimalista: GeneratorFn = async data => {
       if (style === 'bold') setBold()
       else if (style === 'semibold') setSB()
       else setNormal()
-      
-return doc.getTextWidth(word)
+      return doc.getTextWidth(word)
     }
 
     const lines: Tok[][] = []
@@ -145,31 +141,37 @@ return doc.getTextWidth(word)
       cy += lh
     }
 
-    
-return lines.length * lh
+    return lines.length * lh
   }
 
   // ── Logos adicionales ────────────────────────────────────────────────
-  const [logo1Buf, logo2Buf, logo3Buf, logo4Buf] = await Promise.all([
-    fetchImageBuffer('/logos/logo1.png'),
+  const [cid1Buf, ipgBuf, cid2Buf, logo2Buf, logo3Buf, logo4Buf] = await Promise.all([
+    fetchImageBuffer('/images/cid1.png'),
+    fetchImageBuffer('/images/ipg.png'),
+    fetchImageBuffer('/images/cid2.png'),
     fetchImageBuffer('/logos/logo2.png'),
     fetchImageBuffer('/logos/logo3.png'),
     fetchImageBuffer('/logos/logo4.png'),
   ])
 
-  const [logo1Comp, logo2Comp, logo3Comp, logo4Comp] = await Promise.all([
-    logo1Buf ? compressImageForPdf(logo1Buf, { maxWidth: 300, format: 'png' }) : null,
+  const [cid1Comp, ipgComp, cid2Comp, logo2Comp, logo3Comp, logo4Comp] = await Promise.all([
+    cid1Buf ? compressImageForPdf(cid1Buf, { maxWidth: 400, format: 'png' }) : null,
+    ipgBuf ? compressImageForPdf(ipgBuf, { maxWidth: 400, format: 'png' }) : null,
+    cid2Buf ? compressImageForPdf(cid2Buf, { maxWidth: 400, format: 'png' }) : null,
     logo2Buf ? compressImageForPdf(logo2Buf, { maxWidth: 300, format: 'png' }) : null,
     logo3Buf ? compressImageForPdf(logo3Buf, { maxWidth: 300, format: 'png' }) : null,
     logo4Buf ? compressImageForPdf(logo4Buf, { maxWidth: 300, format: 'png' }) : null,
   ])
 
+  // ── Dimensiones de logos (IPG agrandado 10%, CID1 reducido 10%) ───────
+  const logoMaxH = 16; const logoGap = 8
+  const cid1Dims = cid1Buf ? await resolveLogoDimensions(cid1Buf, 52 * 0.9, logoMaxH * 0.9) : { w: 0, h: 0 }
+  const ipgDims = ipgBuf ? await resolveLogoDimensions(ipgBuf, 52 * 1.1, logoMaxH * 1.1) : { w: 0, h: 0 }
+
   // ── Nota final ───────────────────────────────────────────────────────
   const promedios = Object.values(notasPorModulo).map(e => {
     const raw = e.puntaje / e.count
-
-    
-return raw > 20 ? raw / 5 : raw
+    return raw > 20 ? raw / 5 : raw
   })
 
   const notaFinalCalc =
@@ -177,29 +179,38 @@ return raw > 20 ? raw / 5 : raw
       ? promedios.reduce((a, b) => a + b, 0) / promedios.length
       : (() => {
           const raw = notaInscripcion ?? null
-
-          
-return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
+          return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
         })()
 
   const fechaFirmadaTxt = new Date(fechaEmisionVal).toLocaleDateString('es-PE', {
     day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
   })
 
-  // ── Helper: fondo + barras ───────────────────────────────────────────
-  const setupPage = () => {
+  // ── Helper: backgrounds ───────────────────────────────────────────
+  const drawPageBackground = () => {
     doc.setFillColor(255, 255, 255)
     doc.rect(0, 0, W, H, 'F')
-    doc.setFillColor(GREEN.r, GREEN.g, GREEN.b)
-    doc.rect(0, 0, W, BAR_H, 'F')
-    doc.setFillColor(GREEN.r, GREEN.g, GREEN.b)
-    doc.rect(0, H - BAR_H, W, BAR_H, 'F')
+
+    // Borde rojo en forma de "C" cuadrada en el 25% izquierdo
+    doc.setFillColor(RED.r, RED.g, RED.b)
+    // Left vertical border
+    doc.rect(0, 0, BAR_H, H, 'F')
+    // Top horizontal border (25% of W)
+    doc.rect(0, 0, W * 0.25, BAR_H, 'F')
+    // Bottom horizontal border (25% of W)
+    doc.rect(0, H - BAR_H, W * 0.25, BAR_H, 'F')
+
+    // Borde gris en el resto de los bordes (75% top/bottom y lado derecho)
+    doc.setFillColor(LGRAY.r, LGRAY.g, LGRAY.b)
+    // Right vertical border
+    doc.rect(W - BAR_H, 0, BAR_H, H, 'F')
+    // Top horizontal border (remaining 75%)
+    doc.rect(W * 0.25, 0, W * 0.75, BAR_H, 'F')
+    // Bottom horizontal border (remaining 75%)
+    doc.rect(W * 0.25, H - BAR_H, W * 0.75, BAR_H, 'F')
   }
 
   // ── Helper: footer logos (página 2) ─────────────────────────────────
-  // Fila 1 (centro): logo principal
-  // Fila 2 (centro): logo1 + logo2 + logo3
-  // Pie derecho: "Fecha de Emisión: <fecha>"
   const drawFooter = async () => {
     const row1H  = 11
     const row2H  = 9
@@ -208,28 +219,25 @@ return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
     const row2Y  = textY - row2H - rowGap
     const row1Y  = row2Y - row1H - rowGap
 
-    // Fila 1: logo principal centrado
-    if (logoBuffer && base64Logo) {
-      const dims = await resolveLogoDimensions(logoBuffer, 60, row1H)
-
+    // Fila 1: IPG (ipg) logo centrado (a cambio de cid1), con el mismo tamaño que en la página 1
+    if (ipgBuf && ipgComp) {
       try {
-        const ext = logoUrl.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'PNG'
-
-        doc.addImage(base64Logo, ext, (W - dims.w) / 2, row1Y + (row1H - dims.h) / 2, dims.w, dims.h, 'MFOOT_MAIN')
+        doc.addImage(ipgComp.buffer, ipgComp.jsPdfFormat, (W - ipgDims.w) / 2, row1Y + (row1H - ipgDims.h) / 2, ipgDims.w, ipgDims.h, 'CFOOT_MAIN')
       } catch { /* skip */ }
     }
 
-    // Fila 2: logo1 + logo2 + logo3 centrados
+    // Fila 2: cid1 + logo2 + logo3 + logo4 centrados
     type LogoEntry = { buf: Buffer; comp: { buffer: Buffer; jsPdfFormat: string } }
     const row2Entries: LogoEntry[] = []
 
-    if (logo1Buf && logo1Comp) row2Entries.push({ buf: logo1Buf, comp: logo1Comp })
+    if (cid1Buf && cid1Comp) row2Entries.push({ buf: cid1Buf, comp: cid1Comp })
     if (logo2Buf && logo2Comp) row2Entries.push({ buf: logo2Buf, comp: logo2Comp })
     if (logo3Buf && logo3Comp) row2Entries.push({ buf: logo3Buf, comp: logo3Comp })
+    if (logo4Buf && logo4Comp) row2Entries.push({ buf: logo4Buf, comp: logo4Comp })
 
     if (row2Entries.length > 0) {
       const logoGap = 10
-      const dims2 = await Promise.all(row2Entries.map(({ buf }) => resolveLogoDimensions(buf, 44, row2H)))
+      const dims2 = await Promise.all(row2Entries.map(({ buf }) => resolveLogoDimensions(buf, 40, row2H)))
       const totalW = dims2.reduce((s, d) => s + d.w, 0) + logoGap * (row2Entries.length - 1)
       let lx = (W - totalW) / 2
 
@@ -238,7 +246,7 @@ return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
         const { w, h } = dims2[i]
 
         try {
-          doc.addImage(comp.buffer, comp.jsPdfFormat, lx, row2Y + (row2H - h) / 2, w, h, `MFOOT_R2_${i}`)
+          doc.addImage(comp.buffer, comp.jsPdfFormat, lx, row2Y + (row2H - h) / 2, w, h, `CFOOT_R2_${i}`)
         } catch { /* skip */ }
 
         lx += w + logoGap
@@ -259,6 +267,17 @@ return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
     doc.text(lblTxt, W - 14 - valW - lblW, textY)
     setNormal()
     doc.text(valTxt, W - 14, textY, { align: 'right' })
+
+    // Sello cid2 posicionado arriba y al centro del texto "Fecha de Emisión: <fecha>"
+    if (cid2Comp && cid2Buf) {
+      try {
+        const sealDims = await resolveLogoDimensions(cid2Buf, 22, 22)
+        const textCenterX = W - 14 - (valW + lblW) / 2
+        const sealX = textCenterX - sealDims.w / 2
+        const sealY = textY - sealDims.h - 4 // 4mm above the text
+        doc.addImage(cid2Comp.buffer, cid2Comp.jsPdfFormat, sealX, sealY, sealDims.w, sealDims.h, 'CID2_P2')
+      } catch { /* skip */ }
+    }
   }
 
   // ── QR en negro ──────────────────────────────────────────────────────
@@ -266,9 +285,7 @@ return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
     try {
       const { default: sharp } = await import('sharp')
       const buf = Buffer.from(qrDataUrl.split(',')[1], 'base64')
-
-      
-return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold(200).png().toBuffer()
+      return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold(200).png().toBuffer()
     } catch {
       return Buffer.from(qrDataUrl.split(',')[1], 'base64')
     }
@@ -277,41 +294,34 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   // ══════════════════════════════════════════════════════════════════════
   // PÁGINA 1 — Certificado formal
   // ══════════════════════════════════════════════════════════════════════
-  setupPage()
+  drawPageBackground()
 
   const cx      = W / 2
   const qrSize  = 28
   const qrX     = W - margin - qrSize
   const qrY     = BAR_H + 5
 
-  // Logos centrados, alineados verticalmente al centro del QR
-  const logoMaxH = 18; const logoMaxW = 55; const logoGap = 10
-  const mainDims  = await resolveLogoDimensions(logoBuffer, logoMaxW, logoMaxH)
-  const logo4Dims = logo4Buf ? await resolveLogoDimensions(logo4Buf, logoMaxW, logoMaxH) : null
-  const totalLogosW = mainDims.w + (logo4Dims ? logoGap + logo4Dims.w : 0)
-  const logosStartX = (W - totalLogosW) / 2
+  // Logos centrados (cid1 y ipg), alineados verticalmente al centro del QR
+  const totalLogosW = cid1Dims.w + (ipgDims.w ? logoGap + ipgDims.w : 0)
+  let logosStartX = (W - totalLogosW) / 2
   const qrMidY      = qrY + qrSize / 2
 
-  if (base64Logo) {
+  if (cid1Comp && cid1Buf) {
     try {
-      const ext = logoUrl.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'PNG'
-
-      doc.addImage(base64Logo, ext, logosStartX, qrMidY - mainDims.h / 2, mainDims.w, mainDims.h, 'LOGO_P1')
+      doc.addImage(cid1Comp.buffer, cid1Comp.jsPdfFormat, logosStartX, qrMidY - cid1Dims.h / 2, cid1Dims.w, cid1Dims.h, 'CID1_P1')
+      logosStartX += cid1Dims.w + logoGap
     } catch { /* skip */ }
   }
 
-  if (logo4Buf && logo4Comp && logo4Dims) {
+  if (ipgComp && ipgBuf) {
     try {
-      doc.addImage(logo4Comp.buffer, logo4Comp.jsPdfFormat,
-        logosStartX + mainDims.w + logoGap, qrMidY - logo4Dims.h / 2,
-        logo4Dims.w, logo4Dims.h, 'LOGO4_P1')
+      doc.addImage(ipgComp.buffer, ipgComp.jsPdfFormat, logosStartX, qrMidY - ipgDims.h / 2, ipgDims.w, ipgDims.h, 'IPG_P1')
     } catch { /* skip */ }
   }
 
   // QR esquina superior derecha
   const ptToMm = 0.352778
 
-  /** Texto bajo el QR: "Verifica su autenticidad" + código. Devuelve Y inferior del bloque. */
   const drawQrVerificationLabels = (qrX: number, qrY: number, qrSize: number): number => {
     const cx = qrX + qrSize / 2
 
@@ -335,17 +345,14 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   doc.addImage(blackQrBuf, 'PNG', qrX, qrY, qrSize, qrSize)
   drawQrVerificationLabels(qrX, qrY, qrSize)
 
-  /** Avance vertical mínimo según tamaño de fuente — sin solapamiento */
   const advanceY = (lineCount: number, fontSizePt: number, gapMm: number) =>
     lineCount * fontSizePt * ptToMm * 1.06 + gapMm
 
-  // Tamaños fijos (sin reducir fuentes)
   const NOMBRE_SIZE = 30
   const CURSO_SIZE = 20
   const DESC_SIZE = 10.6
   const descLh = DESC_SIZE * ptToMm * 1.06
 
-  // Layout vertical — bloque superior compacto, bloque inferior fijo con más aire antes de firmas
   const textMaxW = W - margin * 2 - 40
   const textMaxWCurso = W - margin * 2 - 60
   const contentTop = qrY + qrSize + 8
@@ -381,7 +388,7 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
 
   let y = contentTop
 
-  // "CERTIFICADO" — ExtraLight, 47pt
+  // "CERTIFICADO" — ExtraLight, 47pt (shifted down slightly)
   doc.setFontSize(47); setEL()
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   doc.text('CERTIFICADO', cx, y + 2, { align: 'center' })
@@ -393,9 +400,9 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   doc.text('Otorgado a:', cx, y, { align: 'center' })
   y += advanceY(1, DESC_SIZE, GAP.afterOtorgado)
 
-  // Nombre del estudiante — Bold 30pt, teal
+  // Nombre del estudiante — Bold 30pt, red (instead of teal)
   doc.setFontSize(NOMBRE_SIZE); setBold()
-  doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
+  doc.setTextColor(RED.r, RED.g, RED.b)
   const nombreLines = doc.splitTextToSize(nombreCompleto, textMaxW)
 
   doc.text(nombreLines, cx, y, { align: 'center' })
@@ -415,7 +422,7 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   doc.text(cursoLines, cx, y, { align: 'center' })
   y += advanceY(cursoLines.length, CURSO_SIZE, GAP.afterCurso)
 
-  // Descripción — interlineado compacto si el contenido es largo
+  // Descripción
   doc.setFontSize(DESC_SIZE); setNormal()
   const porcuantoLines = doc.splitTextToSize(porcuantoTxt, textMaxW)
   let descRenderLh = descLh
@@ -431,7 +438,7 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   y += renderMixed(descSegs, cx, y, textMaxW, descRenderLh)
   y += GAP.afterDesc
 
-  // "Por cuanto..." — sin invadir APROBADO
+  // "Por cuanto..."
   doc.setFontSize(DESC_SIZE); setNormal()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
 
@@ -446,14 +453,14 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
     y += porLh
   }
 
-  // "APROBADO" — debajo de "...en calidad de:"
+  // "APROBADO"
   const aprobadoDrawY = y + gapPorcuantoAprob
 
   doc.setFontSize(DESC_SIZE); setSB()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   doc.text('APROBADO', cx, aprobadoDrawY, { align: 'center' })
 
-  // "Firmado, el..." — debajo de APROBADO, respetando espacio con las firmas
+  // "Firmado, el..."
   const firmadoDrawY = aprobadoDrawY + advanceY(1, DESC_SIZE, gapAprobFirmado)
 
   doc.setFontSize(DESC_SIZE); setNormal()
@@ -468,9 +475,8 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   // PÁGINA 2 — Temario del programa
   // ══════════════════════════════════════════════════════════════════════
   doc.addPage()
-  setupPage()
+  drawPageBackground()
 
-  // Margen lateral 14mm (igual que pág. 1), gap vertical 5mm desde las barras
   const p2M     = 14
   const qr2Size = 28
   const qr2X    = W - p2M - qr2Size
@@ -479,11 +485,10 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   doc.addImage(blackQrBuf, 'PNG', qr2X, qr2Y, qr2Size, qr2Size)
   const qr2BlockBottom = drawQrVerificationLabels(qr2X, qr2Y, qr2Size)
 
-  // "CERTIFICADO" — Regular Normal, green, 28pt — baseline ~5mm de gap visual desde barra
   const titleY = BAR_H + 12
 
   doc.setFontSize(28); setNormal()
-  doc.setTextColor(GREEN.r, GREEN.g, GREEN.b)
+  doc.setTextColor(RED.r, RED.g, RED.b)
   doc.text('CERTIFICADO', p2M, titleY)
 
   // Bloque de datos
@@ -526,7 +531,7 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   doc.setLineWidth(0.3)
   doc.line(p2M, sepY - 2, W - p2M, sepY - 2)
 
-  // ── Temario: módulos, lecciones y subtemas del contenido ─────────────
+  // Temario
   const sortedModulos = (modulos as ModuloData[])
     .sort((a, b) => a.orden - b.orden)
     .map(m => ({ ...m, lecciones: [...m.lecciones].sort((a, b) => a.orden - b.orden) }))
@@ -603,7 +608,7 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
       if (cy + modLines.length * 4 + 3 > bottomLimit) break
 
       doc.setFontSize(8); setSB()
-      doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
+      doc.setTextColor(RED.r, RED.g, RED.b)
       doc.text(modLines, startX, cy)
       cy += modLines.length * 4 + 3
 
@@ -614,7 +619,7 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
         const numLabel = `LECCIÓN ${String(num).padStart(2, '0')}:`
 
         doc.setFontSize(7.5); setSB()
-        doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
+        doc.setTextColor(RED.r, RED.g, RED.b)
         doc.text(numLabel, startX + subIndent, cy)
         cy += 4.5
 

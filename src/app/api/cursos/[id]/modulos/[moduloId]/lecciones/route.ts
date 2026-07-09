@@ -62,6 +62,7 @@ export async function POST(request: Request, { params }: { params: { id: string;
         fecha_programada: validation.data.fecha_programada ? new Date(validation.data.fecha_programada) : null,
         fecha_fin: validation.data.fecha_fin ? new Date(validation.data.fecha_fin) : null,
         recursos: validation.data.recursos || [],
+        subtemas: validation.data.subtemas ?? [],
         orden,
         estado: 'PUBLICADO',
         modulo_id: moduloId

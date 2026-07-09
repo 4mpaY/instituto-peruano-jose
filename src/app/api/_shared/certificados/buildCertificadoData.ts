@@ -1,8 +1,8 @@
 import * as QRCode from 'qrcode'
 
 import { calcularFechaCaducidadCurso } from '@/utils/functions/calcularFechaCaducidadCurso'
-import { hexToRgb, fetchImageBuffer, compressImageForPdf } from './generators/utils'
-import type { CertificadoData } from './generators/types'
+import { hexToRgb, fetchImageBuffer, compressImageForPdf, resolveFirmantesCertificado } from './generators/utils'
+import type { CertificadoData, SignatarioData } from './generators/types'
 
 type CertificadoConRelaciones = {
   id: string
@@ -52,6 +52,7 @@ type BuildCertificadoDataOptions = {
   cursoFechaFin: Date | null
   reqUrl: URL
   previewFlag: boolean
+  gerenteGeneral?: SignatarioData | null
 }
 
 /**
@@ -59,7 +60,7 @@ type BuildCertificadoDataOptions = {
  * Usado por ambas rutas (admin y estudiante) para eliminar duplicación.
  */
 export async function buildCertificadoData(opts: BuildCertificadoDataOptions): Promise<CertificadoData> {
-  const { certificado, configs, inscripcion, usuarioAvatar, intentosExamen, cursoFechaFin, reqUrl, previewFlag } = opts
+  const { certificado, configs, inscripcion, usuarioAvatar, intentosExamen, cursoFechaFin, reqUrl, previewFlag, gerenteGeneral } = opts
 
   const snapshot = certificado.datos as any
 
@@ -104,6 +105,12 @@ export async function buildCertificadoData(opts: BuildCertificadoDataOptions): P
   // ── Firmas ──
   const profesorSnapshot = snapshot?.profesor || certificado.curso.profesor
   const mostrarFirmaDocente = configs.CERTIFICADO_MOSTRAR_FIRMA_DOCENTE !== 'false'
+  const { izquierdo: firmanteIzquierdo, derecho: firmanteDerecho } = resolveFirmantesCertificado(configs, {
+    gerenteGeneral: gerenteGeneral ?? null,
+    profesorSnapshot,
+    mostrarFirmaDocente,
+    nombreInstitucion,
+  })
 
   // ── QR ──
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${reqUrl.protocol}//${reqUrl.host}`
@@ -180,9 +187,11 @@ export async function buildCertificadoData(opts: BuildCertificadoDataOptions): P
     fechaInicioVal,
     fechaFinVal,
     vigenciaHastaVal,
-    gerenteGeneral: null, // se inyecta por la ruta (requiere query adicional)
+    gerenteGeneral: gerenteGeneral ?? null,
     profesorSnapshot,
     mostrarFirmaDocente,
+    firmanteIzquierdo,
+    firmanteDerecho,
     codigoVerificacion: certificado.codigo_verificacion,
     qrDataUrl,
     notaFinal: null, // calculado dentro de cada generador desde notasPorModulo

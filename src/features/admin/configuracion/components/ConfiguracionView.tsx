@@ -29,12 +29,10 @@ import {
 } from '@mui/material'
 import { useSnackbar } from 'notistack'
 import { getSession } from 'next-auth/react'
-import { Rol } from '@prisma/client'
 
 import { AxiosConfiguracion } from '../http/axiosConfiguracion'
 import type { Configuracion } from '../entity/Configuracion'
 import MediaLibrary from '../../cursos/components/MediaLibrary'
-import { useUsuarios } from '../../usuarios/hooks/useUsuarios'
 
 interface ConfiguracionViewProps {
   initialData?: Configuracion[]
@@ -78,117 +76,246 @@ function SectionLabel({ children }: { children: string }) {
   )
 }
 
-const PLANTILLAS_CERTIFICADO = [
+const DISEÑOS_CERTIFICADO = [
   {
-    id: 'instituto_peruano',
-    nombre: 'Instituto Peruano',
-    descripcion: 'Diseño oficial IPG: barras verdes, logos IPG/CCL, temario por lección.',
-    thumbnail: '/images/plantillas-certificado/instituto_peruano.png',
-  },
-  {
-    id: 'clasico',
-    nombre: 'Clásico',
-    descripcion: 'Panel lateral con gradiente. Ideal para institutos y academias.',
-    thumbnail: '/images/plantillas-certificado/clasico.png',
-  },
-  {
-    id: 'clasico_resumido',
-    nombre: 'Clásico (Resumido)',
-    descripcion: 'Temario a dos columnas sin cuadro de notas para ahorrar espacio.',
-    thumbnail: '/images/plantillas-certificado/clasico_resumido.png',
-  },
-  {
-    id: 'corporativo',
-    nombre: 'Corporativo',
-    descripcion: 'Diseño formal con borde y detalles dorados. Empresas B2B.',
-    thumbnail: '/images/plantillas-certificado/corporativo.png',
-  },
-  {
-    id: 'moderno',
-    nombre: 'Moderno',
-    descripcion: 'Fondo oscuro con acentos de color. Academias tech y startups.',
-    thumbnail: '/images/plantillas-certificado/moderno.png',
-  },
-  {
-    id: 'elegante',
-    nombre: 'Elegante',
-    descripcion: 'Fondo crema con bordes ornamentales. Estilo universitario.',
-    thumbnail: '/images/plantillas-certificado/elegante.png',
-  },
-  {
-    id: 'minimalista',
-    nombre: 'Minimalista',
-    descripcion: 'Diseño limpio y moderno con fondo blanco. Panel derecho con gradiente y QR.',
+    id: 'ipg',
+    nombre: 'IPG Ingenieros Perú',
+    descripcion: 'Certificado minimalista con branding IPG.',
+    plantilla: 'minimalista',
     thumbnail: '/images/plantillas-certificado/minimalista.png',
   },
-]
+  {
+    id: 'colegio_ingenieros',
+    nombre: 'Colegio de Ingenieros',
+    descripcion: 'Alianza CIP + IPG con borde rojo y logos institucionales.',
+    plantilla: 'colegio_ingenieros',
+    thumbnail: '/images/plantillas-certificado/colegio_ingenieros.png',
+  },
+] as const
+
+type FirmaLado = 'IZQ' | 'DER'
+type FirmaImagenTipo = 'FIRMA' | 'SELLO'
+
+function FirmanteImageBox({
+  label,
+  hint,
+  imageUrl,
+  onSelect,
+  onClear,
+}: {
+  label: string
+  hint: string
+  imageUrl: string
+  onSelect: () => void
+  onClear: () => void
+}) {
+  return (
+    <Paper
+      variant='outlined'
+      sx={{
+        p: 1.5,
+        borderRadius: 2,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1,
+      }}
+    >
+      <Typography variant='caption' fontWeight={700} color='text.secondary' sx={{ textTransform: 'uppercase' }}>
+        {label}
+      </Typography>
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 88,
+          borderRadius: 1.5,
+          border: '1px dashed',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          p: 1,
+        }}
+      >
+        {imageUrl ? (
+          <img src={imageUrl} alt={label} style={{ maxWidth: '100%', maxHeight: 72, objectFit: 'contain' }} />
+        ) : (
+          <Typography variant='caption' color='text.disabled' textAlign='center'>
+            {hint}
+          </Typography>
+        )}
+      </Box>
+      <Stack direction='row' spacing={1}>
+        <Button variant='outlined' size='small' fullWidth onClick={onSelect} startIcon={<i className='tabler-photo' />}>
+          Subir
+        </Button>
+        {imageUrl ? (
+          <IconButton size='small' color='error' onClick={onClear}>
+            <i className='tabler-x' />
+          </IconButton>
+        ) : null}
+      </Stack>
+    </Paper>
+  )
+}
+
+function FirmaLadoPanel({
+  title,
+  lado,
+  config,
+  onInputChange,
+  onOpenMedia,
+}: {
+  title: string
+  lado: FirmaLado
+  config: Record<string, string>
+  onInputChange: (clave: string, valor: string) => void
+  onOpenMedia: (lado: FirmaLado, tipo: FirmaImagenTipo) => void
+}) {
+  const prefix = `CERTIFICADO_FIRMA_${lado}`
+
+  return (
+    <Paper variant='outlined' sx={{ p: 2.5, borderRadius: 2, height: '100%' }}>
+      <Typography variant='subtitle2' fontWeight={700} sx={{ mb: 2 }}>
+        {title}
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            fullWidth
+            size='small'
+            label='Nombre'
+            value={config[`${prefix}_NOMBRE`] || ''}
+            onChange={(e) => onInputChange(`${prefix}_NOMBRE`, e.target.value)}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            fullWidth
+            size='small'
+            label='Cargo'
+            value={config[`${prefix}_CARGO`] || ''}
+            onChange={(e) => onInputChange(`${prefix}_CARGO`, e.target.value)}
+            placeholder='Ej: Gerente General'
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            size='small'
+            label='Institución'
+            value={config[`${prefix}_INSTITUCION`] || ''}
+            onChange={(e) => onInputChange(`${prefix}_INSTITUCION`, e.target.value)}
+            placeholder='Institución que representa'
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <FirmanteImageBox
+            label='Firma'
+            hint='PNG recomendado'
+            imageUrl={config[`${prefix}_FIRMA`] || ''}
+            onSelect={() => onOpenMedia(lado, 'FIRMA')}
+            onClear={() => onInputChange(`${prefix}_FIRMA`, '')}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <FirmanteImageBox
+            label='Sello'
+            hint='PNG recomendado'
+            imageUrl={config[`${prefix}_SELLO`] || ''}
+            onSelect={() => onOpenMedia(lado, 'SELLO')}
+            onClear={() => onInputChange(`${prefix}_SELLO`, '')}
+          />
+        </Grid>
+      </Grid>
+    </Paper>
+  )
+}
 
 function CertificadosSettings({ config, onInputChange }: { config: any; onInputChange: (clave: string, valor: string) => void }) {
-  const { data: usuariosData, isLoading } = useUsuarios({ limit: '1000' })
-  const candidatos = (usuariosData?.usuarios || []).filter(u => u.rol === Rol.ADMIN || u.rol === Rol.PROFESOR)
-  const plantillaActiva = config.CERTIFICADO_PLANTILLA || 'instituto_peruano'
+  const [mediaTarget, setMediaTarget] = useState<{ lado: FirmaLado; tipo: FirmaImagenTipo } | null>(null)
+  const diseñoActivo = config.CERTIFICADO_DISENO || (config.CERTIFICADO_PLANTILLA === 'colegio_ingenieros' ? 'colegio_ingenieros' : 'ipg')
+
+  const handleDiseñoChange = (diseñoId: string) => {
+    const diseño = DISEÑOS_CERTIFICADO.find(d => d.id === diseñoId)
+    if (!diseño) return
+    onInputChange('CERTIFICADO_DISENO', diseño.id)
+  }
 
   return (
     <Stack spacing={4}>
 
-      {/* ── SELECTOR DE PLANTILLA ─────────────────────────────── */}
+      {/* ── SELECTOR DE PLANTILLA (solo edición) ───────────────── */}
       <Box>
-        <SectionLabel>Plantilla de Certificado</SectionLabel>
-        <Typography variant='body2' color='text.secondary' sx={{ mb: 3 }}>
-          Selecciona el diseño que se usará para todos los certificados generados en la plataforma.
-          Los colores y el logo se aplican automáticamente según el branding configurado.
+        <SectionLabel>Plantillas de certificado</SectionLabel>
+        <Typography variant='body2' color='text.secondary' sx={{ mb: 1 }}>
+          Selecciona qué plantilla deseas editar. La descarga del estudiante no depende de esta selección:
+          el admin habilita IPG y/o CID por alumno desde <strong>Alumnos Inscritos</strong>.
         </Typography>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 2 }}>
-          {PLANTILLAS_CERTIFICADO.map((p) => {
-            const isSelected = plantillaActiva === p.id
+        <Typography variant='caption' color='text.secondary' sx={{ mb: 3, display: 'block' }}>
+          Los cambios de firmas e institución aplican a ambas plantillas.
+        </Typography>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5, maxWidth: 900 }}>
+          {DISEÑOS_CERTIFICADO.map((d) => {
+            const isSelected = diseñoActivo === d.id
 
-            
-return (
+            return (
               <Box
-                key={p.id}
-                onClick={() => onInputChange('CERTIFICADO_PLANTILLA', p.id)}
+                key={d.id}
+                onClick={() => handleDiseñoChange(d.id)}
+                role='button'
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleDiseñoChange(d.id) }}
                 sx={{
-                  cursor: 'pointer',
+                  position: 'relative',
+                  aspectRatio: '297 / 210',
                   borderRadius: 2,
+                  overflow: 'hidden',
+                  cursor: 'pointer',
                   border: '2px solid',
                   borderColor: isSelected ? 'primary.main' : 'divider',
-                  overflow: 'hidden',
-                  transition: 'all 0.18s',
-                  boxShadow: isSelected ? 4 : 0,
-                  '&:hover': { transform: 'translateY(-2px)', boxShadow: 3 },
-                  position: 'relative',
+                  boxShadow: isSelected ? 6 : 1,
+                  transition: 'all 0.2s ease',
+                  backgroundImage: `url(${d.thumbnail})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 },
+                  '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 },
                 }}
               >
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: isSelected
+                      ? 'linear-gradient(to top, rgba(19,31,242,0.88) 0%, rgba(19,31,242,0.35) 42%, rgba(0,0,0,0.08) 100%)'
+                      : 'linear-gradient(to top, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.28) 42%, rgba(0,0,0,0.04) 100%)',
+                  }}
+                />
                 {isSelected && (
                   <Box
                     sx={{
-                      position: 'absolute', top: 6, right: 6, zIndex: 1,
-                      bgcolor: 'primary.main', borderRadius: '50%',
-                      width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      position: 'absolute', top: 10, right: 10, zIndex: 1,
+                      bgcolor: 'primary.main', borderRadius: '6px',
+                      px: 1, py: 0.25,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: 2,
                     }}
                   >
-                    <i className='tabler-check' style={{ fontSize: 13, color: '#fff' }} />
+                    <Typography variant='caption' sx={{ color: '#fff', fontWeight: 700, fontSize: '0.65rem' }}>
+                      Editando
+                    </Typography>
                   </Box>
                 )}
-                <Box
-                  component='img'
-                  src={p.thumbnail}
-                  alt={p.nombre}
-                  sx={{ width: '100%', aspectRatio: '297/210', objectFit: 'cover', display: 'block' }}
-                />
-                <Box sx={{ p: 1.5, bgcolor: isSelected ? 'primary.main' : 'background.paper' }}>
-                  <Typography
-                    variant='body2'
-                    fontWeight={700}
-                    sx={{ color: isSelected ? '#fff' : 'text.primary', mb: 0.3 }}
-                  >
-                    {p.nombre}
+                <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: 2, zIndex: 1 }}>
+                  <Typography variant='subtitle1' fontWeight={700} sx={{ color: '#fff', mb: 0.5 }}>
+                    {d.nombre}
                   </Typography>
-                  <Typography
-                    variant='caption'
-                    sx={{ color: isSelected ? 'rgba(255,255,255,0.8)' : 'text.secondary', lineHeight: 1.3, display: 'block' }}
-                  >
-                    {p.descripcion}
+                  <Typography variant='caption' sx={{ color: 'rgba(255,255,255,0.9)', lineHeight: 1.35, display: 'block' }}>
+                    {d.descripcion}
                   </Typography>
                 </Box>
               </Box>
@@ -198,114 +325,46 @@ return (
       </Box>
 
       <Divider />
+
       <Box>
-        <SectionLabel>Información de la Institución</SectionLabel>
+        <SectionLabel>Firmas</SectionLabel>
         <Typography variant='body2' color='text.secondary' sx={{ mb: 3 }}>
-          Estos datos se imprimirán en la cabecera del certificado. Si se dejan en blanco, se usarán los datos generales de branding.
+          Configura los firmantes del lado izquierdo y derecho del certificado. Se recomienda usar imágenes PNG con fondo transparente para la firma y el sello.
         </Typography>
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label='Nombre de la Institución'
-              value={config.CERTIFICADO_INSTITUTION_NAME || ''}
-              onChange={(e) => onInputChange('CERTIFICADO_INSTITUTION_NAME', e.target.value)}
-              placeholder='Ej: Instituto Tecnológico ARM'
+            <FirmaLadoPanel
+              title='Lado Izquierdo'
+              lado='IZQ'
+              config={config}
+              onInputChange={onInputChange}
+              onOpenMedia={(lado, tipo) => setMediaTarget({ lado, tipo })}
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label='Eslogan o Lema'
-              value={config.CERTIFICADO_SLOGAN || ''}
-              onChange={(e) => onInputChange('CERTIFICADO_SLOGAN', e.target.value)}
-              placeholder='Ej: Capacitación de Élite'
+            <FirmaLadoPanel
+              title='Lado Derecho'
+              lado='DER'
+              config={config}
+              onInputChange={onInputChange}
+              onOpenMedia={(lado, tipo) => setMediaTarget({ lado, tipo })}
             />
           </Grid>
         </Grid>
       </Box>
 
-      <Divider />
+      <MediaLibrary
+        open={!!mediaTarget}
+        onClose={() => setMediaTarget(null)}
+        onSelect={(url) => {
+          if (!mediaTarget) return
+          onInputChange(`CERTIFICADO_FIRMA_${mediaTarget.lado}_${mediaTarget.tipo}`, url)
+          setMediaTarget(null)
+        }}
+        title={mediaTarget ? `Seleccionar ${mediaTarget.tipo === 'FIRMA' ? 'firma' : 'sello'}` : 'Seleccionar imagen'}
+        acceptType='IMAGEN'
+      />
 
-      <Box>
-        <SectionLabel>Configuración de Firmas</SectionLabel>
-        <Typography variant='body2' color='text.secondary' sx={{ mb: 3 }}>
-          Selecciona al usuario que actuará como <strong>Gerente General</strong> en los certificados. Asegúrate de que tenga su <strong>Cargo</strong> y <strong>Firma</strong> configurados en su perfil.
-        </Typography>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <TextField
-              select
-              fullWidth
-              label='Designar Principal Firmante'
-              value={config.CERTIFICADO_GERENTE_GENERAL_ID || ''}
-              onChange={(e) => onInputChange('CERTIFICADO_GERENTE_GENERAL_ID', e.target.value)}
-              disabled={isLoading}
-              helperText='Este usuario aparecerá como el principal firmante en todos los certificados.'
-            >
-              <MenuItem value=''>
-                <em>Ninguno seleccionado</em>
-              </MenuItem>
-              {candidatos.map((u) => (
-                <MenuItem key={u.id} value={u.id}>
-                  {u.nombre} {u.apellido} ({u.rol})
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Paper variant='outlined' sx={{ p: 2, height: '100%', display: 'flex', alignItems: 'center' }}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={config.CERTIFICADO_MOSTRAR_FIRMA_DOCENTE !== 'false'}
-                    onChange={(e) => onInputChange('CERTIFICADO_MOSTRAR_FIRMA_DOCENTE', e.target.checked ? 'true' : 'false')}
-                    color='primary'
-                  />
-                }
-                label={
-                  <Box>
-                    <Typography variant='body2' fontWeight={600}>Mostrar firma del docente</Typography>
-                    <Typography variant='caption' color='text.secondary'>
-                      Si está activo, la firma del docente del curso aparecerá como firmante secundario en el certificado.
-                    </Typography>
-                  </Box>
-                }
-              />
-            </Paper>
-          </Grid>
-        </Grid>
-      </Box>
-
-      {config.CERTIFICADO_GERENTE_GENERAL_ID && candidatos.find(u => u.id === config.CERTIFICADO_GERENTE_GENERAL_ID) && (
-        <Paper variant='outlined' sx={{ p: 3, bgcolor: 'action.hover', borderRadius: 2 }}>
-          <Typography variant='subtitle2' gutterBottom>Vista Previa — Gerente General</Typography>
-          {(() => {
-            const gerente = candidatos.find(u => u.id === config.CERTIFICADO_GERENTE_GENERAL_ID)
-
-            return (
-              <Grid container spacing={2} alignItems='center'>
-                <Grid item>
-                  {gerente?.firma ? (
-                    <Box sx={{ width: 120, height: 60, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider', p: 0.5 }}>
-                      <img src={gerente.firma} alt='Firma' style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                    </Box>
-                  ) : (
-                    <Typography variant='caption' color='error'>Sin firma configurada</Typography>
-                  )}
-                </Grid>
-                <Grid item xs>
-                  <Typography variant='body2' fontWeight={600}>{gerente?.nombre} {gerente?.apellido}</Typography>
-                  <Typography variant='caption' display='block'>
-                    {gerente?.cargo || <span style={{ color: 'red' }}>Sin cargo configurado</span>}
-                  </Typography>
-                </Grid>
-              </Grid>
-            )
-          })()}
-        </Paper>
-      )}
     </Stack>
   )
 }
@@ -419,7 +478,18 @@ export function ConfiguracionView({ initialData }: ConfiguracionViewProps) {
     CULQI_RSA_ID: '',
     CULQI_RSA_PUBLIC_KEY: '',
     CERTIFICADO_GERENTE_GENERAL_ID: '',
-    CERTIFICADO_PLANTILLA: 'instituto_peruano',
+    CERTIFICADO_FIRMA_IZQ_NOMBRE: '',
+    CERTIFICADO_FIRMA_IZQ_CARGO: '',
+    CERTIFICADO_FIRMA_IZQ_INSTITUCION: '',
+    CERTIFICADO_FIRMA_IZQ_FIRMA: '',
+    CERTIFICADO_FIRMA_IZQ_SELLO: '',
+    CERTIFICADO_FIRMA_DER_NOMBRE: '',
+    CERTIFICADO_FIRMA_DER_CARGO: '',
+    CERTIFICADO_FIRMA_DER_INSTITUCION: '',
+    CERTIFICADO_FIRMA_DER_FIRMA: '',
+    CERTIFICADO_FIRMA_DER_SELLO: '',
+    CERTIFICADO_DISENO: 'ipg',
+    CERTIFICADO_PLANTILLA: 'minimalista',
     PAGO_MANUAL_ENABLED: 'false',
     PAGO_MANUAL_WHATSAPP_NUMERO: '',
     PAGO_MANUAL_WHATSAPP_MENSAJE: '',

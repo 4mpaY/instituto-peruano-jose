@@ -35,7 +35,7 @@ const securityHeaders = [
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https: *", // 🖼️ FLEXIBLE: Permite imágenes de cualquier sitio seguro
       "connect-src 'self' https://*.izipay.pe https://*.paypal.com https://api-m.paypal.com https://api-m.sandbox.paypal.com https://*.culqi.com",
-      "frame-src 'self' https: *", // 📺 FLEXIBLE: Permite videos/iframes de cualquier sitio seguro (YouTube, Vimeo, Wistia, etc.)
+      "frame-src 'self' blob: https: *", // blob: necesario para vista previa de PDFs en modal
       "object-src 'none'",
       "base-uri 'self'"
     ].join('; ')
@@ -50,6 +50,11 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: securityHeaders
+      },
+      {
+        // Permite embeber el PDF en iframe del mismo origen (vista previa en modal)
+        source: '/api/estudiante/certificado/:certificadoId/pdf',
+        headers: [{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }]
       }
     ]
   },

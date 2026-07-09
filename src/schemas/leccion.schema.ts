@@ -17,6 +17,11 @@ export const crearLeccionSchema = z.object({
   fecha_programada: z.string().datetime().optional().nullable(),
   fecha_fin: z.string().datetime().optional().nullable(),
   recursos: z.array(z.any()).optional(),
+  subtemas: z
+    .array(z.string().trim().min(1, 'El subtema no puede estar vacío').max(200))
+    .max(50)
+    .optional()
+    .default([]),
   es_vista_previa: z.boolean().optional()
 })
 
@@ -41,7 +46,11 @@ export const actualizarLeccionSchema = z.object({
   fecha_fin: z.string().datetime().optional().nullable(),
   recursos: z.array(z.any()).optional(),
   estado: z.enum(['BORRADOR', 'PUBLICADO']).optional(),
-  es_vista_previa: z.boolean().optional()
+  es_vista_previa: z.boolean().optional(),
+  subtemas: z
+    .array(z.string().trim().min(1, 'El subtema no puede estar vacío').max(200))
+    .max(50)
+    .optional()
 })
 
 export type ActualizarLeccionDto = z.infer<typeof actualizarLeccionSchema>

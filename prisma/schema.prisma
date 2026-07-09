@@ -155,6 +155,7 @@ model Leccion {
   actualizado_en   DateTime           @updatedAt
   modulo_id        String
   recursos         Json?              @default("[]")
+  subtemas         Json?              @default("[]")
   video_url        String?
   es_vista_previa  Boolean            @default(false)
   es_en_vivo       Boolean            @default(false)
@@ -266,6 +267,8 @@ model Inscripcion {
   nota_final             Float?
   estado_nota            EstadoNota?
   certificado_habilitado Boolean           @default(false)
+  certificado_ipg_habilitado Boolean       @default(false)
+  certificado_cid_habilitado Boolean       @default(false)
   usuario_id             String
   curso_id               String
   pedido_id              String?

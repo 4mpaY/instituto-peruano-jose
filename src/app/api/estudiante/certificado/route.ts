@@ -4,6 +4,10 @@ import { ApiResponse } from '@/utils/libs/apiResponse'
 import { handleApiError } from '@/utils/libs/validation'
 import prisma from '@/utils/libs/prisma'
 import { requireAuth } from '@/utils/libs/auth-helpers'
+import {
+  getInscripcionCertificadoHabilitacion,
+  resolveCertificadoPagoEstado,
+} from '@/app/api/_shared/certificados/getInscripcionCertificadoHabilitacion'
 
 /** Calcula el promedio ponderado de las evaluaciones del estudiante en un curso.
  *  Los exámenes sin intentar cuentan como 0. */
@@ -63,7 +67,7 @@ export async function GET(request: Request) {
       return ApiResponse.error(request, 'El ID del curso es requerido', 400)
     }
 
-    const [certificado, elegibilidad, inscripcion, curso] = await Promise.all([
+    const [certificado, elegibilidad, inscripcionHab, curso] = await Promise.all([
       prisma.certificado.findUnique({
         where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } },
         include: {
@@ -72,15 +76,15 @@ export async function GET(request: Request) {
         }
       }),
       calcularElegibilidad(auth.user.id, cursoId),
-      prisma.inscripcion.findUnique({
-        where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } },
-        select: { certificado_habilitado: true }
-      }),
+      getInscripcionCertificadoHabilitacion(auth.user.id, cursoId),
       prisma.curso.findUnique({ where: { id: cursoId }, select: { precio_certificado: true, titulo: true } })
     ])
 
     const precioCert = curso?.precio_certificado ? Number(curso.precio_certificado) : null
-    const pagoPendiente = precioCert && precioCert > 0 && !inscripcion?.certificado_habilitado
+    const { ipgHabilitado, cidHabilitado, pagoPendiente } = resolveCertificadoPagoEstado(
+      inscripcionHab,
+      precioCert
+    )
 
     return ApiResponse.success(request, {
       certificado: certificado
@@ -94,8 +98,26 @@ export async function GET(request: Request) {
         : null,
       cursoTitulo: curso?.titulo ?? null,
       elegibilidad,
-      pagoPendiente: pagoPendiente || false,
-      precioCertificado: precioCert
+      pagoPendiente,
+      precioCertificado: precioCert,
+      certificadosHabilitados: {
+        ipg: ipgHabilitado,
+        cid: cidHabilitado,
+      },
+      plantillasPreview: [
+        {
+          id: 'minimalista',
+          nombre: 'Certificado IPG',
+          thumbnail: '/images/plantillas-certificado/minimalista.png',
+          habilitado: ipgHabilitado,
+        },
+        {
+          id: 'colegio_ingenieros',
+          nombre: 'Certificado CID',
+          thumbnail: '/images/plantillas-certificado/colegio_ingenieros.png',
+          habilitado: cidHabilitado,
+        },
+      ],
     })
   } catch (error) {
     return handleApiError(error, request)
@@ -120,15 +142,14 @@ export async function POST(request: Request) {
     }
 
     // 1. Verificar inscripción activa
-    const [inscripcion, curso] = await Promise.all([
-      prisma.inscripcion.findUnique({
-        where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } }
-      }),
-      prisma.curso.findUnique({
-        where: { id: cursoId },
-        select: { precio_certificado: true, codigo: true, slug: true }
-      })
-    ])
+    const inscripcion = await prisma.inscripcion.findUnique({
+      where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } }
+    })
+
+    const curso = await prisma.curso.findUnique({
+      where: { id: cursoId },
+      select: { precio_certificado: true, codigo: true, slug: true }
+    })
 
     if (!inscripcion || inscripcion.estado !== 'ACTIVO') {
       return ApiResponse.error(request, 'No estás inscrito en este curso', 403)
@@ -137,12 +158,17 @@ export async function POST(request: Request) {
     // 1b. Verificar pago del certificado si aplica
     const precioCert = curso?.precio_certificado ? Number(curso.precio_certificado) : null
 
-    if (precioCert && precioCert > 0 && !inscripcion.certificado_habilitado) {
-      return ApiResponse.error(
-        request,
-        'El certificado de este curso requiere un pago previo. Comunícate con nosotros para habilitarlo.',
-        403
-      )
+    if (precioCert && precioCert > 0) {
+      const habilitacion = await getInscripcionCertificadoHabilitacion(auth.user.id, cursoId)
+      const { algunoHabilitado } = resolveCertificadoPagoEstado(habilitacion, precioCert)
+
+      if (!algunoHabilitado) {
+        return ApiResponse.error(
+          request,
+          'El certificado de este curso requiere un pago previo. Comunícate con nosotros para habilitarlo.',
+          403
+        )
+      }
     }
 
     // 2. Verificar elegibilidad (progreso + promedio de evaluaciones)

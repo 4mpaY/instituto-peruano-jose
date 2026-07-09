@@ -398,6 +398,10 @@ const LessonRow = ({
   handleDeleteLesson,
   dragHandleProps
 }: any) => {
+  const sublecciones = Array.isArray(leccion.subtemas)
+    ? leccion.subtemas.filter((s: unknown): s is string => typeof s === 'string' && s.trim().length > 0)
+    : []
+
   return (
     <Box
       sx={{
@@ -413,32 +417,46 @@ const LessonRow = ({
         '&:hover': { bgcolor: 'action.hover', borderColor: 'divider' }
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Box {...dragHandleProps} sx={{ display: 'flex', cursor: 'grab', '&:active': { cursor: 'grabbing' } }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, flex: 1, minWidth: 0 }}>
+        <Box {...dragHandleProps} sx={{ display: 'flex', cursor: 'grab', mt: 0.25, '&:active': { cursor: 'grabbing' } }}>
           <i className='tabler-grip-vertical text-lg text-textDisabled' />
         </Box>
-        <i className='tabler-file-text text-lg text-textSecondary' />
-        <Typography variant='body2'>{leccion.titulo}</Typography>
-        <Chip
-          size='small'
-          variant='tonal'
-          label={leccion.estado === 'PUBLICADO' ? 'Publicado' : 'Borrador'}
-          color={leccion.estado === 'PUBLICADO' ? 'success' : 'warning'}
-        />
-        {leccion.es_vista_previa && (
-          <Chip
-            size='small'
-            variant='outlined'
-            label='Vista Previa'
-            color='primary'
-            icon={<i className='tabler-eye text-xs' />}
-          />
-        )}
-        {leccion.duracion && (
-          <Typography variant='caption' color='text.disabled'>
-            {leccion.duracion} min
-          </Typography>
-        )}
+        <i className='tabler-file-text text-lg text-textSecondary' style={{ marginTop: 2 }} />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Typography variant='body2'>{leccion.titulo}</Typography>
+            <Chip
+              size='small'
+              variant='tonal'
+              label={leccion.estado === 'PUBLICADO' ? 'Publicado' : 'Borrador'}
+              color={leccion.estado === 'PUBLICADO' ? 'success' : 'warning'}
+            />
+            {leccion.es_vista_previa && (
+              <Chip
+                size='small'
+                variant='outlined'
+                label='Vista Previa'
+                color='primary'
+                icon={<i className='tabler-eye text-xs' />}
+              />
+            )}
+            {leccion.duracion && (
+              <Typography variant='caption' color='text.disabled'>
+                {leccion.duracion} min
+              </Typography>
+            )}
+          </Box>
+          {sublecciones.map((nombre: string, i: number) => (
+            <Typography
+              key={`${leccion.id}-sub-${i}`}
+              variant='caption'
+              color='text.secondary'
+              sx={{ display: 'block', pl: 3, mt: 0.25 }}
+            >
+              {nombre}
+            </Typography>
+          ))}
+        </Box>
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
         <Tooltip title='Editar contenido'>

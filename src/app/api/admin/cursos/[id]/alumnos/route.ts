@@ -2,6 +2,7 @@ import { ApiResponse } from '@/utils/libs/apiResponse'
 import { requireAuth } from '@/utils/libs/auth-helpers'
 import { handleApiError } from '@/utils/libs/validation'
 import prisma from '@/utils/libs/prisma'
+import { getCertificadoHabilitacionPorCurso } from '@/app/api/_shared/certificados/getInscripcionCertificadoHabilitacion'
 
 /**
  * GET /api/admin/cursos/[id]/alumnos
@@ -87,6 +88,8 @@ export async function GET(
       orderBy: { inscrito_en: 'desc' }
     })
 
+    const habilitacionMap = await getCertificadoHabilitacionPorCurso(cursoId)
+
     const alumnos = inscripciones.map(i => {
       // Agrupar el mejor intento por examen (viene como porcentaje 0-100)
       const mejoresIntentos: Record<string, number> = {}
@@ -134,10 +137,14 @@ export async function GET(
         nota: parseFloat(((mejoresIntentos[ex.id] || 0) * 0.2).toFixed(1))
       }))
 
+      const hab = habilitacionMap.get(i.id)
+
       return {
         id: i.usuario.id,
         inscripcion_id: i.id,
-        certificado_habilitado: i.certificado_habilitado,
+        certificado_habilitado: hab?.certificado_habilitado ?? i.certificado_habilitado,
+        certificado_ipg_habilitado: hab?.certificado_ipg_habilitado ?? i.certificado_habilitado,
+        certificado_cid_habilitado: hab?.certificado_cid_habilitado ?? false,
         nombre: i.usuario.nombre,
         apellido: i.usuario.apellido,
         correo: i.usuario.correo,

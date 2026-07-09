@@ -51,9 +51,7 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
                     precio: esGratis ? 0 : precio,
                     precio_falso: esGratis ? 0 : precioFalso,
                     moneda,
-                    precio_certificado: esGratis
-                        ? (precioCertificado === '' ? null : Number(precioCertificado))
-                        : null
+                    precio_certificado: precioCertificado === '' ? null : Number(precioCertificado),
                 }
             })
             enqueueSnackbar('Configuración actualizada', { variant: 'success' })
@@ -106,27 +104,12 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
                             checked={esGratis}
                             onChange={e => {
                                 setEsGratis(e.target.checked)
-
                                 if (e.target.checked) setPrecio(0)
-                                else setPrecioCertificado('')
                             }}
                         />
                     }
                     label='Este curso es gratis'
                 />
-                {esGratis && (
-                    <Box sx={{ mt: 2 }}>
-                        <CustomTextField
-                            type='number'
-                            label='Precio del certificado'
-                            value={precioCertificado}
-                            onChange={e => setPrecioCertificado(e.target.value === '' ? '' : Number(e.target.value))}
-                            sx={{ width: 260 }}
-                            inputProps={{ min: 0, step: 0.01 }}
-                            helperText='Déjalo vacío si el certificado también es gratuito'
-                        />
-                    </Box>
-                )}
                 {!esGratis && (
                     <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                         <CustomTextField
@@ -155,6 +138,30 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
                         </CustomTextField>
                     </Box>
                 )}
+
+                <Box sx={{ mt: 3, pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
+                    <Typography variant='subtitle2' sx={{ mb: 0.5, fontWeight: 700 }}>
+                        Precio del certificado
+                    </Typography>
+                    <Typography variant='caption' color='text.secondary' sx={{ mb: 2, display: 'block' }}>
+                        Independiente del precio del curso. Si tiene costo, el admin debe habilitar IPG y/o CID por alumno desde Alumnos Inscritos.
+                    </Typography>
+                    <CustomTextField
+                        type='number'
+                        label='Precio del certificado'
+                        value={precioCertificado}
+                        onChange={e => setPrecioCertificado(e.target.value === '' ? '' : Number(e.target.value))}
+                        sx={{ width: 260 }}
+                        inputProps={{ min: 0, step: 0.01 }}
+                        helperText='Déjalo vacío si el certificado es gratuito'
+                        FormHelperTextProps={{
+                            sx: {
+                                color: 'error.main',
+                                fontWeight: 800,
+                            },
+                        }}
+                    />
+                </Box>
                 <Box sx={{ mt: 2 }}>
                     <Button
                         variant='contained'

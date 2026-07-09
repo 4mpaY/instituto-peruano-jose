@@ -4,15 +4,16 @@ import { NextResponse } from 'next/server'
 
 import { buildCertificadoData } from '@/app/api/_shared/certificados/buildCertificadoData'
 import { getConfigs } from '@/utils/libs/config'
-import { getGenerator, resolvePlantillaCertificado } from '@/app/api/_shared/certificados/generators'
+import { getGenerator, resolvePlantillaParaDescarga, type PlantillaId } from '@/app/api/_shared/certificados/generators'
 import { handleApiError } from '@/utils/libs/validation'
 import prisma from '@/utils/libs/prisma'
 import { requireAuth } from '@/utils/libs/auth-helpers'
+import { getInscripcionCertificadoHabilitacion } from '@/app/api/_shared/certificados/getInscripcionCertificadoHabilitacion'
 
 /**
  * GET /api/estudiante/certificado/[certificadoId]/pdf
  * Descarga el PDF del certificado (Estudiante).
- * La plantilla se resuelve desde la configuración CERTIFICADO_PLANTILLA.
+ * La plantilla se resuelve por habilitación IPG/CID del alumno o por query param `plantilla`.
  */
 export async function GET(request: Request, { params }: { params: { certificadoId: string } }) {
   try {
@@ -23,6 +24,12 @@ export async function GET(request: Request, { params }: { params: { certificadoI
     const { certificadoId } = params
     const reqUrl = new URL(request.url)
     const previewFlag = reqUrl.searchParams.get('preview') === 'true'
+    const plantillaParam = reqUrl.searchParams.get('plantilla')
+
+    const plantillaOverride: PlantillaId | null =
+      plantillaParam === 'colegio_ingenieros' || plantillaParam === 'minimalista'
+        ? plantillaParam
+        : null
 
     // ── Carga paralela principal ──────────────────────────────────────
     const [certificado, configs] = await Promise.all([
@@ -55,6 +62,39 @@ export async function GET(request: Request, { params }: { params: { certificadoI
     // ── Verificar ownership ──────────────────────────────────────────
     if (certificado.usuario_id !== auth.user.id && auth.user.rol !== 'ADMIN') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    const [inscripcionPago, cursoPago] = await Promise.all([
+      getInscripcionCertificadoHabilitacion(certificado.usuario_id, certificado.curso_id),
+      prisma.curso.findUnique({
+        where: { id: certificado.curso_id },
+        select: { precio_certificado: true },
+      }),
+    ])
+
+    const precioCert = cursoPago?.precio_certificado ? Number(cursoPago.precio_certificado) : null
+    const requierePago = !!precioCert && precioCert > 0
+
+    const plantilla = resolvePlantillaParaDescarga({
+      plantillaParam: plantillaOverride,
+      ipgHabilitado: inscripcionPago?.certificado_ipg_habilitado,
+      cidHabilitado: inscripcionPago?.certificado_cid_habilitado,
+      certificadoHabilitadoLegacy: inscripcionPago?.certificado_habilitado,
+      requierePago,
+    })
+
+    if (requierePago && auth.user.rol !== 'ADMIN') {
+      const habilitado =
+        plantilla === 'colegio_ingenieros'
+          ? inscripcionPago?.certificado_cid_habilitado
+          : inscripcionPago?.certificado_ipg_habilitado || inscripcionPago?.certificado_habilitado
+
+      if (!habilitado) {
+        return NextResponse.json(
+          { error: 'Este certificado no está habilitado para tu inscripción' },
+          { status: 403 }
+        )
+      }
     }
 
     // ── Carga secundaria ──────────────────────────────────────────────
@@ -90,7 +130,7 @@ export async function GET(request: Request, { params }: { params: { certificadoI
           orden: true,
           lecciones: {
             orderBy: { orden: 'asc' },
-            select: { id: true, titulo: true, orden: true, duracion: true, contenido: true }
+            select: { id: true, titulo: true, orden: true, duracion: true, contenido: true, subtemas: true }
           }
         }
       })
@@ -126,13 +166,11 @@ export async function GET(request: Request, { params }: { params: { certificadoI
       intentosExamen,
       cursoFechaFin,
       reqUrl,
-      previewFlag
+      previewFlag,
+      gerenteGeneral,
     })
 
-    certData.gerenteGeneral = gerenteGeneral
-
     // ── Seleccionar plantilla y generar PDF ───────────────────────────
-    const plantilla = resolvePlantillaCertificado(configs)
     const generarPDF = getGenerator(plantilla)
     const pdfBuffer = await generarPDF(certData)
 

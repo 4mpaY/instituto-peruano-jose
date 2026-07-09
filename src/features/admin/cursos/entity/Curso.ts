@@ -26,6 +26,7 @@ export interface CursoLeccionResumen {
   es_en_vivo: boolean
   fecha_programada: string | Date | null
   recursos: any[]
+  subtemas?: string[]
   estado: 'BORRADOR' | 'PUBLICADO'
   es_vista_previa: boolean
   contenido: string | null

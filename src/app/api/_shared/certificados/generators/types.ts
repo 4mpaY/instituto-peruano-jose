@@ -8,6 +8,15 @@ export interface SignatarioData {
   firma?: string | null
 }
 
+/** Firmante configurado para el certificado (lado izquierdo o derecho). */
+export interface FirmanteCertificado {
+  nombre: string
+  cargo: string
+  institucion: string
+  firmaUrl?: string | null
+  selloUrl?: string | null
+}
+
 /**
  * Datos de una lección dentro de un módulo
  */
@@ -17,6 +26,7 @@ export interface LeccionData {
   orden: number
   duracion?: number | null
   contenido?: string | null
+  subtemas?: string[] | null
 }
 
 /**
@@ -32,7 +42,7 @@ export interface ModuloData {
 /**
  * Objeto completo que recibe cualquier generador de certificado.
  * Las rutas de descarga (admin y estudiante) construyen este objeto
- * y lo pasan al generador seleccionado por la configuración CERTIFICADO_PLANTILLA.
+ * y lo pasan al generador correspondiente (minimalista = IPG, colegio_ingenieros = CID).
  */
 export interface CertificadoData {
 
@@ -69,6 +79,8 @@ export interface CertificadoData {
   gerenteGeneral: SignatarioData | null
   profesorSnapshot: SignatarioData | null
   mostrarFirmaDocente: boolean
+  firmanteIzquierdo: FirmanteCertificado
+  firmanteDerecho: FirmanteCertificado
 
   // ── Verificación ──
   codigoVerificacion: string

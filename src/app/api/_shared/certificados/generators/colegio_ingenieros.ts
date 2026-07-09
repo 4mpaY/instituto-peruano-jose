@@ -7,6 +7,7 @@ import type { GeneratorFn, ModuloData } from './types'
 async function loadFontBase64(relativePath: string): Promise<string | null> {
   try {
     const buf = await readFile(join(process.cwd(), 'public', relativePath))
+
     return buf.toString('base64')
   } catch {
     return null
@@ -21,7 +22,6 @@ async function loadFontBase64(relativePath: string): Promise<string | null> {
  */
 export const generarColegioIngenieros: GeneratorFn = async data => {
   const {
-    base64Logo, logoUrl, logoBuffer,
     nombreInstitucion,
     nombreCompleto,
     cursoTitulo, cursoDuracion,
@@ -35,8 +35,6 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
   } = data
 
   const RED   = { r: 178, g: 34,  b: 52  }  // Colegio de ingenieros red color
-  const GREEN = RED                         // mapped to RED for styling consistency
-  const TEAL  = RED                         // mapped to RED for styling consistency
   const DARK  = { r: 30,  g: 30,  b: 30  }
   const GRAY  = { r: 100, g: 100, b: 100 }
   const LGRAY = { r: 220, g: 220, b: 220 }
@@ -99,6 +97,7 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
       if (style === 'bold') setBold()
       else if (style === 'semibold') setSB()
       else setNormal()
+
       return doc.getTextWidth(word)
     }
 
@@ -171,6 +170,7 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
   // ── Nota final ───────────────────────────────────────────────────────
   const promedios = Object.values(notasPorModulo).map(e => {
     const raw = e.puntaje / e.count
+
     return raw > 20 ? raw / 5 : raw
   })
 
@@ -179,6 +179,7 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
       ? promedios.reduce((a, b) => a + b, 0) / promedios.length
       : (() => {
           const raw = notaInscripcion ?? null
+
           return raw !== null ? (raw > 20 ? raw / 5 : raw) : null
         })()
 
@@ -193,19 +194,25 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
 
     // Borde rojo en forma de "C" cuadrada en el 25% izquierdo
     doc.setFillColor(RED.r, RED.g, RED.b)
+
     // Left vertical border
     doc.rect(0, 0, BAR_H, H, 'F')
+
     // Top horizontal border (25% of W)
     doc.rect(0, 0, W * 0.25, BAR_H, 'F')
+
     // Bottom horizontal border (25% of W)
     doc.rect(0, H - BAR_H, W * 0.25, BAR_H, 'F')
 
     // Borde gris en el resto de los bordes (75% top/bottom y lado derecho)
     doc.setFillColor(LGRAY.r, LGRAY.g, LGRAY.b)
+
     // Right vertical border
     doc.rect(W - BAR_H, 0, BAR_H, H, 'F')
+
     // Top horizontal border (remaining 75%)
     doc.rect(W * 0.25, 0, W * 0.75, BAR_H, 'F')
+
     // Bottom horizontal border (remaining 75%)
     doc.rect(W * 0.25, H - BAR_H, W * 0.75, BAR_H, 'F')
   }
@@ -275,6 +282,7 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
         const textCenterX = W - 14 - (valW + lblW) / 2
         const sealX = textCenterX - sealDims.w / 2
         const sealY = textY - sealDims.h - 4 // 4mm above the text
+
         doc.addImage(cid2Comp.buffer, cid2Comp.jsPdfFormat, sealX, sealY, sealDims.w, sealDims.h, 'CID2_P2')
       } catch { /* skip */ }
     }
@@ -285,6 +293,7 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
     try {
       const { default: sharp } = await import('sharp')
       const buf = Buffer.from(qrDataUrl.split(',')[1], 'base64')
+
       return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold(200).png().toBuffer()
     } catch {
       return Buffer.from(qrDataUrl.split(',')[1], 'base64')

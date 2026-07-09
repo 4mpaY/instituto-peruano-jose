@@ -3,6 +3,7 @@ import * as QRCode from 'qrcode'
 import { calcularFechaCaducidadCurso } from '@/utils/functions/calcularFechaCaducidadCurso'
 import { hexToRgb, fetchImageBuffer, compressImageForPdf, resolveFirmantesCertificado } from './generators/utils'
 import type { CertificadoData, SignatarioData } from './generators/types'
+import type { DisenoCertificadoId } from './generators'
 
 type CertificadoConRelaciones = {
   id: string
@@ -53,6 +54,7 @@ type BuildCertificadoDataOptions = {
   reqUrl: URL
   previewFlag: boolean
   gerenteGeneral?: SignatarioData | null
+  diseno: DisenoCertificadoId
 }
 
 /**
@@ -60,7 +62,7 @@ type BuildCertificadoDataOptions = {
  * Usado por ambas rutas (admin y estudiante) para eliminar duplicación.
  */
 export async function buildCertificadoData(opts: BuildCertificadoDataOptions): Promise<CertificadoData> {
-  const { certificado, configs, inscripcion, usuarioAvatar, intentosExamen, cursoFechaFin, reqUrl, previewFlag, gerenteGeneral } = opts
+  const { certificado, configs, inscripcion, usuarioAvatar, intentosExamen, cursoFechaFin, reqUrl, previewFlag, gerenteGeneral, diseno } = opts
 
   const snapshot = certificado.datos as any
 
@@ -105,11 +107,13 @@ export async function buildCertificadoData(opts: BuildCertificadoDataOptions): P
   // ── Firmas ──
   const profesorSnapshot = snapshot?.profesor || certificado.curso.profesor
   const mostrarFirmaDocente = configs.CERTIFICADO_MOSTRAR_FIRMA_DOCENTE !== 'false'
+
   const { izquierdo: firmanteIzquierdo, derecho: firmanteDerecho } = resolveFirmantesCertificado(configs, {
     gerenteGeneral: gerenteGeneral ?? null,
     profesorSnapshot,
     mostrarFirmaDocente,
     nombreInstitucion,
+    diseno,
   })
 
   // ── QR ──

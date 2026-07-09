@@ -1,6 +1,9 @@
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 
+import type { DisenoCertificadoId } from './index'
+import type { FirmanteCertificado, SignatarioData } from './types'
+
 /** Convierte un color hex (#RRGGBB) a rgb [r, g, b] */
 export function hexToRgb(hex: string): [number, number, number] {
   try {
@@ -149,22 +152,42 @@ export function extractSubtemasFromContenido(contenido: string | null | undefine
   return items
 }
 
-const FIRMA_CONFIG_PREFIX = {
+const LEGACY_FIRMA_CONFIG_PREFIX = {
   IZQ: 'CERTIFICADO_FIRMA_IZQ',
   DER: 'CERTIFICADO_FIRMA_DER',
 } as const
 
+type FirmaLado = keyof typeof LEGACY_FIRMA_CONFIG_PREFIX
+
+function firmaConfigPrefix(diseno: DisenoCertificadoId, lado: FirmaLado): string {
+  return `CERTIFICADO_FIRMA_${diseno.toUpperCase()}_${lado}`
+}
+
+/** Lee un campo escopado por diseño, cayendo al valor legacy compartido si no fue configurado aún. */
+function readFirmaCampo(
+  configs: Record<string, string>,
+  diseno: DisenoCertificadoId,
+  lado: FirmaLado,
+  campo: 'NOMBRE' | 'CARGO' | 'INSTITUCION' | 'FIRMA' | 'SELLO'
+): string {
+  const prefix = firmaConfigPrefix(diseno, lado)
+  const legacyPrefix = LEGACY_FIRMA_CONFIG_PREFIX[lado]
+
+  return configs[`${prefix}_${campo}`]?.trim() || configs[`${legacyPrefix}_${campo}`]?.trim() || ''
+}
+
 export function parseFirmanteConfig(
   configs: Record<string, string>,
-  lado: keyof typeof FIRMA_CONFIG_PREFIX
-): import('./types').FirmanteCertificado | null {
-  const prefix = FIRMA_CONFIG_PREFIX[lado]
-  const nombre = configs[`${prefix}_NOMBRE`]?.trim() || ''
-  const cargo = configs[`${prefix}_CARGO`]?.trim() || ''
-  const institucion = configs[`${prefix}_INSTITUCION`]?.trim() || ''
-  const firmaUrl = configs[`${prefix}_FIRMA`]?.trim() || null
+  lado: FirmaLado,
+  diseno: DisenoCertificadoId
+): FirmanteCertificado | null {
+  const nombre = readFirmaCampo(configs, diseno, lado, 'NOMBRE')
+  const cargo = readFirmaCampo(configs, diseno, lado, 'CARGO')
+  const institucion = readFirmaCampo(configs, diseno, lado, 'INSTITUCION')
+  const firmaUrl = readFirmaCampo(configs, diseno, lado, 'FIRMA') || null
+
   // Always read sello regardless of other fields
-  const selloUrl = configs[`${prefix}_SELLO`]?.trim() || null
+  const selloUrl = readFirmaCampo(configs, diseno, lado, 'SELLO') || null
 
   if (!nombre && !cargo && !institucion && !firmaUrl && !selloUrl) return null
 
@@ -174,41 +197,42 @@ export function parseFirmanteConfig(
 export function resolveFirmantesCertificado(
   configs: Record<string, string>,
   opts: {
-    gerenteGeneral?: import('./types').SignatarioData | null
-    profesorSnapshot?: import('./types').SignatarioData | null
+    gerenteGeneral?: SignatarioData | null
+    profesorSnapshot?: SignatarioData | null
     mostrarFirmaDocente?: boolean
     nombreInstitucion?: string
+    diseno: DisenoCertificadoId
   }
-): { izquierdo: import('./types').FirmanteCertificado; derecho: import('./types').FirmanteCertificado } {
-  const izqConfig = parseFirmanteConfig(configs, 'IZQ')
-  const derConfig = parseFirmanteConfig(configs, 'DER')
+): { izquierdo: FirmanteCertificado; derecho: FirmanteCertificado } {
+  const izqConfig = parseFirmanteConfig(configs, 'IZQ', opts.diseno)
+  const derConfig = parseFirmanteConfig(configs, 'DER', opts.diseno)
   const defaultInst = opts.nombreInstitucion || ''
 
-  const izquierdo: import('./types').FirmanteCertificado = izqConfig ?? {
+  const izquierdo: FirmanteCertificado = izqConfig ?? {
     nombre: opts.gerenteGeneral
       ? `${opts.gerenteGeneral.nombre} ${opts.gerenteGeneral.apellido || ''}`.trim()
       : '',
     cargo: opts.gerenteGeneral?.cargo || 'Gerente General',
     institucion: defaultInst,
     firmaUrl: opts.gerenteGeneral?.firma || null,
-    selloUrl: configs.CERTIFICADO_FIRMA_IZQ_SELLO || null,
+    selloUrl: readFirmaCampo(configs, opts.diseno, 'IZQ', 'SELLO') || null,
   }
 
-  const derecho: import('./types').FirmanteCertificado = derConfig ?? (
+  const derecho: FirmanteCertificado = derConfig ?? (
     opts.mostrarFirmaDocente !== false && opts.profesorSnapshot
       ? {
           nombre: `${opts.profesorSnapshot.nombre} ${opts.profesorSnapshot.apellido || ''}`.trim(),
           cargo: opts.profesorSnapshot.cargo || 'Director Académico',
           institucion: defaultInst,
           firmaUrl: opts.profesorSnapshot.firma || null,
-          selloUrl: configs.CERTIFICADO_FIRMA_DER_SELLO || null,
+          selloUrl: readFirmaCampo(configs, opts.diseno, 'DER', 'SELLO') || null,
         }
       : {
           nombre: '',
           cargo: 'Director Académico',
           institucion: defaultInst,
           firmaUrl: null,
-          selloUrl: configs.CERTIFICADO_FIRMA_DER_SELLO || null,
+          selloUrl: readFirmaCampo(configs, opts.diseno, 'DER', 'SELLO') || null,
         }
   )
 
@@ -221,20 +245,25 @@ export async function drawFirmanteCertificadoBlock(
   doc: any,
   cx: number,
   lineY: number,
-  firmante: import('./types').FirmanteCertificado,
+  firmante: FirmanteCertificado,
   opts?: { showLine?: boolean; darkColor?: RgbColor; grayColor?: RgbColor; isRight?: boolean }
 ) {
   const DARK = opts?.darkColor ?? { r: 30, g: 30, b: 30 }
   const GRAY = opts?.grayColor ?? { r: 100, g: 100, b: 100 }
-  const imgY = lineY - 24
+
+  const GAP_TO_LINE = 2
+  const SELLO_SIZE = 24
+  const FIRMA_W = 40
+  const FIRMA_H = 22
 
   if (firmante.selloUrl) {
     try {
       const buf = await fetchImageBuffer(firmante.selloUrl)
 
       if (buf) {
-        const { buffer: comp, jsPdfFormat } = await compressImageForPdf(buf, { maxWidth: 200, format: 'png' })
-        doc.addImage(comp, jsPdfFormat, cx - 40, imgY, 16, 16)
+        const { buffer: comp, jsPdfFormat } = await compressImageForPdf(buf, { maxWidth: 240, format: 'png' })
+
+        doc.addImage(comp, jsPdfFormat, cx - 40, lineY - GAP_TO_LINE - SELLO_SIZE, SELLO_SIZE, SELLO_SIZE)
       }
     } catch { /* skip */ }
   }
@@ -244,8 +273,9 @@ export async function drawFirmanteCertificadoBlock(
       const buf = await fetchImageBuffer(firmante.firmaUrl)
 
       if (buf) {
-        const { buffer: comp, jsPdfFormat } = await compressImageForPdf(buf, { maxWidth: 300, format: 'png' })
-        doc.addImage(comp, jsPdfFormat, cx - 18, imgY, 36, 20)
+        const { buffer: comp, jsPdfFormat } = await compressImageForPdf(buf, { maxWidth: 320, format: 'png' })
+
+        doc.addImage(comp, jsPdfFormat, cx - 13, lineY - GAP_TO_LINE - FIRMA_H, FIRMA_W, FIRMA_H)
       }
     } catch { /* skip */ }
   }
@@ -279,6 +309,7 @@ export async function drawFirmanteCertificadoBlock(
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
     const instLines = doc.splitTextToSize(firmante.institucion, 82)
+
     doc.text(instLines, cx, textY, { align: 'center' })
   }
 }

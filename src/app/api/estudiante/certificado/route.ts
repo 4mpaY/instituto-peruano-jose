@@ -81,6 +81,7 @@ export async function GET(request: Request) {
     ])
 
     const precioCert = curso?.precio_certificado ? Number(curso.precio_certificado) : null
+
     const { ipgHabilitado, cidHabilitado, pagoPendiente } = resolveCertificadoPagoEstado(
       inscripcionHab,
       precioCert

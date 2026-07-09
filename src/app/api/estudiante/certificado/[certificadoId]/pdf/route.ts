@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 
 import { buildCertificadoData } from '@/app/api/_shared/certificados/buildCertificadoData'
 import { getConfigs } from '@/utils/libs/config'
-import { getGenerator, resolvePlantillaParaDescarga, type PlantillaId } from '@/app/api/_shared/certificados/generators'
+import { getGenerator, resolvePlantillaParaDescarga, PLANTILLAS, type PlantillaId } from '@/app/api/_shared/certificados/generators'
 import { handleApiError } from '@/utils/libs/validation'
 import prisma from '@/utils/libs/prisma'
 import { requireAuth } from '@/utils/libs/auth-helpers'
@@ -158,6 +158,8 @@ export async function GET(request: Request, { params }: { params: { certificadoI
         })
 
     // ── Construir datos del certificado ───────────────────────────────
+    const diseno = PLANTILLAS[plantilla].diseño
+
     const certData = await buildCertificadoData({
       certificado: { ...certificado, curso: { ...certificado.curso, modulos: modulosCurso } } as any,
       configs,
@@ -168,6 +170,7 @@ export async function GET(request: Request, { params }: { params: { certificadoI
       reqUrl,
       previewFlag,
       gerenteGeneral,
+      diseno,
     })
 
     // ── Seleccionar plantilla y generar PDF ───────────────────────────

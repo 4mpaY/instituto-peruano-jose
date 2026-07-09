@@ -17,7 +17,6 @@ import {
   Tabs,
   Tab,
   Divider,
-  MenuItem,
   Switch,
   Accordion,
   AccordionSummary,
@@ -164,17 +163,21 @@ function FirmanteImageBox({
 function FirmaLadoPanel({
   title,
   lado,
+  diseno,
   config,
   onInputChange,
   onOpenMedia,
 }: {
   title: string
   lado: FirmaLado
+  diseno: string
   config: Record<string, string>
   onInputChange: (clave: string, valor: string) => void
   onOpenMedia: (lado: FirmaLado, tipo: FirmaImagenTipo) => void
 }) {
-  const prefix = `CERTIFICADO_FIRMA_${lado}`
+  const prefix = `CERTIFICADO_FIRMA_${diseno.toUpperCase()}_${lado}`
+  const legacyPrefix = `CERTIFICADO_FIRMA_${lado}`
+  const campo = (nombre: string) => config[`${prefix}_${nombre}`] || config[`${legacyPrefix}_${nombre}`] || ''
 
   return (
     <Paper variant='outlined' sx={{ p: 2.5, borderRadius: 2, height: '100%' }}>
@@ -187,7 +190,7 @@ function FirmaLadoPanel({
             fullWidth
             size='small'
             label='Nombre'
-            value={config[`${prefix}_NOMBRE`] || ''}
+            value={campo('NOMBRE')}
             onChange={(e) => onInputChange(`${prefix}_NOMBRE`, e.target.value)}
           />
         </Grid>
@@ -196,7 +199,7 @@ function FirmaLadoPanel({
             fullWidth
             size='small'
             label='Cargo'
-            value={config[`${prefix}_CARGO`] || ''}
+            value={campo('CARGO')}
             onChange={(e) => onInputChange(`${prefix}_CARGO`, e.target.value)}
             placeholder='Ej: Gerente General'
           />
@@ -206,7 +209,7 @@ function FirmaLadoPanel({
             fullWidth
             size='small'
             label='Institución'
-            value={config[`${prefix}_INSTITUCION`] || ''}
+            value={campo('INSTITUCION')}
             onChange={(e) => onInputChange(`${prefix}_INSTITUCION`, e.target.value)}
             placeholder='Institución que representa'
           />
@@ -215,7 +218,7 @@ function FirmaLadoPanel({
           <FirmanteImageBox
             label='Firma'
             hint='PNG recomendado'
-            imageUrl={config[`${prefix}_FIRMA`] || ''}
+            imageUrl={campo('FIRMA')}
             onSelect={() => onOpenMedia(lado, 'FIRMA')}
             onClear={() => onInputChange(`${prefix}_FIRMA`, '')}
           />
@@ -224,7 +227,7 @@ function FirmaLadoPanel({
           <FirmanteImageBox
             label='Sello'
             hint='PNG recomendado'
-            imageUrl={config[`${prefix}_SELLO`] || ''}
+            imageUrl={campo('SELLO')}
             onSelect={() => onOpenMedia(lado, 'SELLO')}
             onClear={() => onInputChange(`${prefix}_SELLO`, '')}
           />
@@ -235,12 +238,14 @@ function FirmaLadoPanel({
 }
 
 function CertificadosSettings({ config, onInputChange }: { config: any; onInputChange: (clave: string, valor: string) => void }) {
-  const [mediaTarget, setMediaTarget] = useState<{ lado: FirmaLado; tipo: FirmaImagenTipo } | null>(null)
+  const [mediaTarget, setMediaTarget] = useState<{ lado: FirmaLado; tipo: FirmaImagenTipo; diseno: string } | null>(null)
   const diseñoActivo = config.CERTIFICADO_DISENO || (config.CERTIFICADO_PLANTILLA === 'colegio_ingenieros' ? 'colegio_ingenieros' : 'ipg')
 
   const handleDiseñoChange = (diseñoId: string) => {
     const diseño = DISEÑOS_CERTIFICADO.find(d => d.id === diseñoId)
+
     if (!diseño) return
+
     onInputChange('CERTIFICADO_DISENO', diseño.id)
   }
 
@@ -255,7 +260,7 @@ function CertificadosSettings({ config, onInputChange }: { config: any; onInputC
           el admin habilita IPG y/o CID por alumno desde <strong>Alumnos Inscritos</strong>.
         </Typography>
         <Typography variant='caption' color='text.secondary' sx={{ mb: 3, display: 'block' }}>
-          Los cambios de firmas e institución aplican a ambas plantillas.
+          Cada plantilla tiene su propia configuración de firmas.
         </Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5, maxWidth: 900 }}>
           {DISEÑOS_CERTIFICADO.map((d) => {
@@ -336,18 +341,20 @@ function CertificadosSettings({ config, onInputChange }: { config: any; onInputC
             <FirmaLadoPanel
               title='Lado Izquierdo'
               lado='IZQ'
+              diseno={diseñoActivo}
               config={config}
               onInputChange={onInputChange}
-              onOpenMedia={(lado, tipo) => setMediaTarget({ lado, tipo })}
+              onOpenMedia={(lado, tipo) => setMediaTarget({ lado, tipo, diseno: diseñoActivo })}
             />
           </Grid>
           <Grid item xs={12} md={6}>
             <FirmaLadoPanel
               title='Lado Derecho'
               lado='DER'
+              diseno={diseñoActivo}
               config={config}
               onInputChange={onInputChange}
-              onOpenMedia={(lado, tipo) => setMediaTarget({ lado, tipo })}
+              onOpenMedia={(lado, tipo) => setMediaTarget({ lado, tipo, diseno: diseñoActivo })}
             />
           </Grid>
         </Grid>
@@ -358,7 +365,7 @@ function CertificadosSettings({ config, onInputChange }: { config: any; onInputC
         onClose={() => setMediaTarget(null)}
         onSelect={(url) => {
           if (!mediaTarget) return
-          onInputChange(`CERTIFICADO_FIRMA_${mediaTarget.lado}_${mediaTarget.tipo}`, url)
+          onInputChange(`CERTIFICADO_FIRMA_${mediaTarget.diseno.toUpperCase()}_${mediaTarget.lado}_${mediaTarget.tipo}`, url)
           setMediaTarget(null)
         }}
         title={mediaTarget ? `Seleccionar ${mediaTarget.tipo === 'FIRMA' ? 'firma' : 'sello'}` : 'Seleccionar imagen'}
@@ -478,6 +485,8 @@ export function ConfiguracionView({ initialData }: ConfiguracionViewProps) {
     CULQI_RSA_ID: '',
     CULQI_RSA_PUBLIC_KEY: '',
     CERTIFICADO_GERENTE_GENERAL_ID: '',
+
+    // Legacy (compartidas entre plantillas) — se mantienen como fallback
     CERTIFICADO_FIRMA_IZQ_NOMBRE: '',
     CERTIFICADO_FIRMA_IZQ_CARGO: '',
     CERTIFICADO_FIRMA_IZQ_INSTITUCION: '',
@@ -488,6 +497,30 @@ export function ConfiguracionView({ initialData }: ConfiguracionViewProps) {
     CERTIFICADO_FIRMA_DER_INSTITUCION: '',
     CERTIFICADO_FIRMA_DER_FIRMA: '',
     CERTIFICADO_FIRMA_DER_SELLO: '',
+
+    // Firmas por plantilla — IPG Ingenieros Perú
+    CERTIFICADO_FIRMA_IPG_IZQ_NOMBRE: '',
+    CERTIFICADO_FIRMA_IPG_IZQ_CARGO: '',
+    CERTIFICADO_FIRMA_IPG_IZQ_INSTITUCION: '',
+    CERTIFICADO_FIRMA_IPG_IZQ_FIRMA: '',
+    CERTIFICADO_FIRMA_IPG_IZQ_SELLO: '',
+    CERTIFICADO_FIRMA_IPG_DER_NOMBRE: '',
+    CERTIFICADO_FIRMA_IPG_DER_CARGO: '',
+    CERTIFICADO_FIRMA_IPG_DER_INSTITUCION: '',
+    CERTIFICADO_FIRMA_IPG_DER_FIRMA: '',
+    CERTIFICADO_FIRMA_IPG_DER_SELLO: '',
+
+    // Firmas por plantilla — Colegio de Ingenieros
+    CERTIFICADO_FIRMA_COLEGIO_INGENIEROS_IZQ_NOMBRE: '',
+    CERTIFICADO_FIRMA_COLEGIO_INGENIEROS_IZQ_CARGO: '',
+    CERTIFICADO_FIRMA_COLEGIO_INGENIEROS_IZQ_INSTITUCION: '',
+    CERTIFICADO_FIRMA_COLEGIO_INGENIEROS_IZQ_FIRMA: '',
+    CERTIFICADO_FIRMA_COLEGIO_INGENIEROS_IZQ_SELLO: '',
+    CERTIFICADO_FIRMA_COLEGIO_INGENIEROS_DER_NOMBRE: '',
+    CERTIFICADO_FIRMA_COLEGIO_INGENIEROS_DER_CARGO: '',
+    CERTIFICADO_FIRMA_COLEGIO_INGENIEROS_DER_INSTITUCION: '',
+    CERTIFICADO_FIRMA_COLEGIO_INGENIEROS_DER_FIRMA: '',
+    CERTIFICADO_FIRMA_COLEGIO_INGENIEROS_DER_SELLO: '',
     CERTIFICADO_DISENO: 'ipg',
     CERTIFICADO_PLANTILLA: 'minimalista',
     PAGO_MANUAL_ENABLED: 'false',

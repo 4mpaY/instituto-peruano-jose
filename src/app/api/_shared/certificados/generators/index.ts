@@ -86,6 +86,7 @@ export function resolvePlantillaParaDescarga(opts: {
 
   if (requierePago) {
     if (cidOk && !ipgOk) return 'colegio_ingenieros'
+
     return 'minimalista'
   }
 

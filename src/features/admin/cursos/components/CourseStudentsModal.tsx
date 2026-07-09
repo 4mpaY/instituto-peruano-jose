@@ -112,6 +112,7 @@ export default function CourseStudentsModal({
 
       if (!res.data?.status) {
         toast.error(res.data?.message || 'Error al actualizar el certificado')
+
         return
       }
 

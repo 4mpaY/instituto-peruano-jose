@@ -407,7 +407,9 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
 
     const buildPdfDownloadUrl = (plantillaId?: string) => {
         const params = new URLSearchParams({ _t: String(Date.now()) })
+
         if (plantillaId) params.set('plantilla', plantillaId)
+
         return `/api/estudiante/certificado/${certificado!.id}/pdf?${params.toString()}`
     }
 
@@ -422,6 +424,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         const filename = `certificado${suffix}-${certificado.codigoVerificacion}.pdf`
 
         const link = document.createElement('a')
+
         link.href = url
         link.setAttribute('download', filename)
         link.rel = 'noopener'

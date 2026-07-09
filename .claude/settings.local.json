@@ -20,7 +20,11 @@
       "Bash(grep -r 025E44 /d/GitHub/apps-fly/aula-virtual/src --include=*.ts --include=*.tsx --include=*.css)",
       "Bash(grep -r \"color_primario\\\\|color_secundario\\\\|PRIMARY_COLOR_MAIN\\\\|PRIMARY_COLOR\" /d/GitHub/apps-fly/aula-virtual/src --include=*.ts --include=*.tsx -l)",
       "Bash(grep -r \"getConfigs\\\\|Configuracion\" /d/GitHub/apps-fly/aula-virtual/src --include=*.ts -l)",
-      "Bash(find /d/GitHub/apps-fly/aula-virtual -type f -name *login* -o -name *register* -o -name *forgot*password*)"
+      "Bash(find /d/GitHub/apps-fly/aula-virtual -type f -name *login* -o -name *register* -o -name *forgot*password*)",
+      "Bash(rm -f /tmp/tscout.txt)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }

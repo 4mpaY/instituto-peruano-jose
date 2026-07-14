@@ -144,7 +144,7 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
                         Precio del certificado
                     </Typography>
                     <Typography variant='caption' color='text.secondary' sx={{ mb: 2, display: 'block' }}>
-                        Independiente del precio del curso. Si tiene costo, el admin debe habilitar IPG y/o CID por alumno desde Alumnos Inscritos.
+                        Independiente del precio del curso. Si tiene costo, el admin debe habilitar IPG y/o CIP por alumno desde Alumnos Inscritos.
                     </Typography>
                     <CustomTextField
                         type='number'

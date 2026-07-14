@@ -417,8 +417,14 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                                     fechaFin={currentLesson.fecha_fin}
                                     enlaceReunion={currentLesson.enlace_reunion}
                                 />
+                            ) : currentLesson?.video_url ? (
+                                <VideoPlayer url={currentLesson.video_url} tipo="VIDEO" onEnded={handleVideoEnded} />
+                            ) : currentLesson?.contenido ? (
+                                <Box sx={{ p: { xs: 3, md: 5 }, bgcolor: 'background.paper', height: '100%', overflowY: 'auto' }}>
+                                    <LessonContent titulo="" descripcion={currentLesson.contenido} recursos={currentLesson.recursos || []} />
+                                </Box>
                             ) : (
-                                <VideoPlayer url={currentLesson?.video_url || undefined} tipo="VIDEO" onEnded={handleVideoEnded} />
+                                <VideoPlayer url={undefined} tipo="VIDEO" onEnded={handleVideoEnded} />
                             )}
                         </Box>
                     )}
@@ -606,7 +612,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                                         <Box sx={{ width: 3, height: 18, bgcolor: '#025E44', borderRadius: 2 }} />
                                         <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Contenido de esta lección</Typography>
                                     </Box>
-                                    <LessonContent titulo="" descripcion={currentLesson.contenido} recursos={[]} />
+                                    <LessonContent titulo="" descripcion={currentLesson.contenido} recursos={currentLesson.recursos || []} />
                                 </Box>
                             )}
                             {!(course as any).descripcion && !(course as any).que_aprenderas && !currentLesson?.contenido && (

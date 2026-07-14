@@ -43,6 +43,8 @@ export interface CreateCertificadoPayload {
   docente_nombre_override?: string
   docente_cargo_override?: string
   reemplazar?: boolean
+  certificado_ipg_habilitado?: boolean
+  certificado_cip_habilitado?: boolean
 }
 
 export interface UsuarioBusqueda {

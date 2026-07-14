@@ -82,7 +82,7 @@ export async function GET(request: Request) {
 
     const precioCert = curso?.precio_certificado ? Number(curso.precio_certificado) : null
 
-    const { ipgHabilitado, cidHabilitado, pagoPendiente } = resolveCertificadoPagoEstado(
+    const { ipgHabilitado, cipHabilitado, pagoPendiente } = resolveCertificadoPagoEstado(
       inscripcionHab,
       precioCert
     )
@@ -103,7 +103,7 @@ export async function GET(request: Request) {
       precioCertificado: precioCert,
       certificadosHabilitados: {
         ipg: ipgHabilitado,
-        cid: cidHabilitado,
+        cip: cipHabilitado,
       },
       plantillasPreview: [
         {
@@ -114,9 +114,9 @@ export async function GET(request: Request) {
         },
         {
           id: 'colegio_ingenieros',
-          nombre: 'Certificado CID',
+          nombre: 'Certificado CIP',
           thumbnail: '/images/plantillas-certificado/colegio_ingenieros.png',
-          habilitado: cidHabilitado,
+          habilitado: cipHabilitado,
         },
       ],
     })

@@ -22,7 +22,6 @@ async function loadFontBase64(relativePath: string): Promise<string | null> {
  */
 export const generarColegioIngenieros: GeneratorFn = async data => {
   const {
-    nombreInstitucion,
     nombreCompleto,
     cursoTitulo, cursoDuracion,
     fechaEmisionVal, fechaInicioVal, fechaFinVal,
@@ -144,27 +143,29 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
   }
 
   // ── Logos adicionales ────────────────────────────────────────────────
-  const [cid1Buf, ipgBuf, cid2Buf, logo2Buf, logo3Buf, logo4Buf] = await Promise.all([
-    fetchImageBuffer('/images/cid1.png'),
+  const [logosHeaderBuf, cip1Buf, ipgBuf, cip2Buf, logo2Buf, logo3Buf, logo4Buf] = await Promise.all([
+    fetchImageBuffer('/images/logos.png'),
+    fetchImageBuffer('/images/cip1.png'),
     fetchImageBuffer('/images/ipg.png'),
-    fetchImageBuffer('/images/cid2.png'),
+    fetchImageBuffer('/images/cip2.png'),
     fetchImageBuffer('/logos/logo2.png'),
     fetchImageBuffer('/logos/logo3.png'),
     fetchImageBuffer('/logos/logo4.png'),
   ])
 
-  const [cid1Comp, ipgComp, cid2Comp, logo2Comp, logo3Comp, logo4Comp] = await Promise.all([
-    cid1Buf ? compressImageForPdf(cid1Buf, { maxWidth: 400, format: 'png' }) : null,
+  const [logosHeaderComp, cip1Comp, ipgComp, cip2Comp, logo2Comp, logo3Comp, logo4Comp] = await Promise.all([
+    logosHeaderBuf ? compressImageForPdf(logosHeaderBuf, { maxWidth: 2000, format: 'png' }) : null,
+    cip1Buf ? compressImageForPdf(cip1Buf, { maxWidth: 400, format: 'png' }) : null,
     ipgBuf ? compressImageForPdf(ipgBuf, { maxWidth: 400, format: 'png' }) : null,
-    cid2Buf ? compressImageForPdf(cid2Buf, { maxWidth: 400, format: 'png' }) : null,
+    cip2Buf ? compressImageForPdf(cip2Buf, { maxWidth: 400, format: 'png' }) : null,
     logo2Buf ? compressImageForPdf(logo2Buf, { maxWidth: 300, format: 'png' }) : null,
     logo3Buf ? compressImageForPdf(logo3Buf, { maxWidth: 300, format: 'png' }) : null,
     logo4Buf ? compressImageForPdf(logo4Buf, { maxWidth: 300, format: 'png' }) : null,
   ])
 
-  // ── Dimensiones de logos (IPG agrandado 10%, CID1 reducido 10%) ───────
-  const logoMaxH = 16; const logoGap = 8
-  const cid1Dims = cid1Buf ? await resolveLogoDimensions(cid1Buf, 52 * 0.9, logoMaxH * 0.9) : { w: 0, h: 0 }
+  // ── Dimensiones de logos ─────────────────────────────────────────────
+  const logoMaxH = 16
+  const logosHeaderDims = logosHeaderBuf ? await resolveLogoDimensions(logosHeaderBuf, 154, 24.2) : { w: 0, h: 0 }
   const ipgDims = ipgBuf ? await resolveLogoDimensions(ipgBuf, 52 * 1.1, logoMaxH * 1.1) : { w: 0, h: 0 }
 
   // ── Nota final ───────────────────────────────────────────────────────
@@ -237,7 +238,7 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
     type LogoEntry = { buf: Buffer; comp: { buffer: Buffer; jsPdfFormat: string } }
     const row2Entries: LogoEntry[] = []
 
-    if (cid1Buf && cid1Comp) row2Entries.push({ buf: cid1Buf, comp: cid1Comp })
+    if (cip1Buf && cip1Comp) row2Entries.push({ buf: cip1Buf, comp: cip1Comp })
     if (logo2Buf && logo2Comp) row2Entries.push({ buf: logo2Buf, comp: logo2Comp })
     if (logo3Buf && logo3Comp) row2Entries.push({ buf: logo3Buf, comp: logo3Comp })
     if (logo4Buf && logo4Comp) row2Entries.push({ buf: logo4Buf, comp: logo4Comp })
@@ -275,15 +276,15 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
     setNormal()
     doc.text(valTxt, W - 14, textY, { align: 'right' })
 
-    // Sello cid2 posicionado arriba y al centro del texto "Fecha de Emisión: <fecha>"
-    if (cid2Comp && cid2Buf) {
+    // Sello cip2 posicionado arriba y al centro del texto "Fecha de Emisión: <fecha>"
+    if (cip2Comp && cip2Buf) {
       try {
-        const sealDims = await resolveLogoDimensions(cid2Buf, 22, 22)
+        const sealDims = await resolveLogoDimensions(cip2Buf, 22, 22)
         const textCenterX = W - 14 - (valW + lblW) / 2
         const sealX = textCenterX - sealDims.w / 2
         const sealY = textY - sealDims.h - 4 // 4mm above the text
 
-        doc.addImage(cid2Comp.buffer, cid2Comp.jsPdfFormat, sealX, sealY, sealDims.w, sealDims.h, 'CID2_P2')
+        doc.addImage(cip2Comp.buffer, cip2Comp.jsPdfFormat, sealX, sealY, sealDims.w, sealDims.h, 'CIP2_P2')
       } catch { /* skip */ }
     }
   }
@@ -310,21 +311,14 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
   const qrX     = W - margin - qrSize
   const qrY     = BAR_H + 5
 
-  // Logos centrados (cid1 y ipg), alineados verticalmente al centro del QR
-  const totalLogosW = cid1Dims.w + (ipgDims.w ? logoGap + ipgDims.w : 0)
-  let logosStartX = (W - totalLogosW) / 2
-  const qrMidY      = qrY + qrSize / 2
+  // Logos de cabecera centrado, alineado verticalmente al centro del QR
+  const qrMidY = qrY + qrSize / 2
 
-  if (cid1Comp && cid1Buf) {
+  if (logosHeaderComp && logosHeaderBuf) {
     try {
-      doc.addImage(cid1Comp.buffer, cid1Comp.jsPdfFormat, logosStartX, qrMidY - cid1Dims.h / 2, cid1Dims.w, cid1Dims.h, 'CID1_P1')
-      logosStartX += cid1Dims.w + logoGap
-    } catch { /* skip */ }
-  }
+      const logosStartX = (W - logosHeaderDims.w) / 2
 
-  if (ipgComp && ipgBuf) {
-    try {
-      doc.addImage(ipgComp.buffer, ipgComp.jsPdfFormat, logosStartX, qrMidY - ipgDims.h / 2, ipgDims.w, ipgDims.h, 'IPG_P1')
+      doc.addImage(logosHeaderComp.buffer, logosHeaderComp.jsPdfFormat, logosStartX, qrMidY - logosHeaderDims.h / 2, logosHeaderDims.w, logosHeaderDims.h, 'HEADER_LOGOS_P1')
     } catch { /* skip */ }
   }
 
@@ -337,13 +331,13 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
     doc.setFontSize(7.6)
     setNormal()
     doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-    doc.text('Verifica su', cx, qrY + qrSize + 4, { align: 'center' })
-    doc.text('autenticidad', cx, qrY + qrSize + 8, { align: 'center' })
+    doc.text('Verifica su', cx, qrY + qrSize + 3, { align: 'center' })
+    doc.text('autenticidad', cx, qrY + qrSize + 5.8, { align: 'center' })
 
     doc.setFontSize(6)
     setNormal()
     const codeLines = doc.splitTextToSize(codigoVerificacion, qrSize + 10)
-    const codeY = qrY + qrSize + 12
+    const codeY = qrY + qrSize + 8.8
     const codeLh = 6 * ptToMm * 1.06
 
     doc.text(codeLines, cx, codeY, { align: 'center' })
@@ -354,127 +348,123 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
   doc.addImage(blackQrBuf, 'PNG', qrX, qrY, qrSize, qrSize)
   drawQrVerificationLabels(qrX, qrY, qrSize)
 
-  const advanceY = (lineCount: number, fontSizePt: number, gapMm: number) =>
-    lineCount * fontSizePt * ptToMm * 1.06 + gapMm
-
-  const NOMBRE_SIZE = 30
-  const CURSO_SIZE = 20
-  const DESC_SIZE = 10.6
-  const descLh = DESC_SIZE * ptToMm * 1.06
-
   const textMaxW = W - margin * 2 - 40
   const textMaxWCurso = W - margin * 2 - 60
-  const contentTop = qrY + qrSize + 8
   const sigLineY = H - BAR_H - 32
-  const minFirmadoToSig = 40
-  const maxFirmadoY = sigLineY - minFirmadoToSig
-  const gapAprobFirmado = 3
-  const gapPorcuantoAprob = 5
 
-  const maxYAfterPorcuanto =
-    maxFirmadoY - gapPorcuantoAprob - advanceY(1, DESC_SIZE, gapAprobFirmado)
-
-  const GAP = {
-    afterCertificado: -5,
-    afterOtorgado: 8,
-    afterNombre: -1,
-    afterPorHaber: 5,
-    afterCurso: 1,
-    afterDesc: 1,
-  }
+  // Definir área útil para el bloque de texto con holgura segura para evitar colisión con firmas y sellos
+  const topLimit = 37
+  const bottomLimitP1 = sigLineY - 32
+  const availableSpace = bottomLimitP1 - topLimit
 
   const fechaInicioTxt = formatDateLong(fechaInicioVal)
   const fechaFinTxt = formatDateLong(fechaFinVal)
   const duracionTxt = cursoDuracion?.match(/hora/i) ? (cursoDuracion || '---') : `${cursoDuracion || '---'} horas académicas`
 
+  const instName = 'Colegio de Ingenieros del Perú'
+
   const descSegs: Seg[] = [
     { text: 'Emitido por el ' },
-    { text: `${nombreInstitucion},`, bold: true },
+    { text: `${instName},`, bold: true },
     { text: ` con una duración de ${duracionTxt}, realizado desde el ${fechaInicioTxt} hasta el ${fechaFinTxt}.` },
   ]
 
   const porcuantoTxt = 'Por cuanto: Para que conste y sea reconocido, se otorga el presente certificado en calidad de:'
 
-  let y = contentTop
+  const nombreLines = doc.splitTextToSize(nombreCompleto, textMaxW)
+  const cursoLines = doc.splitTextToSize(cursoTitulo, textMaxWCurso)
+  const porcuantoLines = doc.splitTextToSize(porcuantoTxt, textMaxW)
 
-  // "CERTIFICADO" — ExtraLight, 47pt (shifted down slightly)
+  const DESC_SIZE = 10.6
+  const NOMBRE_SIZE = 30
+  const CURSO_SIZE = 20
+  const descLh = DESC_SIZE * ptToMm * 1.06
+
+  const descPlain = descSegs.map(s => s.text).join('')
+  const descLineCount = doc.splitTextToSize(descPlain, textMaxW).length
+
+  // Calcular la altura exacta de cada elemento basándose en sus fuentes (sin los gaps visuales)
+  const h1 = 47 * ptToMm * 1.06
+  const h2 = DESC_SIZE * ptToMm * 1.06
+  const h3 = nombreLines.length * NOMBRE_SIZE * ptToMm * 1.06
+  const h4 = DESC_SIZE * ptToMm * 1.06
+  const h5 = cursoLines.length * CURSO_SIZE * ptToMm * 1.06
+  const h6 = descLineCount * descLh
+  const h7 = porcuantoLines.length * descLh
+  const h8 = DESC_SIZE * ptToMm * 1.06
+  const h9 = DESC_SIZE * ptToMm * 1.06
+
+  const hTextOnly = h1 + h2 + h3 + h4 + h5 + h6 + h7 + h8 + h9
+
+  // Para 9 elementos de texto, hay exactamente 8 gaps visuales intermedios
+  const g = Math.max(2.0, (availableSpace - hTextOnly) / 8)
+
+  const finalTotalHeight = hTextOnly + 8 * g
+  const startY = topLimit + (availableSpace - finalTotalHeight) / 2
+
+  let y = startY + h1
+
+  // "CERTIFICADO" — ExtraLight, 47pt
   doc.setFontSize(47); setEL()
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
-  doc.text('CERTIFICADO', cx, y + 2, { align: 'center' })
-  y += advanceY(1, 47, GAP.afterCertificado)
+  doc.text('CERTIFICADO', cx, y, { align: 'center' })
 
   // "Otorgado a:" — Regular 10.6pt, gray
+  y += g + h2
   doc.setFontSize(DESC_SIZE); setNormal()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   doc.text('Otorgado a:', cx, y, { align: 'center' })
-  y += advanceY(1, DESC_SIZE, GAP.afterOtorgado)
 
-  // Nombre del estudiante — Bold 30pt, red (instead of teal)
+  // Nombre del estudiante — Bold 30pt, red
+  y += g + h3
   doc.setFontSize(NOMBRE_SIZE); setBold()
   doc.setTextColor(RED.r, RED.g, RED.b)
-  const nombreLines = doc.splitTextToSize(nombreCompleto, textMaxW)
-
-  doc.text(nombreLines, cx, y, { align: 'center' })
-  y += advanceY(nombreLines.length, NOMBRE_SIZE, GAP.afterNombre)
+  doc.text(nombreLines, cx, y - 2.2, { align: 'center' })
 
   // "Por haber concluido..." — Regular 10.6pt
+  y += g + h4
   doc.setFontSize(DESC_SIZE); setNormal()
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   doc.text('Por haber concluido y aprobado con éxito el curso de especialización de:', cx, y, { align: 'center' })
-  y += advanceY(1, DESC_SIZE, GAP.afterPorHaber)
 
   // Nombre del curso — SemiBold 20pt
+  y += g + h5
   doc.setFontSize(CURSO_SIZE); setSB()
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
-  const cursoLines = doc.splitTextToSize(cursoTitulo, textMaxWCurso)
-
-  doc.text(cursoLines, cx, y, { align: 'center' })
-  y += advanceY(cursoLines.length, CURSO_SIZE, GAP.afterCurso)
+  doc.text(cursoLines, cx, y - 1.0, { align: 'center' })
 
   // Descripción
+  const descDrawY = y + g + descLh
+
   doc.setFontSize(DESC_SIZE); setNormal()
-  const porcuantoLines = doc.splitTextToSize(porcuantoTxt, textMaxW)
-  let descRenderLh = descLh
-  const descPlain = descSegs.map(s => s.text).join('')
-  const descLineCount = doc.splitTextToSize(descPlain, textMaxW).length
-  const reservedPorH = porcuantoLines.length * descLh
-
-  if (y + descLineCount * descLh + GAP.afterDesc + reservedPorH > maxYAfterPorcuanto) {
-    descRenderLh = descLh * 0.88
-  }
-
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-  y += renderMixed(descSegs, cx, y, textMaxW, descRenderLh)
-  y += GAP.afterDesc
+  renderMixed(descSegs, cx, descDrawY, textMaxW, descLh)
+  y += g + h6
 
   // "Por cuanto..."
   doc.setFontSize(DESC_SIZE); setNormal()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
 
-  let porLh = descRenderLh
-
-  if (y + porcuantoLines.length * porLh > maxYAfterPorcuanto) {
-    porLh = Math.max((maxYAfterPorcuanto - y) / porcuantoLines.length, descLh * 0.75)
-  }
+  let cy = y + g
 
   for (const line of porcuantoLines) {
-    doc.text(line, cx, y, { align: 'center' })
-    y += porLh
+    cy += descLh
+    doc.text(line, cx, cy, { align: 'center' })
   }
 
-  // "APROBADO"
-  const aprobadoDrawY = y + gapPorcuantoAprob
+  y += g + h7
 
+  // "APROBADO"
+  y += g + h8
   doc.setFontSize(DESC_SIZE); setSB()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-  doc.text('APROBADO', cx, aprobadoDrawY, { align: 'center' })
+  doc.text('APROBADO', cx, y, { align: 'center' })
 
   // "Firmado, el..."
-  const firmadoDrawY = aprobadoDrawY + advanceY(1, DESC_SIZE, gapAprobFirmado)
-
+  y += g + h9
   doc.setFontSize(DESC_SIZE); setNormal()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-  doc.text(`Firmado, el ${fechaFirmadaTxt}.`, cx, firmadoDrawY, { align: 'center' })
+  doc.text(`Firmado, el ${fechaFirmadaTxt}.`, cx, y, { align: 'center' })
 
   // Firmas: gerente izquierda, docente derecha
   await drawFirmanteCertificadoBlock(doc, cx - 62, sigLineY, firmanteIzquierdo, { showLine: true, darkColor: DARK, grayColor: GRAY })
@@ -504,10 +494,24 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
   let infoY = titleY + 8
   const infoBlockW = W - p2M * 2 - qr2Size - 8
 
+  const duracionFormat = (() => {
+    if (!cursoDuracion) {
+      return '---'
+    }
+
+    const numMatch = cursoDuracion.match(/(\d+)/)
+
+    if (numMatch) {
+      return `${numMatch[1]} Horas académicas`
+    }
+
+    return `${cursoDuracion} Horas académicas`
+  })()
+
   const infoRows: Array<{ label: string; value: string }> = [
     { label: 'Curso de especialización:', value: cursoTitulo },
-    { label: 'Duración:',                 value: cursoDuracion || '---' },
-    { label: 'Promedio Final:',           value: notaFinalCalc !== null ? notaFinalCalc.toFixed(2) : '---' },
+    { label: 'Duración:',                 value: duracionFormat },
+    { label: 'Promedio Final:',           value: notaFinalCalc !== null ? Math.round(notaFinalCalc).toString() : '---' },
     { label: 'Estudiante:',               value: nombreCompleto },
     {
       label: 'Docente:',
@@ -561,14 +565,7 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
   })
 
   const calcModuloHeight = (modulo: ModuloData): number => {
-    doc.setFontSize(8)
-
-    const modLines = doc.splitTextToSize(
-      `MÓDULO ${String(modulo.orden + 1).padStart(2, '0')}: ${modulo.titulo.toUpperCase()}`,
-      colW
-    )
-
-    let h = modLines.length * 4 + 3
+    let h = 0
 
     for (const lec of modulo.lecciones) {
       doc.setFontSize(7.5)
@@ -610,16 +607,6 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
 
     for (const mod of list) {
       if (cy > bottomLimit) break
-
-      const modLabel = `MÓDULO ${String(mod.orden + 1).padStart(2, '0')}: ${mod.titulo.toUpperCase()}`
-      const modLines = doc.splitTextToSize(modLabel, colW)
-
-      if (cy + modLines.length * 4 + 3 > bottomLimit) break
-
-      doc.setFontSize(8); setSB()
-      doc.setTextColor(RED.r, RED.g, RED.b)
-      doc.text(modLines, startX, cy)
-      cy += modLines.length * 4 + 3
 
       for (const lec of mod.lecciones) {
         if (cy > bottomLimit) break

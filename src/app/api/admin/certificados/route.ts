@@ -117,7 +117,9 @@ export async function POST(request: Request) {
       duracion_override,
       docente_nombre_override,
       docente_cargo_override,
-      reemplazar = false
+      reemplazar = false,
+      certificado_ipg_habilitado = true,
+      certificado_cip_habilitado = true
     } = body
 
     if (!usuario_id || !curso_id) {
@@ -233,6 +235,19 @@ export async function POST(request: Request) {
         }
       })
     }
+
+    // Actualizar la habilitación en la inscripción
+    await prisma.inscripcion.updateMany({
+      where: {
+        usuario_id,
+        curso_id
+      },
+      data: {
+        certificado_habilitado: true,
+        certificado_ipg_habilitado: certificado_ipg_habilitado,
+        certificado_cip_habilitado: certificado_cip_habilitado
+      }
+    })
 
     return ApiResponse.success(request, { certificado }, existente && reemplazar ? 200 : 201)
   } catch (error) {

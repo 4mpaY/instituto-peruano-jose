@@ -116,7 +116,7 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
 
   const handleAddRecurso = () => {
     if (newRecurso.nombre && newRecurso.url) {
-      setRecursos([{ ...newRecurso, tipo: 'enlace' }])
+      setRecursos([...recursos, { ...newRecurso, tipo: 'enlace' }])
       setNewRecurso({ nombre: '', url: '', tipo: 'enlace' })
     }
   }
@@ -366,52 +366,51 @@ export function LessonEditDialog({ open, onClose, lessonData, onSave, isSaving }
             </Stack>
           )}
 
-          {/* Formulario añadir recurso — solo un link */}
-          {recursos.length === 0 && (
-            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
-              <Stack spacing={2} sx={{ p: 2 }}>
+          {/* Formulario añadir recurso */}
+          <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+            <Stack spacing={2} sx={{ p: 2 }}>
+              <Typography variant='caption' sx={{ fontWeight: 600 }}>Añadir nuevo enlace/recurso</Typography>
+              <CustomTextField
+                fullWidth
+                size='small'
+                placeholder='Nombre del recurso (ej: Sesión 1)'
+                value={newRecurso.nombre}
+                onChange={e => setNewRecurso({ ...newRecurso, nombre: e.target.value })}
+              />
+              <Box>
                 <CustomTextField
                   fullWidth
                   size='small'
-                  placeholder='Nombre del recurso (ej: Sesión 1)'
-                  value={newRecurso.nombre}
-                  onChange={e => setNewRecurso({ ...newRecurso, nombre: e.target.value })}
+                  placeholder='https://drive.google.com/...'
+                  value={newRecurso.url}
+                  onChange={e => setNewRecurso({ ...newRecurso, url: e.target.value })}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position='start'>
+                        <i className='tabler-link text-base text-textSecondary' />
+                      </InputAdornment>
+                    )
+                  }}
                 />
-                <Box>
-                  <CustomTextField
-                    fullWidth
-                    size='small'
-                    placeholder='https://drive.google.com/...'
-                    value={newRecurso.url}
-                    onChange={e => setNewRecurso({ ...newRecurso, url: e.target.value })}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position='start'>
-                          <i className='tabler-link text-base text-textSecondary' />
-                        </InputAdornment>
-                      )
-                    }}
-                  />
-                  {urlPreview && (
-                    <Box sx={{ mt: 1, px: 1.5, py: 0.75, bgcolor: 'action.hover', borderRadius: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <i className={`${urlPreview.icon} text-base text-primary`} />
-                      <Typography variant='caption' fontWeight={600}>{urlPreview.name}</Typography>
-                      <Typography variant='caption' color='text.secondary'>· {urlPreview.domain}</Typography>
-                    </Box>
-                  )}
-                </Box>
-                <Button
-                  variant='contained'
-                  fullWidth
-                  onClick={handleAddRecurso}
-                  disabled={!newRecurso.nombre.trim() || !newRecurso.url}
-                  startIcon={<i className='tabler-plus text-base' />}
-                >
-                  Añadir enlace
-                </Button>
-              </Stack>
-            </Box>
-          )}
+                {urlPreview && (
+                  <Box sx={{ mt: 1, px: 1.5, py: 0.75, bgcolor: 'action.hover', borderRadius: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <i className={`${urlPreview.icon} text-base text-primary`} />
+                    <Typography variant='caption' fontWeight={600}>{urlPreview.name}</Typography>
+                    <Typography variant='caption' color='text.secondary'>· {urlPreview.domain}</Typography>
+                  </Box>
+                )}
+              </Box>
+              <Button
+                variant='contained'
+                fullWidth
+                onClick={handleAddRecurso}
+                disabled={!newRecurso.nombre.trim() || !newRecurso.url}
+                startIcon={<i className='tabler-plus text-base' />}
+              >
+                Añadir enlace
+              </Button>
+            </Stack>
+          </Box>
 
           <Divider />
 

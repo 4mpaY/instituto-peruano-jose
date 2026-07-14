@@ -78,7 +78,7 @@ export async function GET(request: Request, { params }: { params: { certificadoI
     const plantilla = resolvePlantillaParaDescarga({
       plantillaParam: plantillaOverride,
       ipgHabilitado: inscripcionPago?.certificado_ipg_habilitado,
-      cidHabilitado: inscripcionPago?.certificado_cid_habilitado,
+      cipHabilitado: inscripcionPago?.certificado_cip_habilitado,
       certificadoHabilitadoLegacy: inscripcionPago?.certificado_habilitado,
       requierePago,
     })
@@ -86,8 +86,8 @@ export async function GET(request: Request, { params }: { params: { certificadoI
     if (requierePago && auth.user.rol !== 'ADMIN') {
       const habilitado =
         plantilla === 'colegio_ingenieros'
-          ? inscripcionPago?.certificado_cid_habilitado
-          : inscripcionPago?.certificado_ipg_habilitado || inscripcionPago?.certificado_habilitado
+          ? inscripcionPago?.certificado_cip_habilitado
+          : inscripcionPago?.certificado_ipg_habilitado || (inscripcionPago?.certificado_habilitado && !inscripcionPago?.certificado_cip_habilitado)
 
       if (!habilitado) {
         return NextResponse.json(

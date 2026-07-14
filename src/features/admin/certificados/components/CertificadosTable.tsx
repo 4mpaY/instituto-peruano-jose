@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import {
   Avatar,
@@ -35,7 +35,7 @@ import TablePaginationComponent from '@/utils/components/others/TablePaginationC
 import tableStyles from '@core/styles/table.module.css'
 
 
-import { useCertificados } from '../hooks/useCertificados'
+import { useCertificados, useDeleteCertificado } from '../hooks/useCertificados'
 
 const columnHelper = createColumnHelper<Certificado>()
 
@@ -48,11 +48,12 @@ export function CertificadosTable({ initialData }: CertificadosTableProps) {
   const [modalOpen, setModalOpen] = useState(false)
 
   const { data, isLoading } = useCertificados(params, initialData || undefined)
+  const { mutate: deleteCertificado } = useDeleteCertificado()
 
   const certificados = data?.certificados || []
   const total = data?.paginacion?.total || 0
 
-  const handleDownload = async (certificado: Certificado) => {
+  const handleDownload = useCallback(async (certificado: Certificado) => {
     try {
       toast.info('Generando PDF...')
 
@@ -79,9 +80,9 @@ export function CertificadosTable({ initialData }: CertificadosTableProps) {
       console.error('Error downloading certificate:', err)
       toast.error('Error al descargar el certificado')
     }
-  }
+  }, [])
 
-  const handlePreview = async (certificado: Certificado) => {
+  const handlePreview = useCallback(async (certificado: Certificado) => {
     try {
       const getAuthToken = async () => {
         const s = await getSession()
@@ -98,7 +99,20 @@ export function CertificadosTable({ initialData }: CertificadosTableProps) {
       console.error('Error previewing certificate:', err)
       toast.error('Error al visualizar el certificado')
     }
-  }
+  }, [])
+
+  const handleDelete = useCallback((certificado: Certificado) => {
+    if (window.confirm(`¿Estás seguro de que deseas eliminar el certificado con código ${certificado.codigo_verificacion}?`)) {
+      deleteCertificado(certificado.id, {
+        onSuccess: () => {
+          toast.success('Certificado eliminado correctamente')
+        },
+        onError: (err: any) => {
+          toast.error(err?.message || 'Error al eliminar el certificado')
+        }
+      })
+    }
+  }, [deleteCertificado])
 
   const columns = useMemo(
     () => [
@@ -165,11 +179,16 @@ export function CertificadosTable({ initialData }: CertificadosTableProps) {
                 <i className='tabler-download text-[22px]' />
               </IconButton>
             </Tooltip>
+            <Tooltip title='Eliminar'>
+              <IconButton onClick={() => handleDelete(row.original)} color='error' size='small'>
+                <i className='tabler-trash text-[22px]' />
+              </IconButton>
+            </Tooltip>
           </Box>
         )
       })
     ],
-    [params.page, params.limit]
+    [params.page, params.limit, handleDelete, handlePreview, handleDownload]
   )
 
   const table = useReactTable({

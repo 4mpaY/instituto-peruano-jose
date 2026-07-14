@@ -70,6 +70,11 @@ const VideoPlayer = ({ url, tipo = 'VIDEO', onEnded, nextLessonTitle, onNextLess
     const isVimeo = !!url && url.includes('vimeo.com')
     const isEmbedded = isYT || isVimeo || tipo === 'INCRUSTADO'
 
+    const cleanUrl = url ? url.split('?')[0].toLowerCase() : ''
+    const isPdf = !!url && cleanUrl.endsWith('.pdf')
+    const isImage = !!url && /\.(png|jpe?g|gif|webp|svg)(?:\?.*)?$/i.test(url)
+    const isAudio = !!url && /\.(mp3|wav|ogg|m4a|aac)(?:\?.*)?$/i.test(url)
+
     // Resetea la pantalla final al cambiar de lección
     useEffect(() => {
         setVideoEnded(false)
@@ -146,7 +151,7 @@ const VideoPlayer = ({ url, tipo = 'VIDEO', onEnded, nextLessonTitle, onNextLess
             >
                 <Box sx={{ color: 'white', textAlign: 'center' }}>
                     <i className="tabler-video-off" style={{ fontSize: '3rem', opacity: 0.5 }} />
-                    <Box sx={{ mt: 1, opacity: 0.7 }}>No hay video disponible para esta lección</Box>
+                    <Box sx={{ mt: 1, opacity: 0.7 }}>No hay contenido disponible para esta lección</Box>
                 </Box>
             </Paper>
         )
@@ -164,7 +169,56 @@ const VideoPlayer = ({ url, tipo = 'VIDEO', onEnded, nextLessonTitle, onNextLess
                 position: 'relative'
             }}
         >
-            {isEmbedded ? (
+            {isPdf ? (
+                <iframe
+                    src={url}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 'none', display: 'block', background: '#f8fafc' }}
+                    title="Visor de PDF"
+                />
+            ) : isImage ? (
+                <Box
+                    sx={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        bgcolor: '#0a0a0a',
+                        position: 'relative'
+                    }}
+                >
+                    <img
+                        src={url}
+                        alt="Contenido"
+                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                    />
+                </Box>
+            ) : isAudio ? (
+                <Box
+                    sx={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        bgcolor: '#0f172a',
+                        color: 'white',
+                        gap: 2,
+                        p: 3
+                    }}
+                >
+                    <i className="tabler-music" style={{ fontSize: '4rem', color: '#BDD962' }} />
+                    <audio
+                        controls
+                        src={url}
+                        onEnded={onEnded}
+                        style={{ width: '80%', maxWidth: '500px' }}
+                    />
+                </Box>
+            ) : isEmbedded ? (
                 <>
                     <iframe
                         ref={iframeRef}

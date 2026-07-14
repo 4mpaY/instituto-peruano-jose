@@ -77,4 +77,12 @@ export class AxiosCertificado extends AxiosInternalHttpClient {
       throw err?.response?.data ?? err
     }
   }
+
+  async delete(id: string): Promise<any> {
+    try {
+      return await this.iDelete<any>(`/${id}`)
+    } catch (err: any) {
+      throw err?.response?.data ?? err
+    }
+  }
 }

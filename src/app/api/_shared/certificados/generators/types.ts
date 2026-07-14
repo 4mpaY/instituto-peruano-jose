@@ -42,7 +42,7 @@ export interface ModuloData {
 /**
  * Objeto completo que recibe cualquier generador de certificado.
  * Las rutas de descarga (admin y estudiante) construyen este objeto
- * y lo pasan al generador correspondiente (minimalista = IPG, colegio_ingenieros = CID).
+ * y lo pasan al generador correspondiente (minimalista = IPG, colegio_ingenieros = CIP).
  */
 export interface CertificadoData {
 

@@ -73,7 +73,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const plantilla = resolvePlantillaParaDescarga({
       plantillaParam: plantillaOverride,
       ipgHabilitado: inscripcionPago?.certificado_ipg_habilitado,
-      cidHabilitado: inscripcionPago?.certificado_cid_habilitado,
+      cipHabilitado: inscripcionPago?.certificado_cip_habilitado,
       certificadoHabilitadoLegacy: inscripcionPago?.certificado_habilitado,
       requierePago,
     })

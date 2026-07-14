@@ -268,7 +268,7 @@ model Inscripcion {
   estado_nota            EstadoNota?
   certificado_habilitado Boolean           @default(false)
   certificado_ipg_habilitado Boolean       @default(false)
-  certificado_cid_habilitado Boolean       @default(false)
+  certificado_cip_habilitado Boolean       @default(false)
   usuario_id             String
   curso_id               String
   pedido_id              String?

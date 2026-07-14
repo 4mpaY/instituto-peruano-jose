@@ -46,3 +46,18 @@ export const useCreateCertificado = () => {
     }
   })
 }
+
+export const useDeleteCertificado = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const axiosCertificado = axiosCertificadoFactory()
+
+      return await axiosCertificado.delete(id)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-certificados'] })
+    }
+  })
+}

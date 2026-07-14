@@ -71,21 +71,21 @@ export function resolvePlantillaCertificado(configs: Record<string, string>): Pl
 export function resolvePlantillaParaDescarga(opts: {
   plantillaParam?: string | null
   ipgHabilitado?: boolean
-  cidHabilitado?: boolean
+  cipHabilitado?: boolean
   certificadoHabilitadoLegacy?: boolean
   requierePago: boolean
 }): PlantillaId {
-  const { plantillaParam, ipgHabilitado, cidHabilitado, certificadoHabilitadoLegacy, requierePago } = opts
+  const { plantillaParam, ipgHabilitado, cipHabilitado, certificadoHabilitadoLegacy, requierePago } = opts
 
   if (plantillaParam === 'colegio_ingenieros' || plantillaParam === 'minimalista') {
     return plantillaParam
   }
 
   const ipgOk = !!(ipgHabilitado || certificadoHabilitadoLegacy)
-  const cidOk = !!cidHabilitado
+  const cipOk = !!cipHabilitado
 
   if (requierePago) {
-    if (cidOk && !ipgOk) return 'colegio_ingenieros'
+    if (cipOk && !ipgOk) return 'colegio_ingenieros'
 
     return 'minimalista'
   }

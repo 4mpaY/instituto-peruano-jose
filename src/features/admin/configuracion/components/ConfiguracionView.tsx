@@ -257,7 +257,7 @@ function CertificadosSettings({ config, onInputChange }: { config: any; onInputC
         <SectionLabel>Plantillas de certificado</SectionLabel>
         <Typography variant='body2' color='text.secondary' sx={{ mb: 1 }}>
           Selecciona qué plantilla deseas editar. La descarga del estudiante no depende de esta selección:
-          el admin habilita IPG y/o CID por alumno desde <strong>Alumnos Inscritos</strong>.
+          el admin habilita IPG y/o CIP por alumno desde <strong>Alumnos Inscritos</strong>.
         </Typography>
         <Typography variant='caption' color='text.secondary' sx={{ mb: 3, display: 'block' }}>
           Cada plantilla tiene su propia configuración de firmas.

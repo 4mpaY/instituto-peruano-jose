@@ -24,7 +24,6 @@ return buf.toString('base64')
 export const generarMinimalista: GeneratorFn = async data => {
   const {
     base64Logo, logoUrl, logoBuffer,
-    nombreInstitucion,
     nombreCompleto,
     cursoTitulo, cursoDuracion,
     fechaEmisionVal, fechaInicioVal, fechaFinVal,
@@ -318,13 +317,13 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
     doc.setFontSize(7.6)
     setNormal()
     doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-    doc.text('Verifica su', cx, qrY + qrSize + 4, { align: 'center' })
-    doc.text('autenticidad', cx, qrY + qrSize + 8, { align: 'center' })
+    doc.text('Verifica su', cx, qrY + qrSize + 3, { align: 'center' })
+    doc.text('autenticidad', cx, qrY + qrSize + 5.8, { align: 'center' })
 
     doc.setFontSize(6)
     setNormal()
     const codeLines = doc.splitTextToSize(codigoVerificacion, qrSize + 10)
-    const codeY = qrY + qrSize + 12
+    const codeY = qrY + qrSize + 8.8
     const codeLh = 6 * ptToMm * 1.06
 
     doc.text(codeLines, cx, codeY, { align: 'center' })
@@ -335,130 +334,123 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   doc.addImage(blackQrBuf, 'PNG', qrX, qrY, qrSize, qrSize)
   drawQrVerificationLabels(qrX, qrY, qrSize)
 
-  /** Avance vertical mínimo según tamaño de fuente — sin solapamiento */
-  const advanceY = (lineCount: number, fontSizePt: number, gapMm: number) =>
-    lineCount * fontSizePt * ptToMm * 1.06 + gapMm
-
-  // Tamaños fijos (sin reducir fuentes)
   const NOMBRE_SIZE = 30
   const CURSO_SIZE = 20
   const DESC_SIZE = 10.6
   const descLh = DESC_SIZE * ptToMm * 1.06
 
-  // Layout vertical — bloque superior compacto, bloque inferior fijo con más aire antes de firmas
   const textMaxW = W - margin * 2 - 40
   const textMaxWCurso = W - margin * 2 - 60
-  const contentTop = qrY + qrSize + 8
   const sigLineY = H - BAR_H - 32
-  const minFirmadoToSig = 40
-  const maxFirmadoY = sigLineY - minFirmadoToSig
-  const gapAprobFirmado = 3
-  const gapPorcuantoAprob = 5
 
-  const maxYAfterPorcuanto =
-    maxFirmadoY - gapPorcuantoAprob - advanceY(1, DESC_SIZE, gapAprobFirmado)
-
-  const GAP = {
-    afterCertificado: -5,
-    afterOtorgado: 8,
-    afterNombre: -1,
-    afterPorHaber: 5,
-    afterCurso: 1,
-    afterDesc: 1,
-  }
+  // Definir área útil para el bloque de texto con holgura segura para evitar colisión con firmas y sellos
+  const topLimit = 37
+  const bottomLimitP1 = sigLineY - 32
+  const availableSpace = bottomLimitP1 - topLimit
 
   const fechaInicioTxt = formatDateLong(fechaInicioVal)
   const fechaFinTxt = formatDateLong(fechaFinVal)
   const duracionTxt = cursoDuracion?.match(/hora/i) ? (cursoDuracion || '---') : `${cursoDuracion || '---'} horas académicas`
 
+  const instName = 'Instituto Peruano de Gestión Ambiental. Seguridad y Calidad'
+
   const descSegs: Seg[] = [
     { text: 'Emitido por el ' },
-    { text: `${nombreInstitucion},`, bold: true },
+    { text: `${instName},`, bold: true },
     { text: ` con una duración de ${duracionTxt}, realizado desde el ${fechaInicioTxt} hasta el ${fechaFinTxt}.` },
   ]
 
   const porcuantoTxt = 'Por cuanto: Para que conste y sea reconocido, se otorga el presente certificado en calidad de:'
 
-  let y = contentTop
+  const nombreLines = doc.splitTextToSize(nombreCompleto, textMaxW)
+  const cursoLines = doc.splitTextToSize(cursoTitulo, textMaxWCurso)
+  const porcuantoLines = doc.splitTextToSize(porcuantoTxt, textMaxW)
+
+  const descPlain = descSegs.map(s => s.text).join('')
+  const descLineCount = doc.splitTextToSize(descPlain, textMaxW).length
+
+  // Calcular la altura exacta de cada elemento basándose en sus fuentes (sin los gaps visuales)
+  const h1 = 47 * ptToMm * 1.06
+  const h2 = DESC_SIZE * ptToMm * 1.06
+  const h3 = nombreLines.length * NOMBRE_SIZE * ptToMm * 1.06
+  const h4 = DESC_SIZE * ptToMm * 1.06
+  const h5 = cursoLines.length * CURSO_SIZE * ptToMm * 1.06
+  const h6 = descLineCount * descLh
+  const h7 = porcuantoLines.length * descLh
+  const h8 = DESC_SIZE * ptToMm * 1.06
+  const h9 = DESC_SIZE * ptToMm * 1.06
+
+  const hTextOnly = h1 + h2 + h3 + h4 + h5 + h6 + h7 + h8 + h9
+
+  // Para 9 elementos de texto, hay exactamente 8 gaps visuales intermedios
+  const g = Math.max(2.0, (availableSpace - hTextOnly) / 8)
+
+  const finalTotalHeight = hTextOnly + 8 * g
+  const startY = topLimit + (availableSpace - finalTotalHeight) / 2
+
+  let y = startY + h1
 
   // "CERTIFICADO" — ExtraLight, 47pt
   doc.setFontSize(47); setEL()
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
-  doc.text('CERTIFICADO', cx, y + 2, { align: 'center' })
-  y += advanceY(1, 47, GAP.afterCertificado)
+  doc.text('CERTIFICADO', cx, y, { align: 'center' })
 
   // "Otorgado a:" — Regular 10.6pt, gray
+  y += g + h2
   doc.setFontSize(DESC_SIZE); setNormal()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   doc.text('Otorgado a:', cx, y, { align: 'center' })
-  y += advanceY(1, DESC_SIZE, GAP.afterOtorgado)
 
   // Nombre del estudiante — Bold 30pt, teal
+  y += g + h3
   doc.setFontSize(NOMBRE_SIZE); setBold()
   doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
-  const nombreLines = doc.splitTextToSize(nombreCompleto, textMaxW)
-
-  doc.text(nombreLines, cx, y, { align: 'center' })
-  y += advanceY(nombreLines.length, NOMBRE_SIZE, GAP.afterNombre)
+  doc.text(nombreLines, cx, y - 2.2, { align: 'center' })
 
   // "Por haber concluido..." — Regular 10.6pt
+  y += g + h4
   doc.setFontSize(DESC_SIZE); setNormal()
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   doc.text('Por haber concluido y aprobado con éxito el curso de especialización de:', cx, y, { align: 'center' })
-  y += advanceY(1, DESC_SIZE, GAP.afterPorHaber)
 
   // Nombre del curso — SemiBold 20pt
+  y += g + h5
   doc.setFontSize(CURSO_SIZE); setSB()
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
-  const cursoLines = doc.splitTextToSize(cursoTitulo, textMaxWCurso)
+  doc.text(cursoLines, cx, y - 1.0, { align: 'center' })
 
-  doc.text(cursoLines, cx, y, { align: 'center' })
-  y += advanceY(cursoLines.length, CURSO_SIZE, GAP.afterCurso)
+  // Descripción
+  const descDrawY = y + g + descLh
 
-  // Descripción — interlineado compacto si el contenido es largo
   doc.setFontSize(DESC_SIZE); setNormal()
-  const porcuantoLines = doc.splitTextToSize(porcuantoTxt, textMaxW)
-  let descRenderLh = descLh
-  const descPlain = descSegs.map(s => s.text).join('')
-  const descLineCount = doc.splitTextToSize(descPlain, textMaxW).length
-  const reservedPorH = porcuantoLines.length * descLh
-
-  if (y + descLineCount * descLh + GAP.afterDesc + reservedPorH > maxYAfterPorcuanto) {
-    descRenderLh = descLh * 0.88
-  }
-
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-  y += renderMixed(descSegs, cx, y, textMaxW, descRenderLh)
-  y += GAP.afterDesc
+  renderMixed(descSegs, cx, descDrawY, textMaxW, descLh)
+  y += g + h6
 
-  // "Por cuanto..." — sin invadir APROBADO
+  // "Por cuanto..."
   doc.setFontSize(DESC_SIZE); setNormal()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
 
-  let porLh = descRenderLh
-
-  if (y + porcuantoLines.length * porLh > maxYAfterPorcuanto) {
-    porLh = Math.max((maxYAfterPorcuanto - y) / porcuantoLines.length, descLh * 0.75)
-  }
+  let cy = y + g
 
   for (const line of porcuantoLines) {
-    doc.text(line, cx, y, { align: 'center' })
-    y += porLh
+    cy += descLh
+    doc.text(line, cx, cy, { align: 'center' })
   }
 
-  // "APROBADO" — debajo de "...en calidad de:"
-  const aprobadoDrawY = y + gapPorcuantoAprob
+  y += g + h7
 
+  // "APROBADO"
+  y += g + h8
   doc.setFontSize(DESC_SIZE); setSB()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-  doc.text('APROBADO', cx, aprobadoDrawY, { align: 'center' })
+  doc.text('APROBADO', cx, y, { align: 'center' })
 
-  // "Firmado, el..." — debajo de APROBADO, respetando espacio con las firmas
-  const firmadoDrawY = aprobadoDrawY + advanceY(1, DESC_SIZE, gapAprobFirmado)
-
+  // "Firmado, el..."
+  y += g + h9
   doc.setFontSize(DESC_SIZE); setNormal()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-  doc.text(`Firmado, el ${fechaFirmadaTxt}.`, cx, firmadoDrawY, { align: 'center' })
+  doc.text(`Firmado, el ${fechaFirmadaTxt}.`, cx, y, { align: 'center' })
 
   // Firmas: gerente izquierda, docente derecha
   await drawFirmanteCertificadoBlock(doc, cx - 62, sigLineY, firmanteIzquierdo, { showLine: true, darkColor: DARK, grayColor: GRAY })
@@ -490,10 +482,24 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   let infoY = titleY + 8
   const infoBlockW = W - p2M * 2 - qr2Size - 8
 
+  const duracionFormat = (() => {
+    if (!cursoDuracion) {
+      return '---'
+    }
+
+    const numMatch = cursoDuracion.match(/(\d+)/)
+
+    if (numMatch) {
+      return `${numMatch[1]} Horas académicas`
+    }
+
+    return `${cursoDuracion} Horas académicas`
+  })()
+
   const infoRows: Array<{ label: string; value: string }> = [
     { label: 'Curso de especialización:', value: cursoTitulo },
-    { label: 'Duración:',                 value: cursoDuracion || '---' },
-    { label: 'Promedio Final:',           value: notaFinalCalc !== null ? notaFinalCalc.toFixed(2) : '---' },
+    { label: 'Duración:',                 value: duracionFormat },
+    { label: 'Promedio Final:',           value: notaFinalCalc !== null ? Math.round(notaFinalCalc).toString() : '---' },
     { label: 'Estudiante:',               value: nombreCompleto },
     {
       label: 'Docente:',
@@ -547,14 +553,7 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   })
 
   const calcModuloHeight = (modulo: ModuloData): number => {
-    doc.setFontSize(8)
-
-    const modLines = doc.splitTextToSize(
-      `MÓDULO ${String(modulo.orden + 1).padStart(2, '0')}: ${modulo.titulo.toUpperCase()}`,
-      colW
-    )
-
-    let h = modLines.length * 4 + 3
+    let h = 0
 
     for (const lec of modulo.lecciones) {
       doc.setFontSize(7.5)
@@ -596,16 +595,6 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
 
     for (const mod of list) {
       if (cy > bottomLimit) break
-
-      const modLabel = `MÓDULO ${String(mod.orden + 1).padStart(2, '0')}: ${mod.titulo.toUpperCase()}`
-      const modLines = doc.splitTextToSize(modLabel, colW)
-
-      if (cy + modLines.length * 4 + 3 > bottomLimit) break
-
-      doc.setFontSize(8); setSB()
-      doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
-      doc.text(modLines, startX, cy)
-      cy += modLines.length * 4 + 3
 
       for (const lec of mod.lecciones) {
         if (cy > bottomLimit) break

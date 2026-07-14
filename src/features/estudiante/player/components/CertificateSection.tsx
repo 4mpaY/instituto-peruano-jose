@@ -576,7 +576,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     }
 
     // ── Certificado con costo pendiente de pago (antes que certificado emitido) ──
-    if (pagoPendiente) {
+    if (pagoPendiente && elegibilidad?.isEligible) {
         const phone = (phoneNumberProfesor || whatsappNumero || '').replace(/\D/g, '')
 
         const waUrl = phone
@@ -633,7 +633,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     }
 
     // ── Ya tiene certificado ────────────────────────────────────────
-    if (certificado) {
+    if (certificado && elegibilidad?.isEligible) {
         return (
             <>
                 <Wrapper>

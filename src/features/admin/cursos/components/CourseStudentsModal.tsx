@@ -41,7 +41,7 @@ interface CertConfirm {
   inscripcionId: string
   alumnoNombre: string
   habilitadoActual: boolean
-  tipo: 'ipg' | 'cid'
+  tipo: 'ipg' | 'cip'
 }
 
 interface NotaEdit {
@@ -117,7 +117,7 @@ export default function CourseStudentsModal({
       }
 
       await queryClient.refetchQueries({ queryKey: CURSO_ALUMNOS_QUERY_KEY(cursoId, searchTerm) })
-      const tipoLabel = certConfirm.tipo === 'cid' ? 'CID' : 'IPG'
+      const tipoLabel = certConfirm.tipo === 'cip' ? 'CIP' : 'IPG'
 
       toast.success(
         certConfirm.habilitadoActual
@@ -179,6 +179,7 @@ export default function CourseStudentsModal({
         'Apellidos': a.apellido,
         'Documento': a.numero_documento || 'No especificado',
         'Correo': a.correo,
+        'Celular / Teléfono': a.celular || 'No especificado',
         'Estado': estadoLabel[a.estado_inscripcion] || a.estado_inscripcion,
         'Evaluaciones': `${a.evaluaciones_realizadas}/${a.total_examenes}`,
       }
@@ -196,13 +197,11 @@ export default function CourseStudentsModal({
       baseObj['Promedio Final'] = Number(a.promedio)
       baseObj['Certificado'] = a.tiene_certificado ? 'Sí' : 'No'
 
-      if (tieneCertPago) {
-        const ipgOk = a.certificado_ipg_habilitado || a.certificado_habilitado
-        const cidOk = a.certificado_cid_habilitado
+      const ipgOk = a.certificado_ipg_habilitado
+      const cipOk = a.certificado_cip_habilitado
 
-        baseObj['Cert. IPG'] = ipgOk ? 'Habilitado' : 'Pago pendiente'
-        baseObj['Cert. CID'] = cidOk ? 'Habilitado' : 'Pago pendiente'
-      }
+      baseObj['Cert. IPG'] = ipgOk ? 'Habilitado' : 'Pago pendiente'
+      baseObj['Cert. CIP'] = cipOk ? 'Habilitado' : 'Pago pendiente'
 
       return baseObj
     })
@@ -214,7 +213,7 @@ export default function CourseStudentsModal({
     XLSX.writeFile(workbook, `Alumnos_${cursoTitulo?.replace(/[^a-zA-Z0-9]/g, '_') || 'Curso'}.xlsx`)
   }
 
-  const colSpan = tieneCertPago ? 8 : 7
+  const colSpan = 8
 
   return (
     <>
@@ -272,7 +271,7 @@ export default function CourseStudentsModal({
                   <TableCell>Documento</TableCell>
                   <TableCell>Progreso & Notas</TableCell>
                   <TableCell>Certificado</TableCell>
-                  {tieneCertPago && <TableCell>Cert. Pago</TableCell>}
+                  <TableCell>Cert. Pago</TableCell>
                   <TableCell>Estado</TableCell>
                   <TableCell>Acciones</TableCell>
                 </TableRow>
@@ -327,15 +326,25 @@ export default function CourseStudentsModal({
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant='body2' fontWeight={600}>
+                        <Typography variant='body2' fontWeight={600} sx={{ mb: 0.5 }}>
                           {alumno.evaluaciones_realizadas}/{alumno.total_examenes} Evals.{' '}
                           <Typography component='span' variant='body2' color='primary.main' fontWeight={700} ml={1}>
                             Prom: {alumno.promedio}
                           </Typography>
                         </Typography>
-                        <Typography variant='caption' color='text.secondary'>
-                          {alumno.notas}
-                        </Typography>
+                        {alumno.notas && alumno.notas !== 'Sin exámenes' ? (
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                            {alumno.notas.split(', ').map((nota: string, i: number) => (
+                              <Typography key={i} variant='caption' color='text.secondary' sx={{ display: 'block', lineHeight: 1.2 }}>
+                                {nota}
+                              </Typography>
+                            ))}
+                          </Box>
+                        ) : (
+                          <Typography variant='caption' color='text.secondary'>
+                            {alumno.notas}
+                          </Typography>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Chip
@@ -345,92 +354,90 @@ export default function CourseStudentsModal({
                           variant={alumno.tiene_certificado ? 'filled' : 'outlined'}
                         />
                       </TableCell>
-                      {tieneCertPago && (
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                              <Chip
-                                size='small'
-                                label={(alumno.certificado_ipg_habilitado || alumno.certificado_habilitado) ? 'IPG ✓' : 'Pago pendiente'}
-                                color={(alumno.certificado_ipg_habilitado || alumno.certificado_habilitado) ? 'success' : 'warning'}
-                                variant='tonal'
-                                sx={{ fontSize: '0.68rem', height: 22 }}
-                              />
-                              <Chip
-                                size='small'
-                                label={alumno.certificado_cid_habilitado ? 'CID ✓' : 'Pago pendiente'}
-                                color={alumno.certificado_cid_habilitado ? 'success' : 'warning'}
-                                variant='tonal'
-                                sx={{ fontSize: '0.68rem', height: 22 }}
-                              />
-                            </Box>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                              <Tooltip title={
-                                (alumno.certificado_ipg_habilitado || alumno.certificado_habilitado)
-                                  ? 'Deshabilitar certificado IPG'
-                                  : 'Habilitar certificado IPG'
-                              }>
-                                <IconButton
-                                  size='small'
-                                  onClick={() => setCertConfirm({
-                                    inscripcionId: alumno.inscripcion_id,
-                                    alumnoNombre: `${alumno.nombre} ${alumno.apellido}`,
-                                    habilitadoActual: !!(alumno.certificado_ipg_habilitado || alumno.certificado_habilitado),
-                                    tipo: 'ipg'
-                                  })}
-                                  sx={{
-                                    bgcolor: (alumno.certificado_ipg_habilitado || alumno.certificado_habilitado)
-                                      ? 'rgba(220,38,38,0.08)'
-                                      : 'rgba(22,163,74,0.08)',
-                                    color: (alumno.certificado_ipg_habilitado || alumno.certificado_habilitado) ? 'error.main' : 'success.main',
-                                    '&:hover': {
-                                      bgcolor: (alumno.certificado_ipg_habilitado || alumno.certificado_habilitado)
-                                        ? 'rgba(220,38,38,0.16)'
-                                        : 'rgba(22,163,74,0.16)'
-                                    }
-                                  }}
-                                >
-                                  <i className={(alumno.certificado_ipg_habilitado || alumno.certificado_habilitado)
-                                    ? 'tabler-lock text-[16px]'
-                                    : 'tabler-certificate text-[16px]'
-                                  } />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title={
-                                alumno.certificado_cid_habilitado
-                                  ? 'Deshabilitar certificado CID'
-                                  : 'Habilitar certificado CID'
-                              }>
-                                <IconButton
-                                  size='small'
-                                  onClick={() => setCertConfirm({
-                                    inscripcionId: alumno.inscripcion_id,
-                                    alumnoNombre: `${alumno.nombre} ${alumno.apellido}`,
-                                    habilitadoActual: !!alumno.certificado_cid_habilitado,
-                                    tipo: 'cid'
-                                  })}
-                                  sx={{
-                                    bgcolor: alumno.certificado_cid_habilitado
-                                      ? 'rgba(220,38,38,0.08)'
-                                      : 'rgba(220,38,38,0.08)',
-                                    color: alumno.certificado_cid_habilitado ? 'error.main' : 'error.main',
-                                    '&:hover': {
-                                      bgcolor: alumno.certificado_cid_habilitado
-                                        ? 'rgba(220,38,38,0.16)'
-                                        : 'rgba(220,38,38,0.16)'
-                                    }
-                                  }}
-                                >
-                                  <i className={alumno.certificado_cid_habilitado
-                                    ? 'tabler-lock text-[16px]'
-                                    : 'tabler-certificate text-[16px]'
-                                  } />
-                                </IconButton>
-                              </Tooltip>
-                            </Box>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Chip
+                              size='small'
+                              label={alumno.certificado_ipg_habilitado ? 'IPG ✓' : 'Pago pendiente'}
+                              color={alumno.certificado_ipg_habilitado ? 'success' : 'warning'}
+                              variant='tonal'
+                              sx={{ fontSize: '0.68rem', height: 22, width: 100 }}
+                            />
+                            <Chip
+                              size='small'
+                              label={alumno.certificado_cip_habilitado ? 'CIP ✓' : 'Pago pendiente'}
+                              color={alumno.certificado_cip_habilitado ? 'success' : 'warning'}
+                              variant='tonal'
+                              sx={{ fontSize: '0.68rem', height: 22, width: 100 }}
+                            />
                           </Box>
-                        </TableCell>
-                      )}
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Tooltip title={
+                              alumno.certificado_ipg_habilitado
+                                ? 'Deshabilitar certificado IPG'
+                                : 'Habilitar certificado IPG'
+                            }>
+                              <IconButton
+                                size='small'
+                                onClick={() => setCertConfirm({
+                                  inscripcionId: alumno.inscripcion_id,
+                                  alumnoNombre: `${alumno.nombre} ${alumno.apellido}`,
+                                  habilitadoActual: !!alumno.certificado_ipg_habilitado,
+                                  tipo: 'ipg'
+                                })}
+                                sx={{
+                                  bgcolor: alumno.certificado_ipg_habilitado
+                                    ? 'rgba(220,38,38,0.08)'
+                                    : 'rgba(22,163,74,0.08)',
+                                  color: alumno.certificado_ipg_habilitado ? 'error.main' : 'success.main',
+                                  '&:hover': {
+                                    bgcolor: alumno.certificado_ipg_habilitado
+                                      ? 'rgba(220,38,38,0.16)'
+                                      : 'rgba(22,163,74,0.16)'
+                                  }
+                                }}
+                              >
+                                <i className={alumno.certificado_ipg_habilitado
+                                  ? 'tabler-lock text-[16px]'
+                                  : 'tabler-certificate text-[16px]'
+                                } />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title={
+                              alumno.certificado_cip_habilitado
+                                ? 'Deshabilitar certificado CIP'
+                                : 'Habilitar certificado CIP'
+                            }>
+                              <IconButton
+                                size='small'
+                                onClick={() => setCertConfirm({
+                                  inscripcionId: alumno.inscripcion_id,
+                                  alumnoNombre: `${alumno.nombre} ${alumno.apellido}`,
+                                  habilitadoActual: !!alumno.certificado_cip_habilitado,
+                                  tipo: 'cip'
+                                })}
+                                sx={{
+                                  bgcolor: alumno.certificado_cip_habilitado
+                                    ? 'rgba(220,38,38,0.08)'
+                                    : 'rgba(22,163,74,0.08)',
+                                  color: alumno.certificado_cip_habilitado ? 'error.main' : 'success.main',
+                                  '&:hover': {
+                                    bgcolor: alumno.certificado_cip_habilitado
+                                      ? 'rgba(220,38,38,0.16)'
+                                      : 'rgba(22,163,74,0.16)'
+                                  }
+                                }}
+                              >
+                                <i className={alumno.certificado_cip_habilitado
+                                  ? 'tabler-lock text-[16px]'
+                                  : 'tabler-certificate text-[16px]'
+                                } />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </Box>
+                      </TableCell>
                       <TableCell>
                         <Chip
                           label={estadoLabel[alumno.estado_inscripcion] || alumno.estado_inscripcion}
@@ -622,28 +629,26 @@ export default function CourseStudentsModal({
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               bgcolor: certConfirm.habilitadoActual
                 ? 'rgba(220,38,38,0.1)'
-                : certConfirm.tipo === 'cid'
-                  ? 'rgba(220,38,38,0.1)'
-                  : 'rgba(22,163,74,0.1)'
+                : 'rgba(22,163,74,0.1)'
             }}>
               <i
                 className={certConfirm.habilitadoActual ? 'tabler-lock text-4xl' : 'tabler-certificate text-4xl'}
                 style={{
                   color: certConfirm.habilitadoActual
                     ? '#dc2626'
-                    : certConfirm.tipo === 'cid' ? '#dc2626' : '#16a34a'
+                    : '#16a34a'
                 }}
               />
             </Box>
             <Typography variant='h5' fontWeight={700} sx={{ mb: 1 }}>
               {certConfirm.habilitadoActual
-                ? `Deshabilitar certificado ${certConfirm.tipo === 'cid' ? 'CID' : 'IPG'}`
-                : `Habilitar certificado ${certConfirm.tipo === 'cid' ? 'CID' : 'IPG'}`}
+                ? `Deshabilitar certificado ${certConfirm.tipo === 'cip' ? 'CIP' : 'IPG'}`
+                : `Habilitar certificado ${certConfirm.tipo === 'cip' ? 'CIP' : 'IPG'}`}
             </Typography>
             <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5 }}>
               {certConfirm.habilitadoActual
-                ? `El estudiante ya no podrá descargar el certificado ${certConfirm.tipo === 'cid' ? 'CID' : 'IPG'} de este curso.`
-                : `El estudiante podrá descargar el certificado ${certConfirm.tipo === 'cid' ? 'CID' : 'IPG'} de este curso.`}
+                ? `El estudiante ya no podrá descargar el certificado ${certConfirm.tipo === 'cip' ? 'CIP' : 'IPG'} de este curso.`
+                : `El estudiante podrá descargar el certificado ${certConfirm.tipo === 'cip' ? 'CIP' : 'IPG'} de este curso.`}
             </Typography>
             <Typography variant='body1' fontWeight={700} sx={{ mb: 4 }}>
               {certConfirm.alumnoNombre}
@@ -659,7 +664,7 @@ export default function CourseStudentsModal({
               </Button>
               <Button
                 variant='contained'
-                color={certConfirm.habilitadoActual ? 'error' : certConfirm.tipo === 'cid' ? 'error' : 'success'}
+                color={certConfirm.habilitadoActual ? 'error' : 'success'}
                 onClick={handleToggleCert}
                 disabled={certLoading}
                 startIcon={certLoading

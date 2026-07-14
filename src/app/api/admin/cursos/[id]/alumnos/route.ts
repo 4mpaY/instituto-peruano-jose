@@ -73,6 +73,7 @@ export async function GET(
             correo: true,
             numero_documento: true,
             avatar: true,
+            celular: true,
             intentos_examen: {
               where: { examen: { curso_id: cursoId } },
               select: { examen_id: true, puntaje: true },
@@ -106,7 +107,7 @@ export async function GET(
         const puntajePorcentaje = mejoresIntentos[ex.id] || 0
         const notaBase20 = puntajePorcentaje * 0.2
 
-        return `N${index + 1}: ${notaBase20.toFixed(1)}`
+        return `N${index + 1}: ${Math.round(notaBase20)}`
       }).join(', ')
 
       let sumaPonderada = 0
@@ -122,19 +123,19 @@ export async function GET(
       const promedioPorcentajeCalculado = pesoTotal > 0 ? (sumaPonderada / pesoTotal) : 0
       
       // Convertir el porcentaje calculado (0-100) a base vigesimal peruana (0-20)
-      const promedioVigesimalCalculado = (promedioPorcentajeCalculado * 0.2).toFixed(1);
+      const promedioVigesimalCalculado = Math.round(promedioPorcentajeCalculado * 0.2).toString();
 
       // Si existe nota_final en la inscripción (también es porcentaje 0-100), la convertimos a base 20
-      const promedioFinal = i.nota_final !== null ? (i.nota_final * 0.2).toFixed(1) : (
+      const promedioFinal = i.nota_final !== null ? Math.round(i.nota_final * 0.2).toString() : (
         evaluacionesRealizadas > 0 
           ? promedioVigesimalCalculado
-          : '0.0'
+          : '0'
       )
 
       const notasDetalle = examenes.map(ex => ({
         examenId: ex.id,
         titulo: ex.titulo,
-        nota: parseFloat(((mejoresIntentos[ex.id] || 0) * 0.2).toFixed(1))
+        nota: Math.round((mejoresIntentos[ex.id] || 0) * 0.2)
       }))
 
       const hab = habilitacionMap.get(i.id)
@@ -144,11 +145,12 @@ export async function GET(
         inscripcion_id: i.id,
         certificado_habilitado: hab?.certificado_habilitado ?? i.certificado_habilitado,
         certificado_ipg_habilitado: hab?.certificado_ipg_habilitado ?? i.certificado_habilitado,
-        certificado_cid_habilitado: hab?.certificado_cid_habilitado ?? false,
+        certificado_cip_habilitado: hab?.certificado_cip_habilitado ?? false,
         nombre: i.usuario.nombre,
         apellido: i.usuario.apellido,
         correo: i.usuario.correo,
         numero_documento: i.usuario.numero_documento,
+        celular: i.usuario.celular,
         avatar: i.usuario.avatar,
         estado_inscripcion: i.estado,
         inscrito_en: i.inscrito_en,

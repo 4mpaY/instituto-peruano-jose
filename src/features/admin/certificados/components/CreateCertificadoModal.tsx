@@ -15,7 +15,6 @@ import {
   Box,
   Typography,
   CircularProgress,
-  Alert,
   Divider,
   IconButton,
   Chip,
@@ -60,9 +59,6 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
   const [docenteNombre, setDocenteNombre] = useState('')
   const [docenteCargo, setDocenteCargo] = useState('')
   const [tipoCertificado, setTipoCertificado] = useState<'ipg' | 'cip'>('ipg')
-
-  // ── Estado de duplicado ──
-  const [duplicado, setDuplicado] = useState<{ id: string; codigo: string } | null>(null)
 
   const getAxios = useCallback(async () => {
     const s = await getSession()
@@ -128,7 +124,6 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
     setDocenteNombre('')
     setDocenteCargo('')
     setTipoCertificado('ipg')
-    setDuplicado(null)
   }
 
   const handleClose = () => {
@@ -163,13 +158,11 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
     } catch (err: any) {
       const msg: string = err?.error || err?.message || ''
 
-      if (msg.startsWith('CERTIFICADO_DUPLICADO:')) {
-        const parts = msg.split(':')
+      const displayMsg = msg.startsWith('CERTIFICADO_DUPLICADO:')
+        ? 'Ya existe un certificado de este tipo para este estudiante y curso.'
+        : msg || 'Error al crear el certificado.'
 
-        setDuplicado({ id: parts[1], codigo: parts[2] })
-      } else {
-        toast.error(msg || 'Error al crear el certificado.')
-      }
+      toast.error(displayMsg)
     }
   }
 

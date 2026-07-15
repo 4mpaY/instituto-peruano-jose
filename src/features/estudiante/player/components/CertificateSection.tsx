@@ -674,6 +674,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                     {obtenidas.map((p, idx) => {
                         const esCip = p.id === 'colegio_ingenieros'
                         const accentDark = esCip ? '#b91c1c' : '#025E44'
+
                         const gradient = esCip
                             ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
                             : 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)'

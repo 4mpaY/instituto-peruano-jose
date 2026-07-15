@@ -5,6 +5,7 @@ import prisma from '@/utils/libs/prisma'
 import { ApiResponse } from '@/utils/libs/apiResponse'
 import { requireAdmin } from '@/utils/libs/auth-helpers'
 import { handleApiError } from '@/utils/libs/validation'
+import { getInscripcionCertificadoHabilitacion } from '@/app/api/_shared/certificados/getInscripcionCertificadoHabilitacion'
 
 /**
  * GET /api/admin/certificados
@@ -81,8 +82,20 @@ export async function GET(request: Request) {
       prisma.certificado.count({ where })
     ])
 
+    const certificadosConTipo = await Promise.all(
+      certificados.map(async certificado => {
+        const habilitacion = await getInscripcionCertificadoHabilitacion(certificado.usuario_id, certificado.curso_id)
+
+        return {
+          ...certificado,
+          certificado_ipg_habilitado: !!habilitacion?.certificado_ipg_habilitado,
+          certificado_cip_habilitado: !!habilitacion?.certificado_cip_habilitado
+        }
+      })
+    )
+
     return ApiResponse.success(request, {
-      certificados,
+      certificados: certificadosConTipo,
       paginacion: {
         total,
         page,
@@ -118,12 +131,15 @@ export async function POST(request: Request) {
       docente_nombre_override,
       docente_cargo_override,
       reemplazar = false,
-      certificado_ipg_habilitado = true,
-      certificado_cip_habilitado = true
+      certificado_tipo
     } = body
 
     if (!usuario_id || !curso_id) {
       return ApiResponse.error(request, 'El usuario y el curso son requeridos.', 400)
+    }
+
+    if (certificado_tipo !== 'ipg' && certificado_tipo !== 'cip') {
+      return ApiResponse.error(request, 'Debes seleccionar un tipo de certificado válido (IPG o CIP).', 400)
     }
 
     // Verificar que el usuario existe
@@ -236,17 +252,22 @@ export async function POST(request: Request) {
       })
     }
 
-    // Actualizar la habilitación en la inscripción
+    // Actualizar la habilitación en la inscripción: solo activa la bandera del tipo elegido,
+    // sin tocar la del otro tipo (puede haber sido habilitada por otra vía).
+    const habilitacionUpdate: Record<string, boolean> = { certificado_habilitado: true }
+
+    if (certificado_tipo === 'ipg') {
+      habilitacionUpdate.certificado_ipg_habilitado = true
+    } else {
+      habilitacionUpdate.certificado_cip_habilitado = true
+    }
+
     await prisma.inscripcion.updateMany({
       where: {
         usuario_id,
         curso_id
       },
-      data: {
-        certificado_habilitado: true,
-        certificado_ipg_habilitado: certificado_ipg_habilitado,
-        certificado_cip_habilitado: certificado_cip_habilitado
-      }
+      data: habilitacionUpdate
     })
 
     return ApiResponse.success(request, { certificado }, existente && reemplazar ? 200 : 201)

@@ -19,8 +19,7 @@ import {
   Divider,
   IconButton,
   Chip,
-  FormControlLabel,
-  Checkbox
+  MenuItem
 } from '@mui/material'
 
 import { toast } from 'react-toastify'
@@ -60,8 +59,7 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
   const [duracion, setDuracion] = useState('')
   const [docenteNombre, setDocenteNombre] = useState('')
   const [docenteCargo, setDocenteCargo] = useState('')
-  const [ipgHabilitado, setIpgHabilitado] = useState(true)
-  const [cipHabilitado, setCipHabilitado] = useState(true)
+  const [tipoCertificado, setTipoCertificado] = useState<'ipg' | 'cip'>('ipg')
 
   // ── Estado de duplicado ──
   const [duplicado, setDuplicado] = useState<{ id: string; codigo: string } | null>(null)
@@ -129,8 +127,7 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
     setDuracion('')
     setDocenteNombre('')
     setDocenteCargo('')
-    setIpgHabilitado(true)
-    setCipHabilitado(true)
+    setTipoCertificado('ipg')
     setDuplicado(null)
   }
 
@@ -158,8 +155,7 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
         docente_nombre_override: docenteNombre || undefined,
         docente_cargo_override: docenteCargo || undefined,
         reemplazar,
-        certificado_ipg_habilitado: ipgHabilitado,
-        certificado_cip_habilitado: cipHabilitado
+        certificado_tipo: tipoCertificado
       })
 
       toast.success(reemplazar ? 'Certificado reemplazado exitosamente.' : 'Certificado creado exitosamente.')
@@ -377,46 +373,27 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
             />
           </Grid>
 
-          {/* ── SELECCIÓN DE CERTIFICADOS A HABILITAR ── */}
+          {/* ── TIPO DE CERTIFICADO ── */}
           <Grid item xs={12}>
             <Divider sx={{ my: 2 }}>
               <Typography variant='caption' color='text.secondary' sx={{ textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.65rem' }}>
-                Habilitar certificados
+                Tipo de certificado
               </Typography>
             </Divider>
           </Grid>
 
-          <Grid item xs={12} sx={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={ipgHabilitado}
-                  onChange={e => setIpgHabilitado(e.target.checked)}
-                  color='primary'
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant='body2' fontWeight={600}>Certificado IPG</Typography>
-                  <Typography variant='caption' color='text.secondary'>Modelo Minimalista</Typography>
-                </Box>
-              }
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={cipHabilitado}
-                  onChange={e => setCipHabilitado(e.target.checked)}
-                  color='primary'
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant='body2' fontWeight={600}>Certificado CIP</Typography>
-                  <Typography variant='caption' color='text.secondary'>Colegio de Ingenieros</Typography>
-                </Box>
-              }
-            />
+          <Grid item xs={12} md={6}>
+            <TextField
+              select
+              fullWidth
+              label='Tipo de certificado *'
+              value={tipoCertificado}
+              onChange={e => setTipoCertificado(e.target.value as 'ipg' | 'cip')}
+              helperText='Habilita este tipo de certificado para el estudiante y curso seleccionados'
+            >
+              <MenuItem value='ipg'>Certificado IPG — Modelo Minimalista</MenuItem>
+              <MenuItem value='cip'>Certificado CIP — Colegio de Ingenieros</MenuItem>
+            </TextField>
           </Grid>
 
           {/* ── OVERRIDE DOCENTE ── */}
@@ -460,7 +437,7 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
         </Button>
         <Button
           onClick={() => handleSubmit(false)}
-          disabled={isPending || !usuarioSelected || !cursoSelected || (!ipgHabilitado && !cipHabilitado)}
+          disabled={isPending || !usuarioSelected || !cursoSelected}
           variant='contained'
           startIcon={isPending ? <CircularProgress size={16} color='inherit' /> : <i className='tabler-certificate text-[18px]' />}
         >

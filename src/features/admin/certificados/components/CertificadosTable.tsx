@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   CardHeader,
+  Chip,
   IconButton,
   MenuItem,
   TablePagination,
@@ -155,6 +156,28 @@ export function CertificadosTable({ initialData }: CertificadosTableProps) {
             {row.original.codigo_verificacion}
           </Typography>
         )
+      }),
+      columnHelper.display({
+        id: 'tipo',
+        header: 'Tipo',
+        cell: ({ row }) => {
+          const { certificado_ipg_habilitado, certificado_cip_habilitado } = row.original
+
+          if (!certificado_ipg_habilitado && !certificado_cip_habilitado) {
+            return <Typography variant='caption' color='text.disabled'>—</Typography>
+          }
+
+          return (
+            <Box className='flex items-center gap-2'>
+              {certificado_ipg_habilitado && (
+                <Chip size='small' label='IPG' color='success' variant='tonal' />
+              )}
+              {certificado_cip_habilitado && (
+                <Chip size='small' label='CIP' color='error' variant='tonal' />
+              )}
+            </Box>
+          )
+        }
       }),
       columnHelper.accessor('emitido_en', {
         header: 'Fecha Emisión',

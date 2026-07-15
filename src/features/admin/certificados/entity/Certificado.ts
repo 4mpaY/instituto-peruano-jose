@@ -17,6 +17,8 @@ export interface Certificado {
   emitido_en: string
   usuario: CertificadoUsuario
   curso: CertificadoCurso
+  certificado_ipg_habilitado: boolean
+  certificado_cip_habilitado: boolean
 }
 
 export interface CertificadosResponse {
@@ -43,8 +45,7 @@ export interface CreateCertificadoPayload {
   docente_nombre_override?: string
   docente_cargo_override?: string
   reemplazar?: boolean
-  certificado_ipg_habilitado?: boolean
-  certificado_cip_habilitado?: boolean
+  certificado_tipo: 'ipg' | 'cip'
 }
 
 export interface UsuarioBusqueda {

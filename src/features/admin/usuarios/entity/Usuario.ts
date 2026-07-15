@@ -20,6 +20,10 @@ export interface Usuario {
     inscrito_en: string
     estado: string
     certificado_habilitado: boolean
+    certificado_ipg_habilitado: boolean
+    certificado_cip_habilitado: boolean
+    certificado_ipg_id: string | null
+    certificado_cip_id: string | null
     curso: {
       id: string
       titulo: string

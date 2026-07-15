@@ -8,51 +8,11 @@ import {
   getInscripcionCertificadoHabilitacion,
   resolveCertificadoPagoEstado,
 } from '@/app/api/_shared/certificados/getInscripcionCertificadoHabilitacion'
-
-/** Calcula el promedio ponderado de las evaluaciones del estudiante en un curso.
- *  Los exámenes sin intentar cuentan como 0. */
-async function calcularElegibilidad(usuarioId: string, cursoId: string) {
-  const [progresoCurso, examenes] = await Promise.all([
-    prisma.progresoCurso.findUnique({
-      where: { usuario_id_curso_id: { usuario_id: usuarioId, curso_id: cursoId } }
-    }),
-    prisma.examen.findMany({
-      where: { curso_id: cursoId, esta_publicado: true },
-      select: {
-        id: true,
-        puntaje_aprobacion: true,
-        intentos: {
-          where: { usuario_id: usuarioId },
-          orderBy: { puntaje: 'desc' },
-          take: 1,
-          select: { puntaje: true }
-        }
-      }
-    })
-  ])
-
-  const progreso = progresoCurso?.porcentaje_progreso ?? 0
-  const totalExamenes = examenes.length
-
-  let promedioScore = 0
-  let promedioMinimo = 60 // umbral por defecto si no hay exámenes
-
-  if (totalExamenes > 0) {
-    const sumScores = examenes.reduce((acc, ex) => acc + (ex.intentos[0]?.puntaje ?? 0), 0)
-    const sumMinimos = examenes.reduce((acc, ex) => acc + (ex.puntaje_aprobacion ?? 60), 0)
-
-    promedioScore = Math.round((sumScores / totalExamenes) * 10) / 10
-    promedioMinimo = Math.round((sumMinimos / totalExamenes) * 10) / 10
-  }
-
-  const isEligible = progreso >= 100 && (totalExamenes === 0 || promedioScore >= promedioMinimo)
-
-  return { progreso, promedioScore, promedioMinimo, isEligible, totalExamenes }
-}
+import { calcularElegibilidad, ensureCertificado, EnsureCertificadoError } from '@/app/api/_shared/certificados/ensureCertificado'
 
 /**
  * GET /api/estudiante/certificado?cursoId=xxx
- * Obtiene el certificado existente + datos de elegibilidad del estudiante
+ * Obtiene los certificados existentes (IPG/CIP) + datos de elegibilidad del estudiante
  */
 export async function GET(request: Request) {
   try {
@@ -67,9 +27,9 @@ export async function GET(request: Request) {
       return ApiResponse.error(request, 'El ID del curso es requerido', 400)
     }
 
-    const [certificado, elegibilidad, inscripcionHab, curso] = await Promise.all([
-      prisma.certificado.findUnique({
-        where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } },
+    const [certificados, elegibilidad, inscripcionHab, curso] = await Promise.all([
+      prisma.certificado.findMany({
+        where: { usuario_id: auth.user.id, curso_id: cursoId },
         include: {
           curso: { select: { titulo: true } },
           usuario: { select: { nombre: true, apellido: true } }
@@ -80,6 +40,9 @@ export async function GET(request: Request) {
       prisma.curso.findUnique({ where: { id: cursoId }, select: { precio_certificado: true, titulo: true } })
     ])
 
+    const certIpg = certificados.find(c => c.tipo === 'IPG') ?? null
+    const certCip = certificados.find(c => c.tipo === 'CIP') ?? null
+
     const precioCert = curso?.precio_certificado ? Number(curso.precio_certificado) : null
 
     const { ipgHabilitado, cipHabilitado, pagoPendiente } = resolveCertificadoPagoEstado(
@@ -87,16 +50,19 @@ export async function GET(request: Request) {
       precioCert
     )
 
-    return ApiResponse.success(request, {
-      certificado: certificado
+    const toResumen = (c: typeof certIpg) =>
+      c
         ? {
-            id: certificado.id,
-            codigoVerificacion: certificado.codigo_verificacion,
-            emitidoEn: certificado.emitido_en,
-            cursoTitulo: certificado.curso.titulo,
-            nombreCompleto: `${certificado.usuario.nombre} ${certificado.usuario.apellido}`
+            id: c.id,
+            codigoVerificacion: c.codigo_verificacion,
+            emitidoEn: c.emitido_en,
+            cursoTitulo: c.curso.titulo,
+            nombreCompleto: `${c.usuario.nombre} ${c.usuario.apellido}`
           }
-        : null,
+        : null
+
+    return ApiResponse.success(request, {
+      certificado: toResumen(certIpg),
       cursoTitulo: curso?.titulo ?? null,
       elegibilidad,
       pagoPendiente,
@@ -111,12 +77,18 @@ export async function GET(request: Request) {
           nombre: 'Certificado IPG',
           thumbnail: '/images/plantillas-certificado/minimalista.png',
           habilitado: ipgHabilitado,
+          certificadoId: certIpg?.id ?? null,
+          codigoVerificacion: certIpg?.codigo_verificacion ?? null,
+          emitidoEn: certIpg?.emitido_en ?? null,
         },
         {
           id: 'colegio_ingenieros',
           nombre: 'Certificado CIP',
           thumbnail: '/images/plantillas-certificado/colegio_ingenieros.png',
           habilitado: cipHabilitado,
+          certificadoId: certCip?.id ?? null,
+          codigoVerificacion: certCip?.codigo_verificacion ?? null,
+          emitidoEn: certCip?.emitido_en ?? null,
         },
       ],
     })
@@ -127,8 +99,9 @@ export async function GET(request: Request) {
 
 /**
  * POST /api/estudiante/certificado
- * Genera un certificado validando progreso 100% y promedio de evaluaciones
- * Body: { cursoId: string }
+ * Genera (o devuelve, si ya existe) el certificado del tipo pedido, validando
+ * inscripción, habilitación de pago y elegibilidad (progreso + evaluaciones).
+ * Body: { cursoId: string, tipo?: 'IPG' | 'CIP' }  (tipo por defecto: IPG)
  */
 export async function POST(request: Request) {
   try {
@@ -136,152 +109,39 @@ export async function POST(request: Request) {
 
     if (!auth.authorized) return auth.error
 
-    const { cursoId } = await request.json()
+    const { cursoId, tipo: tipoBody } = await request.json()
 
     if (!cursoId) {
       return ApiResponse.error(request, 'El ID del curso es requerido', 400)
     }
 
-    // 1. Verificar inscripción activa
-    const inscripcion = await prisma.inscripcion.findUnique({
-      where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } }
-    })
+    const tipo: 'IPG' | 'CIP' = String(tipoBody).toUpperCase() === 'CIP' ? 'CIP' : 'IPG'
 
-    const curso = await prisma.curso.findUnique({
-      where: { id: cursoId },
-      select: { precio_certificado: true, codigo: true, slug: true }
-    })
+    try {
+      const certificado = await ensureCertificado(auth.user.id, cursoId, tipo)
 
-    if (!inscripcion || inscripcion.estado !== 'ACTIVO') {
-      return ApiResponse.error(request, 'No estás inscrito en este curso', 403)
-    }
-
-    // 1b. Verificar pago del certificado si aplica
-    const precioCert = curso?.precio_certificado ? Number(curso.precio_certificado) : null
-
-    if (precioCert && precioCert > 0) {
-      const habilitacion = await getInscripcionCertificadoHabilitacion(auth.user.id, cursoId)
-      const { algunoHabilitado } = resolveCertificadoPagoEstado(habilitacion, precioCert)
-
-      if (!algunoHabilitado) {
-        return ApiResponse.error(
-          request,
-          'El certificado de este curso requiere un pago previo. Comunícate con nosotros para habilitarlo.',
-          403
-        )
-      }
-    }
-
-    // 2. Verificar elegibilidad (progreso + promedio de evaluaciones)
-    const elegibilidad = await calcularElegibilidad(auth.user.id, cursoId)
-
-    if (elegibilidad.progreso < 100) {
-      return ApiResponse.error(request, 'Debes completar todas las lecciones del curso', 403)
-    }
-
-    if (elegibilidad.totalExamenes > 0 && elegibilidad.promedioScore < elegibilidad.promedioMinimo) {
-      const notaPromedio = Math.round((elegibilidad.promedioScore / 100) * 20 * 10) / 10
-      const notaMinima = Math.round((elegibilidad.promedioMinimo / 100) * 20 * 10) / 10
-
-      return ApiResponse.error(
+      return ApiResponse.success(
         request,
-        `Tu promedio de evaluaciones es ${notaPromedio}/20. Necesitas al menos ${notaMinima}/20 para obtener el certificado.`,
-        403
-      )
-    }
-
-    // 3. Verificar si ya existe un certificado
-    const certificadoExistente = await prisma.certificado.findUnique({
-      where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } }
-    })
-
-    if (certificadoExistente) {
-      return ApiResponse.success(request, {
-        certificado: {
-          id: certificadoExistente.id,
-          codigoVerificacion: certificadoExistente.codigo_verificacion,
-          emitidoEn: certificadoExistente.emitido_en
+        {
+          certificado: {
+            id: certificado.id,
+            codigoVerificacion: certificado.codigo_verificacion,
+            emitidoEn: certificado.emitido_en,
+            cursoTitulo: certificado.curso.titulo,
+            nombreCompleto: `${certificado.usuario.nombre} ${certificado.usuario.apellido}`
+          }
         },
-        mensaje: 'Ya tienes un certificado para este curso'
-      })
-    }
+        201
+      )
+    } catch (err) {
+      if (err instanceof EnsureCertificadoError) {
+        const status = err.code === 'CURSO_NO_ENCONTRADO' ? 404 : 403
 
-    // 4. Capturar datos del curso y usuario para el snapshot
-    const [cursoData, usuarioData] = await Promise.all([
-      prisma.curso.findUnique({
-        where: { id: cursoId },
-        include: {
-          profesor: { select: { nombre: true, apellido: true, cargo: true, firma: true } }
-        }
-      }),
-      prisma.usuario.findUnique({
-        where: { id: auth.user.id },
-        select: { nombre: true, apellido: true, numero_documento: true }
-      })
-    ])
-
-    if (!cursoData) {
-      return ApiResponse.error(request, 'Curso no encontrado', 404)
-    }
-
-    // 5. Generar código de verificación único: {CODIGO_CURSO}-{YYYYMMDD}-{DNI}-{NN}
-    const fechaEmision = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    const dni = usuarioData?.numero_documento?.replace(/\D/g, '') || 'SINDNI'
-
-    const codigoCurso =
-      cursoData?.codigo || cursoData?.slug?.slice(0, 12).toUpperCase() || cursoId.slice(0, 8).toUpperCase()
-
-    const numeroIntento = 1
-    const codigoVerificacion = `${codigoCurso}-${fechaEmision}-${dni}-${String(numeroIntento).padStart(2, '0')}`
-
-    const datosSnapshot = {
-      curso: {
-        titulo: cursoData.titulo,
-        duracion: cursoData.duracion,
-        nivel: cursoData.nivel,
-        tipo_emision: cursoData.tipo_emision,
-        fecha_inicio: cursoData.fecha_inicio
-      },
-      usuario: { nombre: usuarioData?.nombre ?? '', apellido: usuarioData?.apellido ?? '' },
-      profesor: {
-        nombre: cursoData.profesor.nombre,
-        apellido: cursoData.profesor.apellido,
-        cargo: cursoData.profesor.cargo,
-        firma: cursoData.profesor.firma
-      },
-      fechas: {
-        inicio_curso: cursoData.tipo_emision === 'SINCRONO' ? cursoData.fecha_inicio : inscripcion.inscrito_en,
-        culminacion: inscripcion.completado_en || new Date(),
-        emision: new Date()
+        return ApiResponse.error(request, err.message, status)
       }
+
+      throw err
     }
-
-    const certificado = await prisma.certificado.create({
-      data: {
-        usuario_id: auth.user.id,
-        curso_id: cursoId,
-        codigo_verificacion: codigoVerificacion,
-        datos: datosSnapshot as any
-      },
-      include: {
-        curso: { select: { titulo: true } },
-        usuario: { select: { nombre: true, apellido: true } }
-      }
-    })
-
-    return ApiResponse.success(
-      request,
-      {
-        certificado: {
-          id: certificado.id,
-          codigoVerificacion: certificado.codigo_verificacion,
-          emitidoEn: certificado.emitido_en,
-          cursoTitulo: certificado.curso.titulo,
-          nombreCompleto: `${certificado.usuario.nombre} ${certificado.usuario.apellido}`
-        }
-      },
-      201
-    )
   } catch (error) {
     return handleApiError(error, request)
   }

@@ -157,27 +157,16 @@ export function CertificadosTable({ initialData }: CertificadosTableProps) {
           </Typography>
         )
       }),
-      columnHelper.display({
-        id: 'tipo',
+      columnHelper.accessor('tipo', {
         header: 'Tipo',
-        cell: ({ row }) => {
-          const { certificado_ipg_habilitado, certificado_cip_habilitado } = row.original
-
-          if (!certificado_ipg_habilitado && !certificado_cip_habilitado) {
-            return <Typography variant='caption' color='text.disabled'>—</Typography>
-          }
-
-          return (
-            <Box className='flex items-center gap-2'>
-              {certificado_ipg_habilitado && (
-                <Chip size='small' label='IPG' color='success' variant='tonal' />
-              )}
-              {certificado_cip_habilitado && (
-                <Chip size='small' label='CIP' color='error' variant='tonal' />
-              )}
-            </Box>
-          )
-        }
+        cell: ({ row }) => (
+          <Chip
+            size='small'
+            label={row.original.tipo}
+            color={row.original.tipo === 'CIP' ? 'error' : 'success'}
+            variant='tonal'
+          />
+        )
       }),
       columnHelper.accessor('emitido_en', {
         header: 'Fecha Emisión',

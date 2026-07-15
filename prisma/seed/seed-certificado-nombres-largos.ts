@@ -194,7 +194,7 @@ async function main() {
 
   const certificado = await prisma.certificado.upsert({
     where: {
-      usuario_id_curso_id: { usuario_id: estudiante.id, curso_id: curso.id },
+      usuario_id_curso_id_tipo: { usuario_id: estudiante.id, curso_id: curso.id, tipo: 'IPG' },
     },
     update: {
       codigo_verificacion: codigoVerificacion,
@@ -204,6 +204,7 @@ async function main() {
     create: {
       usuario_id: estudiante.id,
       curso_id: curso.id,
+      tipo: 'IPG',
       codigo_verificacion: codigoVerificacion,
       datos: datosSnapshot,
       emitido_en: ahora,

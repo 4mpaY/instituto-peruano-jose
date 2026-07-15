@@ -65,32 +65,10 @@ export function resolvePlantillaCertificado(configs: Record<string, string>): Pl
 }
 
 /**
- * Resuelve qué plantilla PDF generar al descargar.
- * Prioridad: query param > habilitación por inscripción > IPG por defecto (cursos gratuitos).
+ * Mapea el tipo del certificado (IPG/CIP, fijo por registro) a su plantilla PDF.
  */
-export function resolvePlantillaParaDescarga(opts: {
-  plantillaParam?: string | null
-  ipgHabilitado?: boolean
-  cipHabilitado?: boolean
-  certificadoHabilitadoLegacy?: boolean
-  requierePago: boolean
-}): PlantillaId {
-  const { plantillaParam, ipgHabilitado, cipHabilitado, certificadoHabilitadoLegacy, requierePago } = opts
-
-  if (plantillaParam === 'colegio_ingenieros' || plantillaParam === 'minimalista') {
-    return plantillaParam
-  }
-
-  const ipgOk = !!(ipgHabilitado || certificadoHabilitadoLegacy)
-  const cipOk = !!cipHabilitado
-
-  if (requierePago) {
-    if (cipOk && !ipgOk) return 'colegio_ingenieros'
-
-    return 'minimalista'
-  }
-
-  return 'minimalista'
+export function plantillaFromTipo(tipo: 'IPG' | 'CIP'): PlantillaId {
+  return tipo === 'CIP' ? 'colegio_ingenieros' : 'minimalista'
 }
 
 /**

@@ -409,20 +409,25 @@ model RespuestaIntento {
 }
 
 model Certificado {
-  id                  String   @id @default(uuid())
-  codigo_verificacion String   @unique
-  emitido_en          DateTime @default(now())
+  id                  String          @id @default(uuid())
+  codigo_verificacion String          @unique
+  emitido_en          DateTime        @default(now())
   usuario_id          String
   curso_id            String
   datos               Json?
-  numero_intento      Int      @default(1)
-  curso               Curso    @relation(fields: [curso_id], references: [id], onDelete: Cascade)
-  usuario             Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  tipo                CertificadoTipo
+  curso               Curso           @relation(fields: [curso_id], references: [id], onDelete: Cascade)
+  usuario             Usuario         @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
-  @@unique([usuario_id, curso_id])
+  @@unique([usuario_id, curso_id, tipo])
   @@index([usuario_id])
   @@index([curso_id])
   @@map("certificados")
+}
+
+enum CertificadoTipo {
+  IPG
+  CIP
 }
 
 model ValoracionCurso {
@@ -721,3 +726,4 @@ enum EstadoNota {
   DESAPROBADO
   EN_PROGRESO
 }
+

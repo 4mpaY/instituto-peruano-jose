@@ -15,6 +15,7 @@ export interface MiCertificado {
   id: string
   codigo_verificacion: string
   emitido_en: string
+  tipo: 'IPG' | 'CIP'
   curso: CertificadoCurso
 }
 

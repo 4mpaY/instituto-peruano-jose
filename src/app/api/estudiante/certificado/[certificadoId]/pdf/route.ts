@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 
 import { buildCertificadoData } from '@/app/api/_shared/certificados/buildCertificadoData'
 import { getConfigs } from '@/utils/libs/config'
-import { getGenerator, resolvePlantillaParaDescarga, PLANTILLAS, type PlantillaId } from '@/app/api/_shared/certificados/generators'
+import { getGenerator, PLANTILLAS, plantillaFromTipo } from '@/app/api/_shared/certificados/generators'
 import { handleApiError } from '@/utils/libs/validation'
 import prisma from '@/utils/libs/prisma'
 import { requireAuth } from '@/utils/libs/auth-helpers'
@@ -13,7 +13,7 @@ import { getInscripcionCertificadoHabilitacion } from '@/app/api/_shared/certifi
 /**
  * GET /api/estudiante/certificado/[certificadoId]/pdf
  * Descarga el PDF del certificado (Estudiante).
- * La plantilla se resuelve por habilitación IPG/CID del alumno o por query param `plantilla`.
+ * La plantilla se resuelve directamente del tipo (IPG/CIP) del certificado.
  */
 export async function GET(request: Request, { params }: { params: { certificadoId: string } }) {
   try {
@@ -24,12 +24,6 @@ export async function GET(request: Request, { params }: { params: { certificadoI
     const { certificadoId } = params
     const reqUrl = new URL(request.url)
     const previewFlag = reqUrl.searchParams.get('preview') === 'true'
-    const plantillaParam = reqUrl.searchParams.get('plantilla')
-
-    const plantillaOverride: PlantillaId | null =
-      plantillaParam === 'colegio_ingenieros' || plantillaParam === 'minimalista'
-        ? plantillaParam
-        : null
 
     // ── Carga paralela principal ──────────────────────────────────────
     const [certificado, configs] = await Promise.all([
@@ -75,17 +69,11 @@ export async function GET(request: Request, { params }: { params: { certificadoI
     const precioCert = cursoPago?.precio_certificado ? Number(cursoPago.precio_certificado) : null
     const requierePago = !!precioCert && precioCert > 0
 
-    const plantilla = resolvePlantillaParaDescarga({
-      plantillaParam: plantillaOverride,
-      ipgHabilitado: inscripcionPago?.certificado_ipg_habilitado,
-      cipHabilitado: inscripcionPago?.certificado_cip_habilitado,
-      certificadoHabilitadoLegacy: inscripcionPago?.certificado_habilitado,
-      requierePago,
-    })
+    const plantilla = plantillaFromTipo(certificado.tipo)
 
     if (requierePago && auth.user.rol !== 'ADMIN') {
       const habilitado =
-        plantilla === 'colegio_ingenieros'
+        certificado.tipo === 'CIP'
           ? inscripcionPago?.certificado_cip_habilitado
           : inscripcionPago?.certificado_ipg_habilitado || (inscripcionPago?.certificado_habilitado && !inscripcionPago?.certificado_cip_habilitado)
 

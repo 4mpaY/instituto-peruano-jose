@@ -40,6 +40,7 @@ export async function GET(request: Request) {
         id: c.id,
         codigo_verificacion: c.codigo_verificacion,
         emitido_en: c.emitido_en,
+        tipo: c.tipo,
         curso: c.curso
       }))
     })

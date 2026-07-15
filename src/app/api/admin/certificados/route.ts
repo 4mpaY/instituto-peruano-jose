@@ -5,7 +5,6 @@ import prisma from '@/utils/libs/prisma'
 import { ApiResponse } from '@/utils/libs/apiResponse'
 import { requireAdmin } from '@/utils/libs/auth-helpers'
 import { handleApiError } from '@/utils/libs/validation'
-import { getInscripcionCertificadoHabilitacion } from '@/app/api/_shared/certificados/getInscripcionCertificadoHabilitacion'
 
 /**
  * GET /api/admin/certificados
@@ -51,11 +50,7 @@ export async function GET(request: Request) {
 
     const where: any = conditions.length > 0 ? { AND: conditions } : {}
 
-    console.log('Certificados Filter Where:', JSON.stringify(where, null, 2))
-
-
     const [certificados, total] = await Promise.all([
-
       prisma.certificado.findMany({
         where,
         skip,
@@ -82,20 +77,8 @@ export async function GET(request: Request) {
       prisma.certificado.count({ where })
     ])
 
-    const certificadosConTipo = await Promise.all(
-      certificados.map(async certificado => {
-        const habilitacion = await getInscripcionCertificadoHabilitacion(certificado.usuario_id, certificado.curso_id)
-
-        return {
-          ...certificado,
-          certificado_ipg_habilitado: !!habilitacion?.certificado_ipg_habilitado,
-          certificado_cip_habilitado: !!habilitacion?.certificado_cip_habilitado
-        }
-      })
-    )
-
     return ApiResponse.success(request, {
-      certificados: certificadosConTipo,
+      certificados,
       paginacion: {
         total,
         page,
@@ -142,6 +125,8 @@ export async function POST(request: Request) {
       return ApiResponse.error(request, 'Debes seleccionar un tipo de certificado válido (IPG o CIP).', 400)
     }
 
+    const tipo = certificado_tipo === 'cip' ? 'CIP' : 'IPG'
+
     // Verificar que el usuario existe
     const usuario = await prisma.usuario.findUnique({
       where: { id: usuario_id },
@@ -174,9 +159,9 @@ export async function POST(request: Request) {
       return ApiResponse.error(request, 'El curso seleccionado no existe.', 404)
     }
 
-    // Verificar si ya existe un certificado para esta combinación
+    // Verificar si ya existe un certificado de este tipo para esta combinación
     const existente = await prisma.certificado.findUnique({
-      where: { usuario_id_curso_id: { usuario_id, curso_id } }
+      where: { usuario_id_curso_id_tipo: { usuario_id, curso_id, tipo } }
     })
 
     if (existente && !reemplazar) {
@@ -231,16 +216,17 @@ export async function POST(request: Request) {
         }
       })
     } else {
-      // Generar código de verificación: {CODIGO_CURSO}-{YYYYMMDD}-{DNI}-{NN}
+      // Generar código de verificación: {CODIGO_CURSO}-{YYYYMMDD}-{DNI}-{NN}-{TIPO}
       const fechaStr = fechaEmision.toISOString().slice(0, 10).replace(/-/g, '')
       const dni = usuario.numero_documento?.replace(/\D/g, '') || 'SINDNI'
       const codigoCurso = curso.codigo || curso.slug.slice(0, 12).toUpperCase()
-      const codigoVerificacion = `${codigoCurso}-${fechaStr}-${dni}-01`
+      const codigoVerificacion = `${codigoCurso}-${fechaStr}-${dni}-01-${tipo}`
 
       certificado = await prisma.certificado.create({
         data: {
           usuario_id,
           curso_id,
+          tipo,
           codigo_verificacion: codigoVerificacion,
           emitido_en: fechaEmision,
           datos: snapshot
@@ -252,11 +238,11 @@ export async function POST(request: Request) {
       })
     }
 
-    // Actualizar la habilitación en la inscripción: solo activa la bandera del tipo elegido,
-    // sin tocar la del otro tipo (puede haber sido habilitada por otra vía).
+    // Habilitar en la inscripción el tipo emitido (sin tocar el otro tipo, que puede
+    // estar habilitado de forma independiente por otra vía, p. ej. CourseStudentsModal).
     const habilitacionUpdate: Record<string, boolean> = { certificado_habilitado: true }
 
-    if (certificado_tipo === 'ipg') {
+    if (tipo === 'IPG') {
       habilitacionUpdate.certificado_ipg_habilitado = true
     } else {
       habilitacionUpdate.certificado_cip_habilitado = true

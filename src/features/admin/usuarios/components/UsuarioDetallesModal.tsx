@@ -3,6 +3,7 @@ import type { SyntheticEvent } from 'react'
 
 import axios from 'axios'
 import { useQueryClient } from '@tanstack/react-query'
+import { getSession } from 'next-auth/react'
 import { toast } from 'react-toastify'
 import {
   Box,
@@ -28,6 +29,7 @@ import UserAvatar from '@/utils/components/UserAvatar'
 
 import { useUsuario } from '../hooks/useUsuarios'
 import HydratedDate from '@/utils/components/HydratedDate'
+import { AxiosCertificado } from '@/features/admin/certificados/http/axiosCertificado'
 
 interface UsuarioDetallesModalProps {
   open: boolean
@@ -41,10 +43,13 @@ const rolLabels: { [key in Rol]: string } = {
   ESTUDIANTE: 'Estudiante'
 }
 
+type TipoCertificado = 'ipg' | 'cip'
+
 interface CertConfirm {
   inscripcionId: string
   cursoTitulo: string
   habilitadoActual: boolean
+  tipo: TipoCertificado
 }
 
 const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesModalProps) => {
@@ -66,7 +71,8 @@ const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesM
 
     try {
       await axios.patch(`/api/admin/inscripciones/${certConfirm.inscripcionId}/certificado`, {
-        habilitado: !certConfirm.habilitadoActual
+        habilitado: !certConfirm.habilitadoActual,
+        tipo: certConfirm.tipo
       })
       queryClient.invalidateQueries({ queryKey: ['usuarios', usuarioId] })
       toast.success(certConfirm.habilitadoActual ? 'Certificado deshabilitado' : 'Certificado habilitado correctamente')
@@ -75,6 +81,34 @@ const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesM
       toast.error('Error al actualizar el certificado')
     } finally {
       setCertLoading(false)
+    }
+  }
+
+  const handleDownloadCert = async (certificadoId: string, tipo: TipoCertificado) => {
+    try {
+      toast.info('Generando PDF...')
+
+      const getAuthToken = async () => {
+        const s = await getSession()
+
+        return s?.user?.accessToken ?? null
+      }
+
+      const axiosCertificado = new AxiosCertificado({ getAuthToken })
+      const blob = await axiosCertificado.downloadPdf(certificadoId)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+
+      a.href = url
+      a.download = `certificado-${tipo}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+
+      toast.success('Certificado descargado')
+    } catch {
+      toast.error('Error al descargar el certificado')
     }
   }
 
@@ -175,6 +209,11 @@ const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesM
                     ? `${insc.curso.moneda} ${Number(insc.curso.precio_certificado).toFixed(2)}`
                     : null
 
+                  const tipos: { tipo: TipoCertificado; label: string; habilitado: boolean; certificadoId: string | null }[] = [
+                    { tipo: 'ipg', label: 'IPG', habilitado: insc.certificado_ipg_habilitado, certificadoId: insc.certificado_ipg_id },
+                    { tipo: 'cip', label: 'CIP', habilitado: insc.certificado_cip_habilitado, certificadoId: insc.certificado_cip_id }
+                  ]
+
                   return (
                     <Box key={insc.id}>
                       {index > 0 && <Divider component='li' />}
@@ -182,34 +221,45 @@ const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesM
                         alignItems='flex-start'
                         sx={{ px: 0, gap: 1 }}
                         secondaryAction={
-                          tieneCertPago ? (
-                            <Tooltip title={insc.certificado_habilitado ? 'Deshabilitar certificado' : 'Habilitar certificado'}>
-                              <IconButton
-                                size='small'
-                                onClick={() => setCertConfirm({
-                                  inscripcionId: insc.id,
-                                  cursoTitulo: insc.curso.titulo,
-                                  habilitadoActual: insc.certificado_habilitado
-                                })}
-                                sx={{
-                                  bgcolor: insc.certificado_habilitado
-                                    ? 'rgba(22,163,74,0.1)'
-                                    : 'rgba(245,158,11,0.1)',
-                                  color: insc.certificado_habilitado ? 'success.main' : 'warning.main',
-                                  '&:hover': {
-                                    bgcolor: insc.certificado_habilitado
-                                      ? 'rgba(22,163,74,0.2)'
-                                      : 'rgba(245,158,11,0.2)'
-                                  }
-                                }}
-                              >
-                                <i className={insc.certificado_habilitado
-                                  ? 'tabler-certificate text-[18px]'
-                                  : 'tabler-lock text-[18px]'
-                                } />
-                              </IconButton>
-                            </Tooltip>
-                          ) : undefined
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            {tipos.map(({ tipo, label, habilitado, certificadoId }) => (
+                              <Box key={tipo} sx={{ display: 'flex', alignItems: 'center' }}>
+                                {habilitado && certificadoId && (
+                                  <Tooltip title={`Descargar certificado ${label}`}>
+                                    <IconButton
+                                      size='small'
+                                      color='primary'
+                                      onClick={() => handleDownloadCert(certificadoId, tipo)}
+                                    >
+                                      <i className='tabler-download text-[18px]' />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                                {tieneCertPago && (
+                                  <Tooltip title={`${habilitado ? 'Deshabilitar' : 'Habilitar'} certificado ${label}`}>
+                                    <IconButton
+                                      size='small'
+                                      onClick={() => setCertConfirm({
+                                        inscripcionId: insc.id,
+                                        cursoTitulo: insc.curso.titulo,
+                                        habilitadoActual: habilitado,
+                                        tipo
+                                      })}
+                                      sx={{
+                                        bgcolor: habilitado ? 'rgba(22,163,74,0.1)' : 'rgba(245,158,11,0.1)',
+                                        color: habilitado ? 'success.main' : 'warning.main',
+                                        '&:hover': {
+                                          bgcolor: habilitado ? 'rgba(22,163,74,0.2)' : 'rgba(245,158,11,0.2)'
+                                        }
+                                      }}
+                                    >
+                                      <i className={habilitado ? 'tabler-certificate text-[18px]' : 'tabler-lock text-[18px]'} />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                              </Box>
+                            ))}
+                          </Box>
                         }
                       >
                         <ListItemIcon sx={{ minWidth: 40, mt: 1 }}>
@@ -217,14 +267,27 @@ const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesM
                         </ListItemIcon>
                         <ListItemText
                           primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', pr: tieneCertPago ? 4 : 0 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', pr: 10 }}>
                               <Typography variant='body2' fontWeight={600}>{insc.curso.titulo}</Typography>
-                              {tieneCertPago && (
+                              {tipos.map(({ tipo, label, habilitado }) => (
+                                habilitado && (
+                                  <Chip
+                                    key={tipo}
+                                    size='small'
+                                    icon={<i className='tabler-certificate' style={{ fontSize: '0.75rem' }} />}
+                                    label={label}
+                                    color='success'
+                                    variant='tonal'
+                                    sx={{ fontSize: '0.68rem', height: 20 }}
+                                  />
+                                )
+                              ))}
+                              {tieneCertPago && !insc.certificado_ipg_habilitado && !insc.certificado_cip_habilitado && (
                                 <Chip
                                   size='small'
-                                  icon={<i className={insc.certificado_habilitado ? 'tabler-certificate' : 'tabler-lock'} style={{ fontSize: '0.75rem' }} />}
-                                  label={insc.certificado_habilitado ? `Cert. habilitado` : `Cert. ${precioFmt}`}
-                                  color={insc.certificado_habilitado ? 'success' : 'warning'}
+                                  icon={<i className='tabler-lock' style={{ fontSize: '0.75rem' }} />}
+                                  label={`Cert. ${precioFmt}`}
+                                  color='warning'
                                   variant='tonal'
                                   sx={{ fontSize: '0.68rem', height: 20 }}
                                 />
@@ -310,12 +373,12 @@ const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesM
             />
           </Box>
           <Typography variant='h5' fontWeight={700} sx={{ mb: 1 }}>
-            {certConfirm.habilitadoActual ? 'Deshabilitar certificado' : 'Habilitar certificado'}
+            {certConfirm.habilitadoActual ? `Deshabilitar certificado ${certConfirm.tipo.toUpperCase()}` : `Habilitar certificado ${certConfirm.tipo.toUpperCase()}`}
           </Typography>
           <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5 }}>
             {certConfirm.habilitadoActual
-              ? 'El estudiante ya no podrá descargar el certificado de:'
-              : 'El estudiante podrá descargar el certificado de:'}
+              ? `El estudiante ya no podrá descargar el certificado ${certConfirm.tipo.toUpperCase()} de:`
+              : `El estudiante podrá descargar el certificado ${certConfirm.tipo.toUpperCase()} de:`}
           </Typography>
           <Typography variant='body1' fontWeight={600} sx={{ mb: 4 }}>
             {certConfirm.cursoTitulo}

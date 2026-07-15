@@ -54,6 +54,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
             inscrito_en: true,
             estado: true,
             certificado_habilitado: true,
+            certificado_ipg_habilitado: true,
+            certificado_cip_habilitado: true,
             curso: {
               select: {
                 id: true,
@@ -81,7 +83,30 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return ApiResponse.error(request, 'Usuario no encontrado', 404)
     }
 
-    return ApiResponse.success(request, usuario)
+    // Certificados ya emitidos para las inscripciones de este usuario (para poder descargarlos)
+    const certificados = usuario.inscripciones.length
+      ? await prisma.certificado.findMany({
+          where: {
+            usuario_id: id,
+            curso_id: { in: usuario.inscripciones.map(i => i.curso.id) }
+          },
+          select: { id: true, curso_id: true, tipo: true }
+        })
+      : []
+
+    const certificadoIpgPorCurso = new Map(certificados.filter(c => c.tipo === 'IPG').map(c => [c.curso_id, c.id]))
+    const certificadoCipPorCurso = new Map(certificados.filter(c => c.tipo === 'CIP').map(c => [c.curso_id, c.id]))
+
+    const usuarioConCertificados = {
+      ...usuario,
+      inscripciones: usuario.inscripciones.map(insc => ({
+        ...insc,
+        certificado_ipg_id: certificadoIpgPorCurso.get(insc.curso.id) ?? null,
+        certificado_cip_id: certificadoCipPorCurso.get(insc.curso.id) ?? null
+      }))
+    }
+
+    return ApiResponse.success(request, usuarioConCertificados)
   } catch (error) {
     return handleApiError(error, request)
   }

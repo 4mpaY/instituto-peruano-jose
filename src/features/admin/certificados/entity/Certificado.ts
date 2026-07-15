@@ -17,8 +17,7 @@ export interface Certificado {
   emitido_en: string
   usuario: CertificadoUsuario
   curso: CertificadoCurso
-  certificado_ipg_habilitado: boolean
-  certificado_cip_habilitado: boolean
+  tipo: 'IPG' | 'CIP'
 }
 
 export interface CertificadosResponse {

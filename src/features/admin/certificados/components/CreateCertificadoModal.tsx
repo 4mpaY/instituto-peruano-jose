@@ -191,7 +191,7 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
       <Divider />
 
       <DialogContent sx={{ pt: 3 }}>
-        {duplicado && (
+        {/* {duplicado && (
           <Alert
             severity='warning'
             sx={{ mb: 3 }}
@@ -209,7 +209,7 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
             <Typography variant='body2' fontWeight={600}>Ya existe un certificado para este estudiante y curso.</Typography>
             <Typography variant='caption'>Código actual: <strong>{duplicado.codigo}</strong>. ¿Deseas reemplazarlo? Se conservará el mismo código de verificación.</Typography>
           </Alert>
-        )}
+        )} */}
 
         <Grid container spacing={3}>
           {/* ── CAMPOS OBLIGATORIOS ── */}

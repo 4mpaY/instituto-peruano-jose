@@ -32,17 +32,18 @@ interface PlantillaPreview {
     nombre: string
     thumbnail: string
     habilitado: boolean
+    certificadoId?: string | null
+    codigoVerificacion?: string | null
+    emitidoEn?: string | null
 }
 
 const CertificadoPreviewGrid = ({
     plantillas,
-    certificadoId,
     onDownload,
     downloadingPlantilla,
     onCardClick,
 }: {
     plantillas: PlantillaPreview[]
-    certificadoId?: string
     onDownload?: (plantillaId: string) => void
     downloadingPlantilla?: string | null
     onCardClick?: (plantilla: PlantillaPreview) => void
@@ -93,10 +94,10 @@ const CertificadoPreviewGrid = ({
                             }}
                         />
                         <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: 1.5, zIndex: 1 }}>
-                            <Typography variant="caption" fontWeight={700} sx={{ color: '#fff', display: 'block', mb: certificadoId ? 1 : 0 }}>
+                            <Typography variant="caption" fontWeight={700} sx={{ color: '#fff', display: 'block', mb: onDownload ? 1 : 0 }}>
                                 {p.nombre}
                             </Typography>
-                            {certificadoId && onDownload && (
+                            {onDownload && (
                                 <Button
                                     variant="contained"
                                     size="small"
@@ -151,7 +152,7 @@ const CertificadoPreviewModal = ({
 
     const previewSrc =
         open && plantilla && certificadoId
-            ? `/api/estudiante/certificado/${certificadoId}/pdf?preview=true&plantilla=${plantilla.id}`
+            ? `/api/estudiante/certificado/${certificadoId}/pdf?preview=true`
             : null
 
     useEffect(() => {
@@ -405,23 +406,52 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         }
     }
 
-    const buildPdfDownloadUrl = (plantillaId?: string) => {
+    const buildPdfDownloadUrl = (certificadoId: string) => {
         const params = new URLSearchParams({ _t: String(Date.now()) })
 
-        if (plantillaId) params.set('plantilla', plantillaId)
-
-        return `/api/estudiante/certificado/${certificado!.id}/pdf?${params.toString()}`
+        return `/api/estudiante/certificado/${certificadoId}/pdf?${params.toString()}`
     }
 
-    const handleDescargar = (plantillaId?: string) => {
-        if (!certificado) return
+    const handleDescargar = async (plantillaId?: string) => {
+        let targetCertId = certificado?.id
+        let codigoParaArchivo = certificado?.codigoVerificacion
+
+        if (plantillaId) {
+            const item = plantillasPreview.find(p => p.id === plantillaId)
+
+            targetCertId = item?.certificadoId ?? undefined
+
+            if (!targetCertId && item?.habilitado) {
+                setDownloadingPlantilla(plantillaId)
+
+                try {
+                    const tipo = plantillaId === 'colegio_ingenieros' ? 'CIP' : 'IPG'
+                    const res = await axios.post('/api/estudiante/certificado', { cursoId, tipo })
+
+                    if (res.data.status) {
+                        targetCertId = res.data.result.certificado.id
+                        codigoParaArchivo = res.data.result.certificado.codigoVerificacion
+                        setPlantillasPreview(prev => prev.map(p => (p.id === plantillaId
+                            ? { ...p, certificadoId: targetCertId, codigoVerificacion: res.data.result.certificado.codigoVerificacion, emitidoEn: res.data.result.certificado.emitidoEn }
+                            : p)))
+                    }
+                } catch (err: any) {
+                    toast.error(err.response?.data?.message || 'Error al generar el certificado')
+                    setDownloadingPlantilla(null)
+
+                    return
+                }
+            }
+        }
+
+        if (!targetCertId) return
 
         setDownloading(true)
         if (plantillaId) setDownloadingPlantilla(plantillaId)
 
-        const suffix = plantillaId === 'colegio_ingenieros' ? '-cid' : plantillaId === 'minimalista' ? '-ipg' : ''
-        const url = buildPdfDownloadUrl(plantillaId)
-        const filename = `certificado${suffix}-${certificado.codigoVerificacion}.pdf`
+        const suffix = plantillaId === 'colegio_ingenieros' ? '-cip' : plantillaId === 'minimalista' ? '-ipg' : ''
+        const url = buildPdfDownloadUrl(targetCertId)
+        const filename = `certificado${suffix}-${codigoParaArchivo ?? targetCertId}.pdf`
 
         const link = document.createElement('a')
 
@@ -447,8 +477,8 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
             open={!!previewPlantilla}
             onClose={() => setPreviewPlantilla(null)}
             plantilla={previewPlantilla}
-            certificadoId={certificado?.id}
-            onDownload={certificado ? handleDescargar : undefined}
+            certificadoId={previewPlantilla?.certificadoId ?? undefined}
+            onDownload={handleDescargar}
             downloading={downloadingPlantilla === previewPlantilla?.id}
         />
     )
@@ -634,59 +664,89 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
 
     // ── Ya tiene certificado ────────────────────────────────────────
     if (certificado && elegibilidad?.isEligible) {
+        const obtenidas = tienePreviewsHabilitados
+            ? plantillasPreview.filter(p => p.habilitado)
+            : [{ id: '', nombre: '', thumbnail: '', habilitado: true, certificadoId: certificado.id, codigoVerificacion: certificado.codigoVerificacion, emitidoEn: certificado.emitidoEn }]
+
         return (
             <>
                 <Wrapper>
-                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 3 }}>
-                        {/* Ícono decorativo */}
-                        <Box sx={{
-                            width: 80, height: 80, borderRadius: '20px', flexShrink: 0,
-                            background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                            <i className="tabler-award" style={{ fontSize: '2.2rem', color: '#fff' }} />
-                        </Box>
+                    {obtenidas.map((p, idx) => {
+                        const esCip = p.id === 'colegio_ingenieros'
+                        const accentDark = esCip ? '#b91c1c' : '#025E44'
+                        const gradient = esCip
+                            ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
+                            : 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)'
 
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography variant="h6" sx={{ fontWeight: 800, color: 'success.dark', mb: 0.5 }}>
-                                ¡Felicidades!
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                                {certificado.nombreCompleto} · Emitido el{' '}
-                                <HydratedDate date={certificado.emitidoEn} options={{ day: '2-digit', month: 'long', year: 'numeric' }} />
-                            </Typography>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 2, flexWrap: 'wrap' }}>
-                                <i className="tabler-fingerprint" style={{ fontSize: '0.85rem', color: '#64748b' }} />
-                                <Typography variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 700, color: 'primary.main', fontSize: '0.72rem' }}>
-                                    {certificado.codigoVerificacion}
-                                </Typography>
+                        return (
+                            <Box
+                                key={p.id || 'principal'}
+                                sx={{
+                                    display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 3,
+                                    ...(idx > 0 ? { mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'divider' } : {})
+                                }}
+                            >
+                                <Box sx={{
+                                    width: 80, height: 80, borderRadius: '20px', flexShrink: 0,
+                                    background: gradient,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    <i className="tabler-award" style={{ fontSize: '2.2rem', color: '#fff' }} />
+                                </Box>
+
+                                <Box sx={{ flex: 1, minWidth: 0 }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 800, color: esCip ? 'error.dark' : 'success.dark', mb: 0.5 }}>
+                                        ¡Felicidades!{p.nombre ? ` — ${p.nombre}` : ''}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                                        {p.emitidoEn
+                                            ? <>{certificado.nombreCompleto} · Emitido el{' '}
+                                                <HydratedDate date={p.emitidoEn} options={{ day: '2-digit', month: 'long', year: 'numeric' }} /></>
+                                            : 'Certificado disponible para descargar'}
+                                    </Typography>
+                                    {p.codigoVerificacion && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 2, flexWrap: 'wrap' }}>
+                                            <i className="tabler-fingerprint" style={{ fontSize: '0.85rem', color: '#64748b' }} />
+                                            <Typography variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 700, color: 'primary.main', fontSize: '0.72rem' }}>
+                                                {p.codigoVerificacion}
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                    <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                                        <Button
+                                            variant="contained"
+                                            size="small"
+                                            onClick={() => handleDescargar(p.id || undefined)}
+                                            disabled={p.id ? downloadingPlantilla === p.id : downloading}
+                                            startIcon={(p.id ? downloadingPlantilla === p.id : downloading)
+                                                ? <CircularProgress size={14} color="inherit" />
+                                                : <i className="tabler-download" />
+                                            }
+                                            sx={{ bgcolor: accentDark, borderRadius: '10px', textTransform: 'none', fontWeight: 700, boxShadow: 'none', '&:hover': { bgcolor: accentDark, opacity: 0.9, boxShadow: 'none' } }}
+                                        >
+                                            {(p.id ? downloadingPlantilla === p.id : downloading) ? 'Descargando...' : 'Descargar PDF'}
+                                        </Button>
+                                        {p.codigoVerificacion && (
+                                            <Button
+                                                component="a"
+                                                href={`/verificar-certificado/${p.codigoVerificacion}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                variant="outlined"
+                                                size="small"
+                                                color={esCip ? 'error' : 'success'}
+                                                startIcon={<i className="tabler-shield-check" />}
+                                                sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700 }}
+                                            >
+                                                Verificar
+                                            </Button>
+                                        )}
+                                    </Box>
+                                </Box>
                             </Box>
-                            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-                                {!tienePreviewsHabilitados && (
-                                    <Button
-                                        variant="contained"
-                                        size="small"
-                                        onClick={() => handleDescargar()}
-                                        disabled={downloading}
-                                        startIcon={downloading ? <CircularProgress size={14} color="inherit" /> : <i className="tabler-download" />}
-                                        sx={{ bgcolor: '#025E44', borderRadius: '10px', textTransform: 'none', fontWeight: 700, boxShadow: 'none', '&:hover': { bgcolor: '#014d36', boxShadow: 'none' } }}
-                                    >
-                                        {downloading ? 'Descargando...' : 'Descargar PDF'}
-                                    </Button>
-                                )}
-                            </Box>
-                        </Box>
-                    </Box>
+                        )
+                    })}
                 </Wrapper>
-                {tienePreviewsHabilitados && (
-                    <CertificadoPreviewGrid
-                        plantillas={plantillasPreview}
-                        certificadoId={certificado.id}
-                        onDownload={handleDescargar}
-                        downloadingPlantilla={downloadingPlantilla}
-                        onCardClick={setPreviewPlantilla}
-                    />
-                )}
                 {previewModal}
             </>
         )
@@ -846,6 +906,8 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
             {el.isEligible && tienePreviewsHabilitados && (
                 <CertificadoPreviewGrid
                     plantillas={plantillasPreview}
+                    onDownload={handleDescargar}
+                    downloadingPlantilla={downloadingPlantilla}
                     onCardClick={setPreviewPlantilla}
                 />
             )}

@@ -376,8 +376,8 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
   const porcuantoLines = doc.splitTextToSize(porcuantoTxt, textMaxW)
 
   const DESC_SIZE = 10.6
-  const NOMBRE_SIZE = 30
-  const CURSO_SIZE = 20
+  const NOMBRE_SIZE = 20
+  const CURSO_SIZE = 14
   const descLh = DESC_SIZE * ptToMm * 1.06
 
   const descPlain = descSegs.map(s => s.text).join('')
@@ -419,7 +419,7 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
   y += g + h3
   doc.setFontSize(NOMBRE_SIZE); setBold()
   doc.setTextColor(RED.r, RED.g, RED.b)
-  doc.text(nombreLines, cx, y - 2.2, { align: 'center' })
+  doc.text(nombreLines, cx, y - 1.5, { align: 'center' })
 
   // "Por haber concluido..." — Regular 10.6pt
   y += g + h4
@@ -431,7 +431,7 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
   y += g + h5
   doc.setFontSize(CURSO_SIZE); setSB()
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
-  doc.text(cursoLines, cx, y - 1.0, { align: 'center' })
+  doc.text(cursoLines, cx, y - 0.7, { align: 'center' })
 
   // Descripción
   const descDrawY = y + g + descLh

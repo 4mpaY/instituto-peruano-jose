@@ -334,8 +334,8 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   doc.addImage(blackQrBuf, 'PNG', qrX, qrY, qrSize, qrSize)
   drawQrVerificationLabels(qrX, qrY, qrSize)
 
-  const NOMBRE_SIZE = 30
-  const CURSO_SIZE = 20
+  const NOMBRE_SIZE = 20
+  const CURSO_SIZE = 14
   const DESC_SIZE = 10.6
   const descLh = DESC_SIZE * ptToMm * 1.06
 
@@ -405,7 +405,7 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   y += g + h3
   doc.setFontSize(NOMBRE_SIZE); setBold()
   doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
-  doc.text(nombreLines, cx, y - 2.2, { align: 'center' })
+  doc.text(nombreLines, cx, y - 1.5, { align: 'center' })
 
   // "Por haber concluido..." — Regular 10.6pt
   y += g + h4
@@ -417,7 +417,7 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   y += g + h5
   doc.setFontSize(CURSO_SIZE); setSB()
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
-  doc.text(cursoLines, cx, y - 1.0, { align: 'center' })
+  doc.text(cursoLines, cx, y - 0.7, { align: 'center' })
 
   // Descripción
   const descDrawY = y + g + descLh

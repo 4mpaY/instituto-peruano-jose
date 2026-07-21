@@ -341,12 +341,11 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
 
   const textMaxW = W - margin * 2 - 40
   const textMaxWCurso = W - margin * 2 - 60
-  const sigLineY = H - BAR_H - 32
 
   // Definir área útil para el bloque de texto con holgura segura para evitar colisión con firmas y sellos
   const topLimit = 37
-  const bottomLimitP1 = sigLineY - 32
-  const availableSpace = bottomLimitP1 - topLimit
+  const baseSigLineY = H - BAR_H - 32
+  const minGap = 5.0
 
   const fechaInicioTxt = formatDateLong(fechaInicioVal)
   const fechaFinTxt = formatDateLong(fechaFinVal)
@@ -362,8 +361,13 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
 
   const porcuantoTxt = 'Por cuanto: Para que conste y sea reconocido, se otorga el presente certificado en calidad de:'
 
+  doc.setFontSize(NOMBRE_SIZE); setBold()
   const nombreLines = doc.splitTextToSize(nombreCompleto, textMaxW)
+
+  doc.setFontSize(CURSO_SIZE); setSB()
   const cursoLines = doc.splitTextToSize(cursoTitulo, textMaxWCurso)
+
+  doc.setFontSize(DESC_SIZE); setNormal()
   const porcuantoLines = doc.splitTextToSize(porcuantoTxt, textMaxW)
 
   const descPlain = descSegs.map(s => s.text).join('')
@@ -382,11 +386,27 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
 
   const hTextOnly = h1 + h2 + h3 + h4 + h5 + h6 + h7 + h8 + h9
 
-  // Para 9 elementos de texto, hay exactamente 8 gaps visuales intermedios
-  const g = Math.max(2.0, (availableSpace - hTextOnly) / 8)
+  // Para 9 elementos de texto, hay exactamente 8 gaps visuales intermedios.
+  // El diseño nominal centra el bloque entre topLimit y la firma con un gap uniforme.
+  // Si el nombre o el curso pasan a una segunda línea, el bloque crece: en vez de
+  // comprimir el espaciado (que provocaría solapes), se mantiene el gap mínimo y se
+  // empuja hacia abajo todo lo que sigue, incluida la línea de firma.
+  const nominalAvailable = (baseSigLineY - 32) - topLimit
+  const naturalHeight = hTextOnly + 8 * minGap
 
-  const finalTotalHeight = hTextOnly + 8 * g
-  const startY = topLimit + (availableSpace - finalTotalHeight) / 2
+  let g: number
+  let startY: number
+  let sigLineY: number
+
+  if (naturalHeight <= nominalAvailable) {
+    g = Math.max(minGap, (nominalAvailable - hTextOnly) / 8)
+    startY = topLimit + (nominalAvailable - (hTextOnly + 8 * g)) / 2
+    sigLineY = baseSigLineY
+  } else {
+    g = minGap
+    startY = topLimit
+    sigLineY = baseSigLineY + (naturalHeight - nominalAvailable)
+  }
 
   let y = startY + h1
 
@@ -401,11 +421,22 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
   doc.text('Otorgado a:', cx, y, { align: 'center' })
 
-  // Nombre del estudiante — Bold 30pt, teal
-  y += g + h3
+  // Nombre del estudiante — Bold, teal (líneas dibujadas manualmente para que el
+  // alto real coincida exactamente con h3, sin importar cuántas líneas ocupe)
   doc.setFontSize(NOMBRE_SIZE); setBold()
   doc.setTextColor(TEAL.r, TEAL.g, TEAL.b)
-  doc.text(nombreLines, cx, y - 1.5, { align: 'center' })
+
+  {
+    const nombreLineH = NOMBRE_SIZE * ptToMm * 1.06
+    let cyLine = y + g
+
+    for (const line of nombreLines) {
+      cyLine += nombreLineH
+      doc.text(line, cx, cyLine - 1.5, { align: 'center' })
+    }
+  }
+
+  y += g + h3
 
   // "Por haber concluido..." — Regular 10.6pt
   y += g + h4
@@ -413,11 +444,21 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
   doc.text('Por haber concluido y aprobado con éxito el curso de especialización de:', cx, y, { align: 'center' })
 
-  // Nombre del curso — SemiBold 20pt
-  y += g + h5
+  // Nombre del curso — SemiBold (mismo tratamiento línea a línea que el nombre)
   doc.setFontSize(CURSO_SIZE); setSB()
   doc.setTextColor(DARK.r, DARK.g, DARK.b)
-  doc.text(cursoLines, cx, y - 0.7, { align: 'center' })
+
+  {
+    const cursoLineH = CURSO_SIZE * ptToMm * 1.06
+    let cyLine = y + g
+
+    for (const line of cursoLines) {
+      cyLine += cursoLineH
+      doc.text(line, cx, cyLine - 0.7, { align: 'center' })
+    }
+  }
+
+  y += g + h5
 
   // Descripción
   const descDrawY = y + g + descLh

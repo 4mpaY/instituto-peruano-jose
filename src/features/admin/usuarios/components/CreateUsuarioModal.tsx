@@ -39,6 +39,7 @@ const CreateUsuarioModal = ({ open, handleClose, onSuccess }: CreateUsuarioModal
     contrasena: '',
     nombre: '',
     apellido: '',
+    tipo_documento: 'DNI',
     numero_documento: '',
     celular: '',
     biografia: '',
@@ -168,6 +169,7 @@ const CreateUsuarioModal = ({ open, handleClose, onSuccess }: CreateUsuarioModal
                       } else {
                         e.target.value = e.target.value.substring(0, 20)
                       }
+
                       handleChange(e)
                     }}
                     onBlur={handleBlur}

@@ -289,7 +289,9 @@ declare module 'next-auth' {
     id: string
     rol?: string
     avatar?: string | null
+    tipo_documento?: string | null
     numero_documento?: string
+    celular?: string | null
     esta_activo?: boolean
   }
 
@@ -301,7 +303,9 @@ declare module 'next-auth' {
       image?: string | null
       rol: string
       avatar?: string | null
+      tipo_documento: string
       numero_documento: string
+      celular: string
       esta_activo: boolean
       accessToken?: string
     }
@@ -313,7 +317,9 @@ declare module 'next-auth/jwt' {
     id?: string
     rol?: string
     avatar?: string | null
+    tipo_documento?: string | null
     numero_documento?: string
+    celular?: string | null
     esta_activo?: boolean
     accessToken?: string
   }

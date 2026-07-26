@@ -131,7 +131,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
         }
 
         checkCertificadoPending()
-    }, [mounted, storeCourse?.id])
+    }, [mounted, storeCourse])
 
     useEffect(() => {
         if (initialLessonId && mounted) setCurrentLessonId(initialLessonId)
@@ -174,6 +174,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
         if (isMobile) setActiveTab(TAB('Temario'))
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleLessonComplete = async (lessonId: string, completed: boolean = true) => {
         updateLessonProgress(lessonId, completed)
 
@@ -1080,7 +1081,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
             )}
 
             {/* Modal de Certificado Pendiente */}
-            <AppModal open={certPopupOpen} onClose={() => setCertPopupOpen(false)}>
+            <AppModal open={certPopupOpen} handleClose={() => setCertPopupOpen(false)}>
                 <Box textAlign="center" p={2}>
                     <i className="tabler-certificate" style={{ fontSize: 60, color: '#f59e0b', display: 'block', marginBottom: 16 }} />
                     <Typography variant="h6" fontWeight={800} gutterBottom>

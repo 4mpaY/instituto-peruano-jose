@@ -39,7 +39,7 @@ export const crearUsuarioSchema = z.object({
     .optional()
     .or(z.literal('')),
   rol: z
-    .enum(['ADMIN', 'PROFESOR', 'ESTUDIANTE'])
+    .enum(['ADMIN', 'PROFESOR', 'ESTUDIANTE', 'ASESOR'])
     .optional()
     .default('ESTUDIANTE'),
   biografia: z
@@ -117,7 +117,7 @@ export const actualizarUsuarioSchema = z.object({
     .optional()
     .or(z.literal('')),
   rol: z
-    .enum(['ADMIN', 'PROFESOR', 'ESTUDIANTE'])
+    .enum(['ADMIN', 'PROFESOR', 'ESTUDIANTE', 'ASESOR'])
     .optional(),
   biografia: z
     .string()

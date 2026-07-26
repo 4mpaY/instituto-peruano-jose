@@ -50,9 +50,7 @@ export const registerSchema = z
       .min(2, 'El apellido debe tener al menos 2 caracteres')
       .max(50, 'El apellido no puede exceder 50 caracteres'),
     tipo_documento: z
-      .enum(['DNI', 'CE', 'PASAPORTE', 'OTRO'])
-      .optional()
-      .default('DNI'),
+      .enum(['DNI', 'CE', 'PASAPORTE', 'OTRO']),
     numero_documento: z
       .string()
       .trim()

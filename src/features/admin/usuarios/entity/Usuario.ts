@@ -1,10 +1,11 @@
-import type { Rol } from '@prisma/client'
+import type { Rol, TipoDocumento } from '@prisma/client'
 
 export interface Usuario {
   id: string
   correo: string
   nombre: string
   apellido: string
+  tipo_documento: TipoDocumento | null
   numero_documento: string
   avatar: string | null
   biografia: string | null

@@ -287,6 +287,7 @@ const EditUsuarioModal = ({ open, handleClose, usuarioId, onSuccess }: EditUsuar
                           } else {
                             e.target.value = e.target.value.substring(0, 20)
                           }
+
                           handleChange(e)
                         }}
                         onBlur={handleBlur}
@@ -303,20 +304,20 @@ const EditUsuarioModal = ({ open, handleClose, usuarioId, onSuccess }: EditUsuar
                       />
                     </Grid>
 
-                      <Grid item xs={12} sm={4}>
-                        <MuiTelInput
-                          fullWidth
-                          label='Celular (Opcional)'
-                          name='celular'
-                          defaultCountry='PE'
-                          value={values.celular}
-                          onChange={(newValue) => setFieldValue('celular', newValue)}
-                          onBlur={() => setFieldTouched('celular', true)}
-                          error={touched.celular && Boolean(errors.celular)}
-                          helperText={touched.celular && (errors.celular as string)}
-                          disabled={isSubmitting}
-                        />
-                      </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <MuiTelInput
+                        fullWidth
+                        label='Celular (Opcional)'
+                        name='celular'
+                        defaultCountry='PE'
+                        value={values.celular}
+                        onChange={(newValue) => setFieldValue('celular', newValue)}
+                        onBlur={() => setFieldTouched('celular', true)}
+                        error={touched.celular && Boolean(errors.celular)}
+                        helperText={touched.celular && (errors.celular as string)}
+                        disabled={isSubmitting}
+                      />
+                    </Grid>
 
                     {/* Biografía — simple para ESTUDIANTE */}
                     {values.rol === Rol.ESTUDIANTE && (

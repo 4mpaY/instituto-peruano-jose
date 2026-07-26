@@ -32,6 +32,11 @@ export interface CourseExamen {
     puntaje_aprobacion: number
     intentos_maximos: number
     esta_publicado: boolean
+    fecha_inicio?: string | Date | null
+    fecha_fin?: string | Date | null
+    intentos_realizados?: number
+    ya_aprobado?: boolean
+    mejor_puntaje?: number | null
 }
 
 export interface Course {

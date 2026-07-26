@@ -67,7 +67,7 @@ export default function CompleteProfileModal({
   const schema = createProfileSchema(requireDocument, requireCelular)
 
   const initialValues: ProfileForm = {
-    tipo_documento: (session?.user?.tipo_documento as any) || 'DNI',
+    tipo_documento: (session?.user?.tipo_documento as ProfileForm['tipo_documento']) || 'DNI',
     numero_documento: session?.user?.numero_documento || '',
     celular: session?.user?.celular || ''
   }

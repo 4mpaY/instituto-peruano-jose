@@ -5,8 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSession } from 'next-auth/react'
-import CompleteProfileModal from './CompleteProfileModal'
+
 import {
     Box,
     Typography,
@@ -24,6 +23,8 @@ import {
     LinearProgress,
     Divider
 } from '@mui/material'
+
+import CompleteProfileModal from './CompleteProfileModal'
 
 interface Opcion {
     id: string
@@ -148,7 +149,6 @@ const StateCard = ({ icon, iconColor, bgColor, borderColor, title, subtitle, act
 
 const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, contactoUrl }: ExamSectionProps) => {
     const queryClient = useQueryClient()
-    const { data: session } = useSession()
     const [submitting, setSubmitting] = useState(false)
     const [respuestas, setRespuestas] = useState<Record<string, string>>({})
     const [resultado, setResultado] = useState<any>(null)
@@ -167,6 +167,7 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
         yaAprobado: boolean
         intentosRestantes: number
         resultadoAnterior?: any
+        celularCompleto: boolean
     }>({
         queryKey: ['examen', 'estudiante', examenId],
         queryFn: async () => {
@@ -261,7 +262,7 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
             return
         }
 
-        if (!session?.user?.celular || session.user.celular.trim() === '' || session.user.celular === 'null') {
+        if (!queryData?.celularCompleto) {
             setShowProfileModal(true)
 
             return
@@ -768,6 +769,7 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
                 requireCelular={true}
                 onSuccess={() => {
                     setShowProfileModal(false)
+                    queryClient.invalidateQueries({ queryKey: ['examen', 'estudiante', examenId] })
                     startExamTimer()
                 }}
             />
@@ -871,6 +873,7 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
                 requireCelular={true}
                 onSuccess={() => {
                     setShowProfileModal(false)
+                    queryClient.invalidateQueries({ queryKey: ['examen', 'estudiante', examenId] })
                     startExamTimer()
                 }}
             />

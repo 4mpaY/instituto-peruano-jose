@@ -31,6 +31,7 @@ import { PayPalScriptProvider } from '@paypal/react-paypal-js'
 import { useConfig } from '@/contexts/ConfigContext'
 import { useAuthModal } from '@/contexts/AuthModalContext'
 import AppModal from '@/utils/components/AppModal'
+import CompleteProfileModal from '@/features/estudiante/player/components/CompleteProfileModal'
 import IzipayScript from './IzipayScript'
 import CulqiScript from './CulqiScript'
 import { PayPalPaymentButton } from './PayPalPaymentButton'
@@ -181,6 +182,10 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
   const [confirmModalOpen, setConfirmModalOpen] = useState(false)
   const [confirmedOrder, setConfirmedOrder] = useState<{ pedidoId: string; numeroPedido: number; total: number; cursos: string[] } | null>(null)
 
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [pendingPaymentAction, setPendingPaymentAction] = useState<(() => void) | null>(null)
+  const hasDocument = Boolean(session?.user?.numero_documento)
+
   const [formData, setFormData] = useState({ nombres: '', apellidos: '', correo: '' })
   const [tipoComprobante, setTipoComprobante] = useState<'TICKET' | 'BOLETA' | 'FACTURA'>('TICKET')
   const [numeroComprobante, setNumeroComprobante] = useState('')
@@ -307,6 +312,23 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
       setIsLoading(false)
     }
   }, [handlePaymentSuccess])
+
+  const runWithDocument = (action: () => void) => {
+    if (!session) {
+      openLogin()
+
+      return
+    }
+
+    if (!hasDocument) {
+      setPendingPaymentAction(() => action)
+      setShowProfileModal(true)
+
+      return
+    }
+
+    action()
+  }
 
   const handleCheckout = async () => {
     if (!session) {
@@ -720,7 +742,7 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
                   variant='contained'
                   fullWidth
                   size='large'
-                  onClick={handleCulqiCheckout}
+                  onClick={() => runWithDocument(handleCulqiCheckout)}
                   disabled={isLoading || !isCulqiLoaded || (!acceptedTerms && !isGuest)}
                   startIcon={isLoading || !isCulqiLoaded ? <CircularProgress size={18} color='inherit' /> : <i className='tabler-lock' />}
                   sx={{ py: 1.75, borderRadius: 2.5, fontWeight: 800, fontSize: '1rem', textTransform: 'none' }}
@@ -739,7 +761,7 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
                   variant='contained'
                   fullWidth
                   size='large'
-                  onClick={handleCheckout}
+                  onClick={() => runWithDocument(handleCheckout)}
                   disabled={isLoading || (!acceptedTerms && !isGuest)}
                   startIcon={isLoading ? <CircularProgress size={18} color='inherit' /> : <i className='tabler-lock' />}
                   sx={{ py: 1.75, borderRadius: 2.5, fontWeight: 800, fontSize: '1rem', textTransform: 'none' }}
@@ -760,12 +782,22 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
                   <>
                     <SecureBadge provider='PayPal' />
                     <TermsCheck checked={acceptedTerms} onChange={setAcceptedTerms} />
-                    {acceptedTerms ? (
+                    {!acceptedTerms ? (
+                      <Alert severity='info' sx={{ borderRadius: 2 }}>Acepta los términos y condiciones para habilitar el pago con PayPal.</Alert>
+                    ) : !hasDocument ? (
+                      <Button
+                        variant='contained'
+                        fullWidth
+                        size='large'
+                        onClick={() => runWithDocument(() => {})}
+                        sx={{ py: 1.75, borderRadius: 2.5, fontWeight: 800, fontSize: '1rem', textTransform: 'none' }}
+                      >
+                        Completar mis datos para continuar
+                      </Button>
+                    ) : (
                       <PayPalScriptProvider options={{ clientId: paypalClientId, currency: 'USD' }}>
                         <PayPalPaymentButton cursoIds={courses.map(c => c.id)} codigoCupon={appliedCouponCode} onSuccess={handlePaymentSuccess} onError={(err) => setPaymentError(err)} />
                       </PayPalScriptProvider>
-                    ) : (
-                      <Alert severity='info' sx={{ borderRadius: 2 }}>Acepta los términos y condiciones para habilitar el pago con PayPal.</Alert>
                     )}
                   </>
                 )}
@@ -787,7 +819,7 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
                       variant='contained'
                       fullWidth
                       size='large'
-                      onClick={handleMercadoPagoCheckout}
+                      onClick={() => runWithDocument(handleMercadoPagoCheckout)}
                       disabled={isLoading || !acceptedTerms}
                       startIcon={isLoading ? <CircularProgress size={18} color='inherit' /> : <i className='tabler-shopping-cart' />}
                       sx={{ py: 1.75, borderRadius: 2.5, fontWeight: 800, fontSize: '1rem', textTransform: 'none', bgcolor: '#009ee3', '&:hover': { bgcolor: '#0087c2' } }}
@@ -1021,7 +1053,7 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
                         variant='contained'
                         fullWidth
                         size='large'
-                        onClick={handleManualCheckout}
+                        onClick={() => runWithDocument(handleManualCheckout)}
                         disabled={isLoading || !voucher}
                         startIcon={isLoading ? <CircularProgress size={18} color='inherit' /> : <i className='tabler-send' />}
                         sx={{ py: 1.75, borderRadius: 2.5, fontWeight: 800, fontSize: '1rem', textTransform: 'none', letterSpacing: 0.3 }}
@@ -1198,6 +1230,18 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
           </Stack>
         </Box>
       </AppModal>
+
+      <CompleteProfileModal
+        open={showProfileModal}
+        onClose={() => { setShowProfileModal(false); setPendingPaymentAction(null) }}
+        requireDocument={true}
+        requireCelular={false}
+        onSuccess={() => {
+          setShowProfileModal(false)
+          pendingPaymentAction?.()
+          setPendingPaymentAction(null)
+        }}
+      />
     </>
   )
 }

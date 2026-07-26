@@ -8,8 +8,6 @@ import {
     Box, Typography, Button, CircularProgress, LinearProgress, Chip, Divider
 } from '@mui/material'
 
-import { useSession } from 'next-auth/react'
-
 import HydratedDate from '@/utils/components/HydratedDate'
 import AppModal from '@/utils/components/AppModal'
 import CompleteProfileModal from './CompleteProfileModal'
@@ -302,7 +300,6 @@ const ScoreRing = ({ value, min, label }: { value: number; min: number; label: s
 }
 
 const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsCompleted, phoneNumberProfesor }: CertificateSectionProps) => {
-    const { data: session } = useSession()
     const [loading, setLoading] = useState(true)
     const [generating, setGenerating] = useState(false)
     const [downloading, setDownloading] = useState(false)
@@ -316,6 +313,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     const [previewPlantilla, setPreviewPlantilla] = useState<PlantillaPreview | null>(null)
     const [cursoTitulo, setCursoTitulo] = useState<string | null>(null)
     const [whatsappNumero, setWhatsappNumero] = useState<string | null>(null)
+    const [documentoCompleto, setDocumentoCompleto] = useState(false)
     const autoGeneradoRef = useRef(false)
 
     useEffect(() => {
@@ -336,6 +334,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                     setPlantillasPreview(res.data.result.plantillasPreview ?? [])
                     setCursoTitulo(res.data.result.cursoTitulo ?? null)
                     setWhatsappNumero(resPago?.data?.result?.whatsapp_numero || null)
+                    setDocumentoCompleto(res.data.result.documentoCompleto ?? false)
                 } else {
                     setFetchError(true)
                 }
@@ -384,6 +383,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                 setPagoPendiente(res.data.result.pagoPendiente ?? false)
                 setPlantillasPreview(res.data.result.plantillasPreview ?? [])
                 setCertificado(res.data.result.certificado ?? null)
+                setDocumentoCompleto(res.data.result.documentoCompleto ?? false)
                 autoGeneradoRef.current = false
             }
         } catch (err: any) {
@@ -397,7 +397,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     const [pendingAction, setPendingAction] = useState<{ type: 'generar' | 'descargar', plantillaId?: string } | null>(null)
 
     const handleGenerar = async (force: boolean = false) => {
-        if (!force && !session?.user?.numero_documento) {
+        if (!force && !documentoCompleto) {
             setPendingAction({ type: 'generar' })
             setShowProfileModal(true)
             
@@ -427,7 +427,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     }
 
     const handleDescargar = async (plantillaId?: string, force: boolean = false) => {
-        if (!force && !session?.user?.numero_documento) {
+        if (!force && !documentoCompleto) {
             setPendingAction({ type: 'descargar', plantillaId })
             setShowProfileModal(true)
 
@@ -822,7 +822,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                         {el.totalExamenes > 0 && (
                             <Button
                                 variant="contained"
-                                onClick={handleGenerar}
+                                onClick={() => handleGenerar()}
                                 disabled={generating}
                                 startIcon={generating ? <CircularProgress size={18} color="inherit" /> : <i className="tabler-certificate" />}
                                 sx={{
@@ -941,6 +941,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                 requireCelular={false}
                 onSuccess={() => {
                     setShowProfileModal(false)
+                    setDocumentoCompleto(true)
 
                     if (pendingAction?.type === 'generar') {
                         handleGenerar(true)

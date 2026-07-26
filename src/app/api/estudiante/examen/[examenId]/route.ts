@@ -133,6 +133,14 @@ export async function GET(request: Request, { params }: { params: { examenId: st
 
     const yaAprobado = !!intentoAprobado
 
+    // Verificar celular directamente en BD (evita depender del JWT, que puede quedar desactualizado)
+    const usuarioActual = await prisma.usuario.findUnique({
+      where: { id: auth.user.id },
+      select: { celular: true }
+    })
+
+    const celularCompleto = !!usuarioActual?.celular?.trim()
+
     let resultadoAnterior = null
 
     if (ultimoIntento && (yaAprobado || intentosRestantes <= 0 || examenExpirado)) {
@@ -182,7 +190,8 @@ export async function GET(request: Request, { params }: { params: { examenId: st
       intentosRestantes,
       yaAprobado,
       puntajeAprobado: intentoAprobado?.puntaje || null,
-      resultadoAnterior
+      resultadoAnterior,
+      celularCompleto
     })
   } catch (error) {
     return handleApiError(error, request)

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
       return ApiResponse.error(request, 'El ID del curso es requerido', 400)
     }
 
-    const [certificados, elegibilidad, inscripcionHab, curso] = await Promise.all([
+    const [certificados, elegibilidad, inscripcionHab, curso, usuarioActual] = await Promise.all([
       prisma.certificado.findMany({
         where: { usuario_id: auth.user.id, curso_id: cursoId },
         include: {
@@ -37,8 +37,12 @@ export async function GET(request: Request) {
       }),
       calcularElegibilidad(auth.user.id, cursoId),
       getInscripcionCertificadoHabilitacion(auth.user.id, cursoId),
-      prisma.curso.findUnique({ where: { id: cursoId }, select: { precio_certificado: true, titulo: true } })
+      prisma.curso.findUnique({ where: { id: cursoId }, select: { precio_certificado: true, titulo: true } }),
+      prisma.usuario.findUnique({ where: { id: auth.user.id }, select: { numero_documento: true } })
     ])
+
+    // Verificar documento directamente en BD (evita depender del JWT, que puede quedar desactualizado)
+    const documentoCompleto = !!usuarioActual?.numero_documento?.trim()
 
     const certIpg = certificados.find(c => c.tipo === 'IPG') ?? null
     const certCip = certificados.find(c => c.tipo === 'CIP') ?? null
@@ -67,6 +71,7 @@ export async function GET(request: Request) {
       elegibilidad,
       pagoPendiente,
       precioCertificado: precioCert,
+      documentoCompleto,
       certificadosHabilitados: {
         ipg: ipgHabilitado,
         cip: cipHabilitado,

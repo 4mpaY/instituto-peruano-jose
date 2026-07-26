@@ -18,7 +18,10 @@ import {
     Tooltip,
 } from '@mui/material'
 
+import { useSession } from 'next-auth/react'
+
 import { useCourseStore } from '../store/useCourseStore'
+import CompleteProfileModal from './CompleteProfileModal'
 
 interface CourseContentSidebarProps {
     onLessonSelect: (lessonId: string) => void
@@ -37,7 +40,20 @@ const CourseContentSidebar = ({ onLessonSelect }: CourseContentSidebarProps) => 
         openExam
     } = useCourseStore()
 
+    const { data: session } = useSession()
+    const [showProfileModal, setShowProfileModal] = useState(false)
+
     const [searchQuery] = useState('')
+
+    const handleOpenCertificate = () => {
+        if (!session?.user?.numero_documento) {
+            setShowProfileModal(true)
+
+            return
+        }
+
+        setCurrentView('certificate')
+    }
 
     const filteredModules = useMemo(() => {
         const modules = course?.modulos || []
@@ -60,6 +76,7 @@ const CourseContentSidebar = ({ onLessonSelect }: CourseContentSidebarProps) => 
     }, [course?.modulos, searchQuery])
 
     return (
+        <>
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
 
             {/* ── Header ── */}
@@ -328,7 +345,7 @@ const CourseContentSidebar = ({ onLessonSelect }: CourseContentSidebarProps) => 
                             fullWidth
                             variant={currentView === 'certificate' ? 'contained' : 'outlined'}
                             startIcon={<i className="tabler-certificate" />}
-                            onClick={() => setCurrentView('certificate')}
+                            onClick={handleOpenCertificate}
                             sx={{
                                 borderRadius: '10px',
                                 py: 1.25,
@@ -348,6 +365,17 @@ const CourseContentSidebar = ({ onLessonSelect }: CourseContentSidebarProps) => 
             )}
         </Box>
         </Box>
+        <CompleteProfileModal
+            open={showProfileModal}
+            onClose={() => setShowProfileModal(false)}
+            requireDocument={true}
+            requireCelular={false}
+            onSuccess={() => {
+                setShowProfileModal(false)
+                setCurrentView('certificate')
+            }}
+        />
+        </>
     )
 }
 

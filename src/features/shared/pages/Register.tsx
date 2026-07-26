@@ -25,6 +25,7 @@ import MenuItem from '@mui/material/MenuItem'
 import classnames from 'classnames'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { MuiTelInput } from 'mui-tel-input'
 
 // Component Imports
 import GoogleButton from '@/features/shared/components/GoogleButton'
@@ -333,11 +334,14 @@ const Register = ({ mode }: { mode: SystemMode }) => {
                   name='celular'
                   control={control}
                   render={({ field }) => (
-                    <CustomTextField
-                      {...field}
+                    <MuiTelInput
                       fullWidth
                       label='Celular (opcional)'
-                      placeholder='987654321'
+                      defaultCountry='PE'
+                      preferredCountries={['PE', 'CO', 'MX', 'CL', 'AR']}
+                      value={field.value}
+                      onChange={value => field.onChange(value)}
+                      onBlur={field.onBlur}
                       error={!!errors.celular}
                       helperText={errors.celular?.message}
                       disabled={isLoading}

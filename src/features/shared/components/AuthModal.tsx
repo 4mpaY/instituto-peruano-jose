@@ -22,6 +22,7 @@ import {
 import { signIn } from 'next-auth/react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { MuiTelInput } from 'mui-tel-input'
 
 import { loginSchema, type LoginDto, registerSchema, type RegisterDto, forgotPasswordSchema, type ForgotPasswordDto, resetPasswordSchema, type ResetPasswordDto } from '@/schemas/auth.schema'
 import CustomTextField from '@core/components/mui/TextField'
@@ -479,11 +480,14 @@ const AuthModal = ({ open, mode, callbackUrl, onClose, onSwitchMode }: AuthModal
                   name="celular"
                   control={registerForm.control}
                   render={({ field }) => (
-                    <CustomTextField
-                      {...field}
+                    <MuiTelInput
                       fullWidth
                       label="Celular (opcional)"
-                      placeholder="987654321"
+                      defaultCountry="PE"
+                      preferredCountries={['PE', 'CO', 'MX', 'CL', 'AR']}
+                      value={field.value}
+                      onChange={value => field.onChange(value)}
+                      onBlur={field.onBlur}
                       error={!!registerForm.formState.errors.celular}
                       helperText={registerForm.formState.errors.celular?.message}
                       disabled={isLoading}

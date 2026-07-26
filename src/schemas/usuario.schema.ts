@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { Rol } from '@prisma/client'
 
 /**
  * Schema para crear usuario (Admin)
@@ -24,20 +23,25 @@ export const crearUsuarioSchema = z.object({
     .trim()
     .min(2, 'El apellido debe tener al menos 2 caracteres')
     .max(50, 'El apellido no puede exceder 50 caracteres'),
+  tipo_documento: z
+    .enum(['DNI', 'CE', 'PASAPORTE', 'OTRO'])
+    .optional()
+    .default('DNI'),
   numero_documento: z
     .string()
     .trim()
-    .regex(/^\d{8}$/, 'El DNI debe tener exactamente 8 dígitos'),
+    .optional()
+    .or(z.literal('')),
   celular: z
     .string()
     .trim()
-    .regex(/^9\d{8}$/, 'El celular debe tener 9 dígitos y comenzar con 9')
+    .regex(/^\+?[\d\s-]{9,20}$/, 'Formato de celular inválido (puede incluir +)')
     .optional()
     .or(z.literal('')),
   rol: z
-    .nativeEnum(Rol)
+    .enum(['ADMIN', 'PROFESOR', 'ESTUDIANTE'])
     .optional()
-    .default(Rol.ESTUDIANTE),
+    .default('ESTUDIANTE'),
   biografia: z
     .string()
     .trim()
@@ -63,6 +67,16 @@ export const crearUsuarioSchema = z.object({
     .trim()
     .optional()
     .or(z.literal('')),
+}).superRefine((data, ctx) => {
+  if (data.tipo_documento === 'DNI' && data.numero_documento) {
+    if (!/^\d{8}$/.test(data.numero_documento)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'El DNI debe tener exactamente 8 dígitos',
+        path: ['numero_documento'],
+      });
+    }
+  }
 })
 
 export type CrearUsuarioDto = z.infer<typeof crearUsuarioSchema>
@@ -88,19 +102,22 @@ export const actualizarUsuarioSchema = z.object({
     .min(2, 'El apellido debe tener al menos 2 caracteres')
     .max(50, 'El apellido no puede exceder 50 caracteres')
     .optional(),
+  tipo_documento: z
+    .enum(['DNI', 'CE', 'PASAPORTE', 'OTRO'])
+    .optional(),
   numero_documento: z
     .string()
     .trim()
-    .regex(/^\d{8}$/, 'El DNI debe tener exactamente 8 dígitos')
-    .optional(),
+    .optional()
+    .or(z.literal('')),
   celular: z
     .string()
     .trim()
-    .regex(/^9\d{8}$/, 'El celular debe tener 9 dígitos y comenzar con 9')
+    .regex(/^\+?[\d\s-]{9,20}$/, 'Formato de celular inválido (puede incluir +)')
     .optional()
     .or(z.literal('')),
   rol: z
-    .nativeEnum(Rol)
+    .enum(['ADMIN', 'PROFESOR', 'ESTUDIANTE'])
     .optional(),
   biografia: z
     .string()
@@ -131,6 +148,17 @@ export const actualizarUsuarioSchema = z.object({
     .optional()
     .or(z.literal('')),
 })
+.superRefine((data, ctx) => {
+  if (data.tipo_documento === 'DNI' && data.numero_documento) {
+    if (!/^\d{8}$/.test(data.numero_documento)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'El DNI debe tener exactamente 8 dígitos',
+        path: ['numero_documento'],
+      });
+    }
+  }
+})
 
 export type ActualizarUsuarioDto = z.infer<typeof actualizarUsuarioSchema>
 
@@ -150,10 +178,18 @@ export const actualizarPerfilSchema = z.object({
     .min(2, 'El apellido debe tener al menos 2 caracteres')
     .max(50, 'El apellido no puede exceder 50 caracteres')
     .optional(),
+  tipo_documento: z
+    .enum(['DNI', 'CE', 'PASAPORTE', 'OTRO'])
+    .optional(),
+  numero_documento: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal('')),
   celular: z
     .string()
     .trim()
-    .regex(/^9\d{8}$/, 'El celular debe tener 9 dígitos y comenzar con 9')
+    .regex(/^\+?[\d\s-]{9,20}$/, 'Formato de celular inválido (puede incluir +)')
     .optional()
     .or(z.literal('')),
   biografia: z
@@ -178,6 +214,17 @@ export const actualizarPerfilSchema = z.object({
     .optional()
     .or(z.literal('')),
 })
+.superRefine((data, ctx) => {
+  if (data.tipo_documento === 'DNI' && data.numero_documento) {
+    if (!/^\d{8}$/.test(data.numero_documento)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'El DNI debe tener exactamente 8 dígitos',
+        path: ['numero_documento'],
+      });
+    }
+  }
+})
 
 export type ActualizarPerfilDto = z.infer<typeof actualizarPerfilSchema>
 
@@ -199,7 +246,7 @@ export const listarUsuariosQuerySchema = z.object({
     .max(1000)
     .default(10),
   rol: z
-    .nativeEnum(Rol)
+    .enum(['ADMIN', 'PROFESOR', 'ESTUDIANTE'])
     .optional(),
   buscar: z
     .string()

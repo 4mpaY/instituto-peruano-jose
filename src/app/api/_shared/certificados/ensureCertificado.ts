@@ -59,7 +59,7 @@ export async function calcularElegibilidad(usuarioId: string, cursoId: string) {
     promedioMinimo = Math.round((sumMinimos / totalExamenes) * 10) / 10
   }
 
-  const isEligible = progreso >= 100 && (totalExamenes === 0 || promedioScore >= promedioMinimo)
+  const isEligible = (totalExamenes === 0 || promedioScore >= promedioMinimo)
 
   return { progreso, promedioScore, promedioMinimo, isEligible, totalExamenes }
 }
@@ -117,9 +117,7 @@ export async function ensureCertificado(usuarioId: string, cursoId: string, tipo
 
   const elegibilidad = await calcularElegibilidad(usuarioId, cursoId)
 
-  if (elegibilidad.progreso < 100) {
-    throw new EnsureCertificadoError('PROGRESO_INCOMPLETO', 'Debes completar todas las lecciones del curso')
-  }
+
 
   if (elegibilidad.totalExamenes > 0 && elegibilidad.promedioScore < elegibilidad.promedioMinimo) {
     const notaPromedio = Math.round((elegibilidad.promedioScore / 100) * 20 * 10) / 10

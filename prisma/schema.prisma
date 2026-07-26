@@ -12,6 +12,7 @@ model Usuario {
   correo             String            @unique
   contrasena         String?
   nombre             String
+  tipo_documento     TipoDocumento?    @default(DNI)
   numero_documento   String?           @unique
   apellido           String
   slug               String?           @unique
@@ -415,7 +416,7 @@ model Certificado {
   usuario_id          String
   curso_id            String
   datos               Json?
-  tipo                CertificadoTipo
+  tipo                CertificadoTipo @default(IPG)
   curso               Curso           @relation(fields: [curso_id], references: [id], onDelete: Cascade)
   usuario             Usuario         @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
@@ -610,6 +611,7 @@ enum Rol {
   ADMIN
   PROFESOR
   ESTUDIANTE
+  ASESOR
 }
 
 enum EstadoCurso {
@@ -681,6 +683,7 @@ enum NivelCurso {
 enum TipoCurso {
   CURSO
   DIPLOMADO
+  ESPECIALIZACION
 }
 
 enum TipoDescuento {
@@ -689,6 +692,13 @@ enum TipoDescuento {
 }
 
 enum TipoDocumentoReclamo {
+  DNI
+  CE
+  PASAPORTE
+  OTRO
+}
+
+enum TipoDocumento {
   DNI
   CE
   PASAPORTE

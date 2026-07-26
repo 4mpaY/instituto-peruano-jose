@@ -5,6 +5,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSession } from 'next-auth/react'
+import CompleteProfileModal from './CompleteProfileModal'
 import {
     Box,
     Typography,
@@ -146,6 +148,7 @@ const StateCard = ({ icon, iconColor, bgColor, borderColor, title, subtitle, act
 
 const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, contactoUrl }: ExamSectionProps) => {
     const queryClient = useQueryClient()
+    const { data: session } = useSession()
     const [submitting, setSubmitting] = useState(false)
     const [respuestas, setRespuestas] = useState<Record<string, string>>({})
     const [resultado, setResultado] = useState<any>(null)
@@ -153,6 +156,7 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
     const [intentosRestantes, setIntentosRestantes] = useState(0)
     const [tiempoRestante, setTiempoRestante] = useState<number | null>(null)
     const [examenIniciado, setExamenIniciado] = useState(false)
+    const [showProfileModal, setShowProfileModal] = useState(false)
 
     // Refs para evitar stale closure en efectos
     const resultadoRef = useRef<any>(null)
@@ -235,13 +239,7 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [examenIniciado, tiempoRestante])
 
-    const handleStartExam = () => {
-        if (isExamenExpirado(examen?.fecha_fin)) {
-            toast.error('El período de evaluación ha finalizado')
-
-            return
-        }
-
+    const startExamTimer = () => {
         examenIniciadoRef.current = true
         resultadoRef.current = null
         setExamenIniciado(true)
@@ -254,6 +252,22 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
 
             if (secsLeft > 0) setTiempoRestante(secsLeft)
         }
+    }
+
+    const handleStartExam = () => {
+        if (isExamenExpirado(examen?.fecha_fin)) {
+            toast.error('El período de evaluación ha finalizado')
+
+            return
+        }
+
+        if (!session?.user?.celular || session.user.celular.trim() === '' || session.user.celular === 'null') {
+            setShowProfileModal(true)
+
+            return
+        }
+
+        startExamTimer()
     }
 
     const handleRespuesta = (preguntaId: string, opcionId: string) => {
@@ -537,6 +551,7 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
         const borderColor = aprobado ? 'rgba(22,163,74,0.35)' : 'rgba(220,38,38,0.25)'
 
         return (
+            <>
             <Card variant="outlined" sx={{ borderRadius: '16px', overflow: 'hidden', borderColor }}>
                 {/* Header resultado */}
                 <Box sx={{ p: 4, pb: 3, bgcolor: bgColor, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -746,6 +761,17 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
                     </>
                 )}
             </Card>
+            <CompleteProfileModal
+                open={showProfileModal}
+                onClose={() => setShowProfileModal(false)}
+                requireDocument={false}
+                requireCelular={true}
+                onSuccess={() => {
+                    setShowProfileModal(false)
+                    startExamTimer()
+                }}
+            />
+            </>
         )
     }
 
@@ -754,6 +780,7 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
         const puntajeMin = toVeinte(examen.puntaje_aprobacion)
 
         return (
+            <>
             <Card variant="outlined" sx={{ borderRadius: '16px', overflow: 'hidden', borderColor: 'divider' }}>
                 <Box sx={{ p: 4, bgcolor: 'rgba(2,94,68,0.05)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <Box sx={{
@@ -837,6 +864,17 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
                     </Stack>
                 </CardContent>
             </Card>
+            <CompleteProfileModal
+                open={showProfileModal}
+                onClose={() => setShowProfileModal(false)}
+                requireDocument={false}
+                requireCelular={true}
+                onSuccess={() => {
+                    setShowProfileModal(false)
+                    startExamTimer()
+                }}
+            />
+            </>
         )
     }
 

@@ -68,18 +68,7 @@ export async function POST(request: Request, { params }: { params: { examenId: s
       )
     }
 
-    const progresoCurso = await prisma.progresoCurso.findUnique({
-      where: {
-        usuario_id_curso_id: {
-          usuario_id: auth.user.id,
-          curso_id: examen.curso.id
-        }
-      }
-    })
-
-    if (!progresoCurso || progresoCurso.porcentaje_progreso < examen.progreso_minimo) {
-      return ApiResponse.error(request, `Debes alcanzar ${examen.progreso_minimo}% de progreso primero`, 403)
-    }
+    // 2. (Removido: Verificar progreso mínimo requerido - ya no es necesario completar lecciones para el examen)
 
     // 3. Verificar intentos restantes
     const intentosRealizados = await prisma.intentoExamen.count({

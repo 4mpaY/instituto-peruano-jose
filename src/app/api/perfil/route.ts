@@ -102,10 +102,10 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: false, message: 'No autorizado' }, { status: 401 })
     }
 
-    const { nombre, apellido, celular, numero_documento, biografia, contrasena, avatar, cargo, firma } =
+    const { nombre, apellido, celular, tipo_documento, numero_documento, biografia, contrasena, avatar, cargo, firma } =
       await req.json()
 
-    if (!nombre || !apellido || !numero_documento) {
+    if (!nombre || !apellido) {
       return NextResponse.json({ status: false, message: 'Faltan campos obligatorios' }, { status: 400 })
     }
 
@@ -120,8 +120,9 @@ export async function PUT(req: Request) {
     const updateData: any = {
       nombre,
       apellido,
-      celular,
-      numero_documento,
+      celular: celular || null,
+      tipo_documento: tipo_documento || 'DNI',
+      numero_documento: numero_documento || null,
       biografia,
       avatar,
       cargo,
@@ -129,7 +130,7 @@ export async function PUT(req: Request) {
     }
 
     // Verify document uniqueness if changed
-    if (numero_documento !== currentUser.numero_documento) {
+    if (numero_documento && numero_documento !== currentUser.numero_documento) {
       const existingDoc = await prisma.usuario.findUnique({ where: { numero_documento } })
 
       if (existingDoc) {
@@ -164,6 +165,7 @@ export async function PUT(req: Request) {
         nombre: true,
         apellido: true,
         correo: true,
+        tipo_documento: true,
         numero_documento: true,
         celular: true,
         biografia: true,

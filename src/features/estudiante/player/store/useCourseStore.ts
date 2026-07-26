@@ -73,7 +73,7 @@ export const useCourseStore = create<CourseState>((set) => ({
     course: null,
     currentLessonId: undefined,
     progressPercentage: 0,
-    examStatus: 'locked',
+    examStatus: 'available',
     examenId: null,
     currentExamenId: null,
     certificateId: null,
@@ -95,7 +95,7 @@ export const useCourseStore = create<CourseState>((set) => ({
                 course,
                 progressPercentage: percentage,
                 currentLessonId: resumeLessonId,
-                examStatus: percentage >= 100 ? 'available' : 'locked',
+                examStatus: 'available',
                 currentView: 'lesson',
             }
         })
@@ -125,7 +125,7 @@ export const useCourseStore = create<CourseState>((set) => ({
         return {
             course: { ...state.course, modulos: updatedModulos },
             progressPercentage: percentage,
-            examStatus: percentage >= 100 && state.examStatus === 'locked' ? 'available' : state.examStatus
+            examStatus: state.examStatus === 'locked' ? 'available' : state.examStatus
         }
     }),
 

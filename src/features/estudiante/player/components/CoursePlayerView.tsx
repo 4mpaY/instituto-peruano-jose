@@ -9,6 +9,7 @@ import {
     Tabs, Tab, Button, Stack, Typography, Chip, Tooltip
 } from '@mui/material'
 
+import AppModal from '@/utils/components/AppModal'
 import VideoPlayer from './VideoPlayer'
 import CourseContentSidebar from './CourseContentSidebar'
 import LessonContent from './LessonContent'
@@ -58,7 +59,8 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
         updateLessonProgress,
         setExamenId,
         setExamStatus,
-        openExam
+        openExam,
+        setCurrentView
     } = useCourseStore()
 
     const [mounted, setMounted] = useState(false)
@@ -93,6 +95,43 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
 
         if (mounted) checkExamStatus()
     }, [examenId, storeCourse, setExamStatus, mounted])
+
+    const [certPopupOpen, setCertPopupOpen] = useState(false)
+
+    useEffect(() => {
+        const checkCertificadoPending = async () => {
+            if (!storeCourse || !mounted) return
+
+            const lsKey = `popup_cert_${storeCourse.id}`
+
+            if (localStorage.getItem(lsKey)) return
+
+            // Evaluamos localmente si el estudiante parece haber aprobado antes de consultar la API
+            const allExams = storeCourse.examenes || []
+            const totalExams = allExams.length
+
+            if (totalExams > 0) {
+                const allPassed = allExams.every(ex => ex.ya_aprobado)
+
+                if (!allPassed) return
+            }
+
+            try {
+                const res = await axios.get(`/api/estudiante/certificado?cursoId=${storeCourse.id}`)
+
+                if (res.data.status) {
+                    const { elegibilidad, pagoPendiente } = res.data.result
+
+                    if (elegibilidad?.isEligible && pagoPendiente) {
+                        setCertPopupOpen(true)
+                        localStorage.setItem(lsKey, 'true')
+                    }
+                }
+            } catch (e) { /* silenced */ }
+        }
+
+        checkCertificadoPending()
+    }, [mounted, storeCourse?.id])
 
     useEffect(() => {
         if (initialLessonId && mounted) setCurrentLessonId(initialLessonId)
@@ -170,7 +209,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
     }
 
     const handleVideoEnded = () => {
-        if (currentLesson && !currentLesson.completada) handleLessonComplete(currentLesson.id, true)
+        // Eliminado handleLessonComplete al terminar video
     }
 
     const handleExamPassed = () => {
@@ -266,21 +305,6 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                                             borderRadius: '6px',
                                         }}
                                     />
-                                    {currentLesson.completada && (
-                                        <Chip
-                                            size="small"
-                                            icon={<i className="tabler-circle-check-filled" style={{ fontSize: '0.85rem', color: '#2e7d32' }} />}
-                                            label="Completada"
-                                            sx={{
-                                                bgcolor: 'rgba(46,125,50,0.08)',
-                                                color: '#2e7d32',
-                                                fontWeight: 700,
-                                                fontSize: '0.7rem',
-                                                height: '22px',
-                                                borderRadius: '6px',
-                                            }}
-                                        />
-                                    )}
                                 </Stack>
                                 <Typography variant="h5" sx={{
                                     fontWeight: 800,
@@ -469,33 +493,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                             </span>
                         </Tooltip>
 
-                        {currentLesson && (
-                            <Button
-                                fullWidth
-                                variant={currentLesson.completada ? 'outlined' : 'contained'}
-                                size={isMobile ? 'small' : 'large'}
-                                onClick={() => handleLessonComplete(currentLesson.id, !currentLesson.completada)}
-                                startIcon={
-                                    <i className={currentLesson.completada
-                                        ? 'tabler-circle-check-filled text-base'
-                                        : 'tabler-circle-check text-base'
-                                    } />
-                                }
-                                sx={{
-                                    borderRadius: '12px',
-                                    textTransform: 'none',
-                                    fontWeight: 700,
-                                    fontSize: { xs: '0.85rem', md: '1rem' },
-                                    py: { xs: 0.75, md: 1.35 },
-                                    ...(currentLesson.completada
-                                        ? { borderColor: 'success.main', color: 'success.main', '&:hover': { bgcolor: 'rgba(46,125,50,0.05)' } }
-                                        : { bgcolor: '#025E44', '&:hover': { bgcolor: '#014d36' }, boxShadow: 'none' }
-                                    )
-                                }}
-                            >
-                                {currentLesson.completada ? 'Completado' : 'Marcar como completado'}
-                            </Button>
-                        )}
+
 
                         <Tooltip title={nextLesson ? nextLesson.titulo : ''}>
                             <span>
@@ -1080,6 +1078,39 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                     cursoTitulo={storeCourse.titulo}
                 />
             )}
+
+            {/* Modal de Certificado Pendiente */}
+            <AppModal open={certPopupOpen} onClose={() => setCertPopupOpen(false)}>
+                <Box textAlign="center" p={2}>
+                    <i className="tabler-certificate" style={{ fontSize: 60, color: '#f59e0b', display: 'block', marginBottom: 16 }} />
+                    <Typography variant="h6" fontWeight={800} gutterBottom>
+                        ¡Has aprobado el curso!
+                    </Typography>
+                    <Typography color="text.secondary" variant="body2" mb={4}>
+                        Para obtener tu certificado, necesitas completar el pago correspondiente.
+                    </Typography>
+                    <Button
+                        variant="contained"
+                        fullWidth
+                        onClick={() => {
+                            setCertPopupOpen(false)
+                            setCurrentView('certificate')
+                            if (isMobile) setActiveTab(TAB('Certificación'))
+                        }}
+                        sx={{
+                            borderRadius: '12px',
+                            py: 1.5,
+                            fontWeight: 800,
+                            bgcolor: '#f59e0b',
+                            color: '#fff',
+                            '&:hover': { bgcolor: '#d97706' },
+                            boxShadow: 'none'
+                        }}
+                    >
+                        Ir a Certificación
+                    </Button>
+                </Box>
+            </AppModal>
         </Box>
     )
 }

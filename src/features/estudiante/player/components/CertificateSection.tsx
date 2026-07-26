@@ -8,8 +8,11 @@ import {
     Box, Typography, Button, CircularProgress, LinearProgress, Chip, Divider
 } from '@mui/material'
 
+import { useSession } from 'next-auth/react'
+
 import HydratedDate from '@/utils/components/HydratedDate'
 import AppModal from '@/utils/components/AppModal'
+import CompleteProfileModal from './CompleteProfileModal'
 
 interface CertificateData {
     id: string
@@ -299,6 +302,7 @@ const ScoreRing = ({ value, min, label }: { value: number; min: number; label: s
 }
 
 const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsCompleted, phoneNumberProfesor }: CertificateSectionProps) => {
+    const { data: session } = useSession()
     const [loading, setLoading] = useState(true)
     const [generating, setGenerating] = useState(false)
     const [downloading, setDownloading] = useState(false)
@@ -389,7 +393,17 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         }
     }
 
-    const handleGenerar = async () => {
+    const [showProfileModal, setShowProfileModal] = useState(false)
+    const [pendingAction, setPendingAction] = useState<{ type: 'generar' | 'descargar', plantillaId?: string } | null>(null)
+
+    const handleGenerar = async (force: boolean = false) => {
+        if (!force && !session?.user?.numero_documento) {
+            setPendingAction({ type: 'generar' })
+            setShowProfileModal(true)
+            
+            return
+        }
+
         setGenerating(true)
 
         try {
@@ -412,7 +426,14 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         return `/api/estudiante/certificado/${certificadoId}/pdf?${params.toString()}`
     }
 
-    const handleDescargar = async (plantillaId?: string) => {
+    const handleDescargar = async (plantillaId?: string, force: boolean = false) => {
+        if (!force && !session?.user?.numero_documento) {
+            setPendingAction({ type: 'descargar', plantillaId })
+            setShowProfileModal(true)
+
+            return
+        }
+
         let targetCertId = certificado?.id
         let codigoParaArchivo = certificado?.codigoVerificacion
 
@@ -913,6 +934,23 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                 />
             )}
             {previewModal}
+            <CompleteProfileModal
+                open={showProfileModal}
+                onClose={() => setShowProfileModal(false)}
+                requireDocument={true}
+                requireCelular={false}
+                onSuccess={() => {
+                    setShowProfileModal(false)
+
+                    if (pendingAction?.type === 'generar') {
+                        handleGenerar(true)
+                    } else if (pendingAction?.type === 'descargar') {
+                        handleDescargar(pendingAction.plantillaId, true)
+                    }
+
+                    setPendingAction(null)
+                }}
+            />
         </>
     )
 }

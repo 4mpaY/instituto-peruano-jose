@@ -195,6 +195,10 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
       const user = session.user as any
 
       setFormData({ nombres: user.nombre || user.name || '', apellidos: user.apellido || '', correo: user.email || '' })
+      
+      if (user.numero_documento) {
+        setNumeroComprobante(user.numero_documento)
+      }
     }
   }, [session])
 

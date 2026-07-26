@@ -19,6 +19,7 @@ import Divider from '@mui/material/Divider'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import Grid from '@mui/material/Grid'
+import MenuItem from '@mui/material/MenuItem'
 
 // Third-party Imports
 import classnames from 'classnames'
@@ -112,17 +113,19 @@ const Register = ({ mode }: { mode: SystemMode }) => {
   const {
     control,
     handleSubmit,
+    watch,
     formState: { errors }
   } = useForm<RegisterDto>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      correo: '',
-      contrasena: '',
-      confirmarContrasena: '',
       nombre: '',
       apellido: '',
+      correo: '',
+      tipo_documento: 'DNI',
       numero_documento: '',
-      celular: ''
+      celular: '',
+      contrasena: '',
+      confirmarContrasena: ''
     }
   })
 
@@ -279,7 +282,28 @@ const Register = ({ mode }: { mode: SystemMode }) => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={3}>
+                <Controller
+                  name='tipo_documento'
+                  control={control}
+                  render={({ field }) => (
+                    <CustomTextField
+                      {...field}
+                      select
+                      fullWidth
+                      label='Tipo Doc.'
+                      error={!!errors.tipo_documento}
+                      helperText={errors.tipo_documento?.message}
+                      disabled={isLoading}
+                    >
+                      <MenuItem value='DNI'>DNI</MenuItem>
+                      <MenuItem value='OTRO'>Otro</MenuItem>
+                    </CustomTextField>
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={3}>
                 <Controller
                   name='numero_documento'
                   control={control}
@@ -287,11 +311,18 @@ const Register = ({ mode }: { mode: SystemMode }) => {
                     <CustomTextField
                       {...field}
                       fullWidth
-                      label='DNI'
-                      placeholder='12345678'
+                      label={watch('tipo_documento') === 'OTRO' ? 'Documento' : 'DNI'}
+                      placeholder={watch('tipo_documento') === 'OTRO' ? 'Ej. AB12345' : '12345678'}
                       error={!!errors.numero_documento}
                       helperText={errors.numero_documento?.message}
                       disabled={isLoading}
+                      onChange={(e) => {
+                        if (watch('tipo_documento') === 'DNI') {
+                          field.onChange(e.target.value.replace(/\D/g, '').substring(0, 8))
+                        } else {
+                          field.onChange(e.target.value.substring(0, 20))
+                        }
+                      }}
                     />
                   )}
                 />

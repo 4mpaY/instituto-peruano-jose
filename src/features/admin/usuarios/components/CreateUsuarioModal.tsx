@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { Box, Button, Grid, MenuItem, styled, Typography, InputAdornment, IconButton } from '@mui/material'
 import { Formik, type FormikHelpers } from 'formik'
+import { MuiTelInput } from 'mui-tel-input'
 import { toFormikValidationSchema } from 'zod-formik-adapter'
 import { useSnackbar } from 'notistack'
 
@@ -136,14 +137,39 @@ const CreateUsuarioModal = ({ open, handleClose, onSuccess }: CreateUsuarioModal
                   />
                 </Grid>
 
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={2}>
+                  <CustomTextField
+                    select
+                    fullWidth
+                    label='Tipo Doc.'
+                    name='tipo_documento'
+                    value={values.tipo_documento}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={touched.tipo_documento && Boolean(errors.tipo_documento)}
+                    helperText={touched.tipo_documento && errors.tipo_documento as string}
+                    disabled={isSubmitting}
+                  >
+                    <MenuItem value='DNI'>DNI</MenuItem>
+                    <MenuItem value='OTRO'>Otro</MenuItem>
+                  </CustomTextField>
+                </Grid>
+
+                <Grid item xs={12} sm={4}>
                   <CustomTextField
                     fullWidth
-                    label='DNI / Documento'
+                    label={values.tipo_documento === 'OTRO' ? 'Documento' : 'DNI'}
                     name='numero_documento'
-                    placeholder='12345678'
+                    placeholder={values.tipo_documento === 'OTRO' ? 'Ej. AB12345' : '12345678'}
                     value={values.numero_documento}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      if (values.tipo_documento === 'DNI') {
+                        e.target.value = e.target.value.replace(/\D/g, '').substring(0, 8)
+                      } else {
+                        e.target.value = e.target.value.substring(0, 20)
+                      }
+                      handleChange(e)
+                    }}
                     onBlur={handleBlur}
                     error={touched.numero_documento && Boolean(errors.numero_documento)}
                     helperText={touched.numero_documento && errors.numero_documento}
@@ -245,27 +271,21 @@ const CreateUsuarioModal = ({ open, handleClose, onSuccess }: CreateUsuarioModal
                   />
                 </Grid>
 
-                <Grid item xs={12} sm={6}>
-                  <CustomTextField
-                    fullWidth
-                    label='Celular'
-                    name='celular'
-                    placeholder='987654321'
-                    value={values.celular}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    error={touched.celular && Boolean(errors.celular)}
-                    helperText={touched.celular && errors.celular}
-                    disabled={isSubmitting}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position='start'>
-                          <i className='tabler-phone text-xl text-textSecondary' />
-                        </InputAdornment>
-                      )
-                    }}
-                  />
-                </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <MuiTelInput
+                      fullWidth
+                      label='Celular'
+                      name='celular'
+                      defaultCountry="PE"
+                      preferredCountries={['PE', 'CO', 'MX', 'CL', 'AR']}
+                      value={values.celular}
+                      onChange={(value) => setFieldValue('celular', value)}
+                      onBlur={handleBlur}
+                      error={touched.celular && Boolean(errors.celular)}
+                      helperText={touched.celular && errors.celular}
+                      disabled={isSubmitting}
+                    />
+                  </Grid>
 
                 <Grid item xs={12} sm={6}>
                   <CustomTextField

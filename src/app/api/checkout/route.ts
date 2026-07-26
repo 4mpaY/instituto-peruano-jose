@@ -143,6 +143,18 @@ export async function POST(request: Request) {
       include: { detalles: { include: { curso: { select: { titulo: true, precio: true } } } } }
     })
     
+    // Actualizar DNI del usuario si es BOLETA/TICKET y es un DNI válido (8 dígitos)
+    if ((tipoComprobante === 'BOLETA' || tipoComprobante === 'TICKET') && numeroComprobante && numeroComprobante.length === 8) {
+      try {
+        await prisma.usuario.update({
+          where: { id: auth.user.id },
+          data: { numero_documento: numeroComprobante, tipo_documento: 'DNI' }
+        })
+      } catch (err) {
+        console.error('[Checkout] Error actualizando DNI del usuario:', err)
+      }
+    }
+
     // 📧 Enviar correo de confirmación de pedido
     try {
       const configs = await getConfigs()

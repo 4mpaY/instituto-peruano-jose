@@ -23,6 +23,8 @@ import { toast } from 'react-toastify'
 import axios from 'axios'
 import { getSession, useSession } from 'next-auth/react'
 
+import { MuiTelInput } from 'mui-tel-input'
+
 import UserAvatar from '@/utils/components/UserAvatar'
 
 import { AxiosPerfil } from '../http/axiosPerfil'
@@ -237,12 +239,13 @@ export default function UserProfileForm({ user }: Props) {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
+                <MuiTelInput
                   fullWidth
                   label="Celular"
                   name="celular"
+                  defaultCountry="PE"
                   value={formData.celular}
-                  onChange={handleChange}
+                  onChange={(newValue) => setFormData(prev => ({ ...prev, celular: newValue }))}
                 />
               </Grid>
 

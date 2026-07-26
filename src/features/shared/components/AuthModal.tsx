@@ -16,7 +16,8 @@ import {
   Stack,
   Grid,
   Divider,
-  InputAdornment
+  InputAdornment,
+  MenuItem
 } from '@mui/material'
 import { signIn } from 'next-auth/react'
 import { useForm, Controller } from 'react-hook-form'
@@ -57,6 +58,7 @@ const AuthModal = ({ open, mode, callbackUrl, onClose, onSwitchMode }: AuthModal
       nombre: '',
       apellido: '',
       correo: '',
+      tipo_documento: 'DNI',
       numero_documento: '',
       celular: '',
       contrasena: '',
@@ -428,7 +430,27 @@ const AuthModal = ({ open, mode, callbackUrl, onClose, onSwitchMode }: AuthModal
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={3}>
+                <Controller
+                  name="tipo_documento"
+                  control={registerForm.control}
+                  render={({ field }) => (
+                    <CustomTextField
+                      {...field}
+                      select
+                      fullWidth
+                      label="Tipo Doc."
+                      error={!!registerForm.formState.errors.tipo_documento}
+                      helperText={registerForm.formState.errors.tipo_documento?.message}
+                      disabled={isLoading}
+                    >
+                      <MenuItem value="DNI">DNI</MenuItem>
+                      <MenuItem value="OTRO">Otro</MenuItem>
+                    </CustomTextField>
+                  )}
+                />
+              </Grid>
+              <Grid item xs={12} sm={3}>
                 <Controller
                   name="numero_documento"
                   control={registerForm.control}
@@ -436,11 +458,18 @@ const AuthModal = ({ open, mode, callbackUrl, onClose, onSwitchMode }: AuthModal
                     <CustomTextField
                       {...field}
                       fullWidth
-                      label="DNI"
-                      placeholder="12345678"
+                      label={registerForm.watch('tipo_documento') === 'OTRO' ? 'Documento' : 'DNI'}
+                      placeholder={registerForm.watch('tipo_documento') === 'OTRO' ? 'Ej. AB12345' : '12345678'}
                       error={!!registerForm.formState.errors.numero_documento}
                       helperText={registerForm.formState.errors.numero_documento?.message}
                       disabled={isLoading}
+                      onChange={(e) => {
+                        if (registerForm.watch('tipo_documento') === 'DNI') {
+                          field.onChange(e.target.value.replace(/\D/g, '').substring(0, 8))
+                        } else {
+                          field.onChange(e.target.value.substring(0, 20))
+                        }
+                      }}
                     />
                   )}
                 />

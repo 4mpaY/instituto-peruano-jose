@@ -19,7 +19,9 @@ import {
 import { Formik, type FormikHelpers } from 'formik'
 import { toFormikValidationSchema } from 'zod-formik-adapter'
 import { useSnackbar } from 'notistack'
-import { Rol } from '@prisma/client'
+import { Rol, TipoDocumento } from '@prisma/client'
+
+import { MuiTelInput } from 'mui-tel-input'
 
 import AppModal from '@/utils/components/AppModal'
 import CustomTextField from '@core/components/mui/TextField'
@@ -89,7 +91,7 @@ const EditUsuarioModal = ({ open, handleClose, usuarioId, onSuccess }: EditUsuar
     correo: usuario.correo,
     nombre: usuario.nombre,
     apellido: usuario.apellido,
-    numero_documento: usuario.numero_documento,
+    numero_documento: usuario.numero_documento || '',
     celular: usuario.celular || '',
     biografia: usuario.biografia || '',
     rol: usuario.rol,
@@ -97,6 +99,7 @@ const EditUsuarioModal = ({ open, handleClose, usuarioId, onSuccess }: EditUsuar
     contrasena: '',
     cargo: usuario.cargo || '',
     firma: usuario.firma || '',
+    tipo_documento: usuario.tipo_documento || TipoDocumento.DNI,
     avatar: usuario.avatar || ''
   }
 
@@ -115,7 +118,7 @@ const EditUsuarioModal = ({ open, handleClose, usuarioId, onSuccess }: EditUsuar
         onSubmit={handleSubmit}
         enableReinitialize
       >
-        {({ values, errors, touched, handleChange, handleBlur, handleSubmit, isSubmitting, setFieldValue }) => (
+        {({ values, errors, touched, handleChange, handleBlur, handleSubmit, isSubmitting, setFieldValue, setFieldTouched }) => (
           <>
             {/* ── Área scrollable ── */}
             <Box sx={{ flex: 1, overflowY: 'auto', px: { xs: 3, sm: 5 }, pt: { xs: 3, sm: 5 }, pb: 2 }}>
@@ -253,13 +256,39 @@ const EditUsuarioModal = ({ open, handleClose, usuarioId, onSuccess }: EditUsuar
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={6}>
+                    <Grid item xs={12} sm={3}>
+                      <CustomTextField
+                        select
+                        fullWidth
+                        label='Tipo de Doc.'
+                        name='tipo_documento'
+                        value={values.tipo_documento}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        error={touched.tipo_documento && Boolean((errors as any).tipo_documento)}
+                        helperText={touched.tipo_documento && (errors as any).tipo_documento as string}
+                        disabled={isSubmitting}
+                      >
+                        <MenuItem value="DNI">DNI</MenuItem>
+                        <MenuItem value="OTRO">Otro</MenuItem>
+                      </CustomTextField>
+                    </Grid>
+
+                    <Grid item xs={12} sm={5}>
                       <CustomTextField
                         fullWidth
-                        label='DNI / Documento'
+                        label={values.tipo_documento === 'OTRO' ? 'Documento' : 'DNI (opcional)'}
                         name='numero_documento'
+                        placeholder={values.tipo_documento === 'OTRO' ? 'Ej. AB12345' : '12345678'}
                         value={values.numero_documento}
-                        onChange={handleChange}
+                        onChange={(e) => {
+                          if (values.tipo_documento === 'DNI') {
+                            e.target.value = e.target.value.replace(/\D/g, '').substring(0, 8)
+                          } else {
+                            e.target.value = e.target.value.substring(0, 20)
+                          }
+                          handleChange(e)
+                        }}
                         onBlur={handleBlur}
                         error={touched.numero_documento && Boolean(errors.numero_documento)}
                         helperText={touched.numero_documento && errors.numero_documento}
@@ -274,26 +303,20 @@ const EditUsuarioModal = ({ open, handleClose, usuarioId, onSuccess }: EditUsuar
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={6}>
-                      <CustomTextField
-                        fullWidth
-                        label='Celular'
-                        name='celular'
-                        value={values.celular}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        error={touched.celular && Boolean(errors.celular)}
-                        helperText={touched.celular && errors.celular}
-                        disabled={isSubmitting}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position='start'>
-                              <i className='tabler-phone text-xl text-textSecondary' />
-                            </InputAdornment>
-                          )
-                        }}
-                      />
-                    </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <MuiTelInput
+                          fullWidth
+                          label='Celular (Opcional)'
+                          name='celular'
+                          defaultCountry='PE'
+                          value={values.celular}
+                          onChange={(newValue) => setFieldValue('celular', newValue)}
+                          onBlur={() => setFieldTouched('celular', true)}
+                          error={touched.celular && Boolean(errors.celular)}
+                          helperText={touched.celular && (errors.celular as string)}
+                          disabled={isSubmitting}
+                        />
+                      </Grid>
 
                     {/* Biografía — simple para ESTUDIANTE */}
                     {values.rol === Rol.ESTUDIANTE && (

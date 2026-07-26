@@ -38,6 +38,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
         correo: true,
         nombre: true,
         apellido: true,
+        tipo_documento: true,
         numero_documento: true,
         celular: true,
         avatar: true,
@@ -135,7 +136,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return validation.error
     }
 
-    const data = validation.data
+    const data = validation.data as any
+
+    if (data.numero_documento === '') {
+      data.numero_documento = null
+    }
+
+    if (data.celular === '') {
+      data.celular = null
+    }
 
     // Verificar que el usuario existe
     const usuario = await prisma.usuario.findUnique({
@@ -182,6 +191,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         correo: true,
         nombre: true,
         apellido: true,
+        tipo_documento: true,
         numero_documento: true,
         celular: true,
         avatar: true,

@@ -175,12 +175,6 @@ const CourseContentSidebar = ({ onLessonSelect }: CourseContentSidebarProps) => 
                                                     )
                                                 }
 
-                                                if (item.completada) {
-                                                    return (
-                                                        <i className="tabler-circle-check-filled" style={{ fontSize: '1rem', color: '#16a34a' }} />
-                                                    )
-                                                }
-
                                                 return (
                                                     <i className="tabler-player-play" style={{ fontSize: '1rem', color: isSelected ? '#025E44' : '#9ca3af' }} />
                                                 )

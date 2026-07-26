@@ -63,7 +63,9 @@ export const getAuthOptions = async (): Promise<NextAuthOptions> => {
             name: `${usuario.nombre} ${usuario.apellido}`,
             rol: usuario.rol,
             avatar: usuario.avatar,
+            tipo_documento: usuario.tipo_documento,
             numero_documento: usuario.numero_documento,
+            celular: usuario.celular,
             esta_activo: usuario.esta_activo
           } as User
         } catch (error) {
@@ -127,7 +129,9 @@ export const getAuthOptions = async (): Promise<NextAuthOptions> => {
 
               user.id = usuarioActualizado.id
               user.rol = usuarioActualizado.rol
+              user.tipo_documento = usuarioActualizado.tipo_documento || 'DNI'
               user.numero_documento = usuarioActualizado.numero_documento || ''
+              user.celular = usuarioActualizado.celular || ''
               user.esta_activo = usuarioActualizado.esta_activo
               user.avatar = usuarioActualizado.avatar
               user.image = usuarioActualizado.avatar
@@ -153,7 +157,9 @@ export const getAuthOptions = async (): Promise<NextAuthOptions> => {
 
             user.id = nuevoUsuario.id
             user.rol = nuevoUsuario.rol
+            user.tipo_documento = nuevoUsuario.tipo_documento || 'DNI'
             user.numero_documento = ''
+            user.celular = ''
             user.esta_activo = true
             user.avatar = nuevoUsuario.avatar
             user.image = nuevoUsuario.avatar
@@ -175,7 +181,9 @@ export const getAuthOptions = async (): Promise<NextAuthOptions> => {
           token.avatar = user.avatar || (user as any).image || (user as any).picture
           token.image = token.avatar
           token.picture = token.avatar
+          token.tipo_documento = user.tipo_documento
           token.numero_documento = user.numero_documento
+          token.celular = user.celular
           token.esta_activo = user.esta_activo
 
           // Generar un JWT real firmado (mismo payload que /api/auth/login)
@@ -187,7 +195,9 @@ export const getAuthOptions = async (): Promise<NextAuthOptions> => {
               rol: user.rol,
               avatar: token.avatar,
               image: token.avatar,
+              tipo_documento: user.tipo_documento,
               numero_documento: user.numero_documento,
+              celular: user.celular,
               esta_activo: user.esta_activo
             },
             JWT_SECRET,
@@ -200,7 +210,7 @@ export const getAuthOptions = async (): Promise<NextAuthOptions> => {
           try {
             const usuarioActualizado = await prisma.usuario.findUnique({
               where: { id: token.id as string },
-              select: { nombre: true, apellido: true, avatar: true, rol: true, numero_documento: true, esta_activo: true }
+              select: { nombre: true, apellido: true, avatar: true, rol: true, tipo_documento: true, numero_documento: true, celular: true, esta_activo: true }
             })
 
             if (usuarioActualizado) {
@@ -212,7 +222,9 @@ export const getAuthOptions = async (): Promise<NextAuthOptions> => {
               token.picture = nuevoAvatar
               token.name = nuevoNombre
               token.rol = usuarioActualizado.rol
+              token.tipo_documento = usuarioActualizado.tipo_documento || 'DNI'
               token.numero_documento = usuarioActualizado.numero_documento || ''
+              token.celular = usuarioActualizado.celular || ''
               token.esta_activo = usuarioActualizado.esta_activo
 
               // Regenerar el accessToken con los datos frescos
@@ -224,7 +236,9 @@ export const getAuthOptions = async (): Promise<NextAuthOptions> => {
                   rol: usuarioActualizado.rol,
                   avatar: nuevoAvatar,
                   image: nuevoAvatar,
+                  tipo_documento: usuarioActualizado.tipo_documento,
                   numero_documento: usuarioActualizado.numero_documento,
+                  celular: usuarioActualizado.celular,
                   esta_activo: usuarioActualizado.esta_activo
                 },
                 JWT_SECRET,
@@ -244,7 +258,9 @@ export const getAuthOptions = async (): Promise<NextAuthOptions> => {
           session.user.rol = token.rol as string
           session.user.avatar = token.avatar as string | null
           session.user.image = token.avatar as string | null
+          session.user.tipo_documento = token.tipo_documento as string
           session.user.numero_documento = token.numero_documento as string
+          session.user.celular = token.celular as string
           session.user.esta_activo = token.esta_activo as boolean
           session.user.accessToken = token.accessToken as string
         }

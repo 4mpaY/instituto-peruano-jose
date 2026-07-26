@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       return validation.error
     }
 
-    const { correo, contrasena, nombre, apellido, numero_documento, celular } = validation.data
+    const { correo, contrasena, nombre, apellido, tipo_documento, numero_documento, celular } = validation.data
 
     // Verificar si el correo ya existe
     const correoExistente = await prisma.usuario.findUnique({
@@ -42,13 +42,15 @@ export async function POST(request: Request) {
       return ApiResponse.error(request, 'El correo ya está registrado', 409)
     }
 
-    // Verificar si el número de documento ya existe
-    const documentoExistente = await prisma.usuario.findUnique({
-      where: { numero_documento }
-    })
+    // Verificar si el número de documento ya existe (solo si se provee)
+    if (numero_documento) {
+      const documentoExistente = await prisma.usuario.findUnique({
+        where: { numero_documento }
+      })
 
-    if (documentoExistente) {
-      return ApiResponse.error(request, 'El número de documento ya está registrado', 409)
+      if (documentoExistente) {
+        return ApiResponse.error(request, 'El número de documento ya está registrado', 409)
+      }
     }
 
     // Hash de la contraseña
@@ -76,7 +78,8 @@ export async function POST(request: Request) {
         contrasena: hashedPassword,
         nombre,
         apellido,
-        numero_documento,
+        tipo_documento: tipo_documento || 'DNI',
+        numero_documento: numero_documento || null,
         celular: celular || null,
         slug,
         rol: 'ESTUDIANTE' // Por defecto siempre ESTUDIANTE en registro público
@@ -86,6 +89,7 @@ export async function POST(request: Request) {
         correo: true,
         nombre: true,
         apellido: true,
+        tipo_documento: true,
         numero_documento: true,
         celular: true,
         rol: true,

@@ -9,6 +9,11 @@ import { handleApiError } from '@/utils/libs/validation'
 import prisma from '@/utils/libs/prisma'
 import { requireAuth } from '@/utils/libs/auth-helpers'
 import { getInscripcionCertificadoHabilitacion } from '@/app/api/_shared/certificados/getInscripcionCertificadoHabilitacion'
+import { calcularElegibilidad } from '@/app/api/_shared/certificados/ensureCertificado'
+import {
+  resolvePrecioCertificadoCip,
+  resolvePrecioCertificadoIpg,
+} from '@/utils/functions/certificadoPrecios'
 
 /**
  * GET /api/estudiante/certificado/[certificadoId]/pdf
@@ -58,30 +63,120 @@ export async function GET(request: Request, { params }: { params: { certificadoI
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
-    const [inscripcionPago, cursoPago] = await Promise.all([
+    const [inscripcionPago, cursoPago, inscripcionPedido, preciosRows] = await Promise.all([
       getInscripcionCertificadoHabilitacion(certificado.usuario_id, certificado.curso_id),
       prisma.curso.findUnique({
         where: { id: certificado.curso_id },
-        select: { precio_certificado: true },
+        select: {
+          precio_certificado: true,
+          certificado_ipg_espera_valor: true,
+          certificado_ipg_espera_unidad: true,
+          certificado_cip_entregas: true,
+        },
       }),
+      prisma.inscripcion.findUnique({
+        where: {
+          usuario_id_curso_id: {
+            usuario_id: certificado.usuario_id,
+            curso_id: certificado.curso_id,
+          },
+        },
+        select: {
+          inscrito_en: true,
+          pedido: { select: { pagado_en: true, creado_en: true } },
+        },
+      }),
+      prisma.$queryRaw<
+        Array<{ precio_certificado_ipg: unknown; precio_certificado_cip: unknown }>
+      >`SELECT precio_certificado_ipg, precio_certificado_cip FROM cursos WHERE id = ${certificado.curso_id}`,
     ])
 
+    const preciosRow = preciosRows?.[0]
     const precioCert = cursoPago?.precio_certificado ? Number(cursoPago.precio_certificado) : null
-    const requierePago = !!precioCert && precioCert > 0
+
+    const precioTipo =
+      certificado.tipo === 'CIP'
+        ? resolvePrecioCertificadoCip({
+            precio_certificado: precioCert,
+            precio_certificado_cip: preciosRow?.precio_certificado_cip,
+          })
+        : resolvePrecioCertificadoIpg({
+            precio_certificado: precioCert,
+            precio_certificado_ipg: preciosRow?.precio_certificado_ipg,
+          })
+
+    const requierePago = precioTipo != null && precioTipo > 0
+    const esperaIpg = Number(cursoPago?.certificado_ipg_espera_valor ?? 0) > 0
+
+    const cipEntregas = Array.isArray(cursoPago?.certificado_cip_entregas)
+      ? cursoPago?.certificado_cip_entregas
+      : []
+
+    const requiereHabilitacion =
+      certificado.tipo === 'CIP'
+        ? requierePago || cipEntregas.length > 0
+        : requierePago || esperaIpg
 
     const plantilla = plantillaFromTipo(certificado.tipo)
 
-    if (requierePago && auth.user.rol !== 'ADMIN') {
-      const habilitado =
-        certificado.tipo === 'CIP'
-          ? inscripcionPago?.certificado_cip_habilitado
-          : inscripcionPago?.certificado_ipg_habilitado || (inscripcionPago?.certificado_habilitado && !inscripcionPago?.certificado_cip_habilitado)
+    if (auth.user.rol !== 'ADMIN') {
+      const elegibilidad = await calcularElegibilidad(certificado.usuario_id, certificado.curso_id)
 
-      if (!habilitado) {
+      if (!elegibilidad.evaluacionesOk) {
         return NextResponse.json(
-          { error: 'Este certificado no está habilitado para tu inscripción' },
+          {
+            error:
+              elegibilidad.totalExamenes > 0
+                ? `Debes aprobar las evaluaciones antes de descargar (promedio: ${elegibilidad.promedioScore}% / mínimo: ${elegibilidad.promedioMinimo}%).`
+                : 'No puedes descargar el certificado en este momento.',
+          },
           { status: 403 }
         )
+      }
+
+      const habilitado =
+        certificado.tipo === 'CIP'
+          ? !!inscripcionPago?.certificado_cip_habilitado
+          : !!(inscripcionPago?.certificado_ipg_habilitado || (inscripcionPago?.certificado_habilitado && !inscripcionPago?.certificado_cip_habilitado))
+
+      if (requiereHabilitacion && !habilitado) {
+        return NextResponse.json(
+          {
+            error:
+              'Debes haber comprado y tener habilitado este certificado (IPG o Colegio de Ingenieros) para descargarlo.',
+          },
+          { status: 403 }
+        )
+      }
+
+      if (habilitado) {
+        const { resolveCertificadoDisponibilidad } = await import('@/utils/functions/certificadoDisponibilidad')
+
+        const fechaPago =
+          inscripcionPedido?.pedido?.pagado_en ||
+          inscripcionPedido?.pedido?.creado_en ||
+          inscripcionPedido?.inscrito_en ||
+          null
+
+        const disponibilidad = resolveCertificadoDisponibilidad({
+          tipo: certificado.tipo === 'CIP' ? 'cip' : 'ipg',
+          habilitado: true,
+          habilitadoEn:
+            certificado.tipo === 'CIP'
+              ? inscripcionPago?.certificado_cip_habilitado_en ?? null
+              : inscripcionPago?.certificado_ipg_habilitado_en ?? null,
+          ipgEsperaValor: cursoPago?.certificado_ipg_espera_valor,
+          ipgEsperaUnidad: cursoPago?.certificado_ipg_espera_unidad,
+          cipEntregas: cipEntregas as any,
+          fechaPago,
+        })
+
+        if (!disponibilidad.disponible) {
+          return NextResponse.json(
+            { error: disponibilidad.mensaje || 'El certificado aún no está disponible' },
+            { status: 403 }
+          )
+        }
       }
     }
 

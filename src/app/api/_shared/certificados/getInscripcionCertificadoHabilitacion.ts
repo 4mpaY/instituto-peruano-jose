@@ -6,6 +6,8 @@ export type InscripcionCertHabilitacion = {
   certificado_habilitado: boolean
   certificado_ipg_habilitado: boolean
   certificado_cip_habilitado: boolean
+  certificado_ipg_habilitado_en: Date | null
+  certificado_cip_habilitado_en: Date | null
 }
 
 /**
@@ -25,9 +27,18 @@ export async function getInscripcionCertificadoHabilitacion(
 
   try {
     const [extended] = await prisma.$queryRaw<
-      Array<{ certificado_ipg_habilitado: boolean; certificado_cip_habilitado: boolean }>
+      Array<{
+        certificado_ipg_habilitado: boolean
+        certificado_cip_habilitado: boolean
+        certificado_ipg_habilitado_en: Date | null
+        certificado_cip_habilitado_en: Date | null
+      }>
     >(Prisma.sql`
-      SELECT certificado_ipg_habilitado, certificado_cip_habilitado
+      SELECT
+        certificado_ipg_habilitado,
+        certificado_cip_habilitado,
+        certificado_ipg_habilitado_en,
+        certificado_cip_habilitado_en
       FROM inscripciones
       WHERE usuario_id = ${usuarioId} AND curso_id = ${cursoId}
     `)
@@ -37,28 +48,37 @@ export async function getInscripcionCertificadoHabilitacion(
         certificado_habilitado: base.certificado_habilitado,
         certificado_ipg_habilitado: extended.certificado_ipg_habilitado,
         certificado_cip_habilitado: extended.certificado_cip_habilitado,
+        certificado_ipg_habilitado_en: extended.certificado_ipg_habilitado_en,
+        certificado_cip_habilitado_en: extended.certificado_cip_habilitado_en,
       }
     }
   } catch {
-    // Columnas IPG/CIP aún no migradas
+    // Columnas aún no migradas
   }
 
   return {
     certificado_habilitado: base.certificado_habilitado,
     certificado_ipg_habilitado: base.certificado_habilitado,
     certificado_cip_habilitado: false,
+    certificado_ipg_habilitado_en: null,
+    certificado_cip_habilitado_en: null,
   }
 }
 
 export function resolveCertificadoPagoEstado(
   inscripcion: InscripcionCertHabilitacion | null,
-  precioCert: number | null
+  precioCert: number | null,
+  options?: { requiereHabilitacion?: boolean }
 ) {
   const ipgHabilitado = !!inscripcion?.certificado_ipg_habilitado
   const cipHabilitado = !!inscripcion?.certificado_cip_habilitado
   const legacyHabilitado = !!inscripcion?.certificado_habilitado
   const algunoHabilitado = ipgHabilitado || cipHabilitado || legacyHabilitado
-  const pagoPendiente = !!(precioCert && precioCert > 0 && !algunoHabilitado)
+
+  const requiereHabilitacion =
+    options?.requiereHabilitacion ?? !!(precioCert && precioCert > 0)
+
+  const pagoPendiente = requiereHabilitacion && !algunoHabilitado
 
   return {
     ipgHabilitado: ipgHabilitado || (legacyHabilitado && !cipHabilitado),
@@ -70,7 +90,7 @@ export function resolveCertificadoPagoEstado(
 
 /**
  * Habilita o deshabilita certificado IPG/CIP vía SQL directo.
- * Funciona aunque el cliente Prisma no esté regenerado.
+ * Al habilitar, registra la marca temporal para el tiempo de espera.
  */
 export async function setInscripcionCertificadoHabilitacion(
   inscripcionId: string,
@@ -85,10 +105,31 @@ export async function setInscripcionCertificadoHabilitacion(
   if (!inscripcion) return null
 
   if (tipo === 'ipg') {
+    if (habilitado) {
+      await prisma.$executeRaw(
+        Prisma.sql`
+          UPDATE inscripciones
+          SET certificado_ipg_habilitado = true,
+              certificado_ipg_habilitado_en = COALESCE(certificado_ipg_habilitado_en, NOW())
+          WHERE id = ${inscripcionId}
+        `
+      )
+    } else {
+      await prisma.$executeRaw(
+        Prisma.sql`
+          UPDATE inscripciones
+          SET certificado_ipg_habilitado = false,
+              certificado_ipg_habilitado_en = NULL
+          WHERE id = ${inscripcionId}
+        `
+      )
+    }
+  } else if (habilitado) {
     await prisma.$executeRaw(
       Prisma.sql`
         UPDATE inscripciones
-        SET certificado_ipg_habilitado = ${habilitado}
+        SET certificado_cip_habilitado = true,
+            certificado_cip_habilitado_en = COALESCE(certificado_cip_habilitado_en, NOW())
         WHERE id = ${inscripcionId}
       `
     )
@@ -96,7 +137,8 @@ export async function setInscripcionCertificadoHabilitacion(
     await prisma.$executeRaw(
       Prisma.sql`
         UPDATE inscripciones
-        SET certificado_cip_habilitado = ${habilitado}
+        SET certificado_cip_habilitado = false,
+            certificado_cip_habilitado_en = NULL
         WHERE id = ${inscripcionId}
       `
     )
@@ -119,6 +161,8 @@ export async function setInscripcionCertificadoHabilitacion(
     certificado_habilitado: synced,
     certificado_ipg_habilitado: hab.certificado_ipg_habilitado,
     certificado_cip_habilitado: hab.certificado_cip_habilitado,
+    certificado_ipg_habilitado_en: hab.certificado_ipg_habilitado_en,
+    certificado_cip_habilitado_en: hab.certificado_cip_habilitado_en,
   }
 }
 

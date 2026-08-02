@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { SyntheticEvent } from 'react'
 
 import axios from 'axios'
@@ -20,7 +20,11 @@ import {
   CircularProgress,
   Button,
   IconButton,
-  Tooltip
+  Tooltip,
+  TextField,
+  InputAdornment,
+  MenuItem,
+  Alert
 } from '@mui/material'
 import type { Rol } from '@prisma/client'
 
@@ -51,15 +55,43 @@ interface CertConfirm {
   cursoTitulo: string
   habilitadoActual: boolean
   tipo: TipoCertificado
+  precioSugerido: number | null
+  moneda: string
+}
+
+const METODOS_PAGO = [
+  { value: 'TRANSFERENCIA', label: 'Transferencia' },
+  { value: 'YAPE', label: 'Yape' },
+  { value: 'PLIN', label: 'Plin' },
+  { value: 'TARJETA_CREDITO', label: 'Tarjeta' },
+  { value: 'OTRO', label: 'Otro' },
+]
+
+const todayInputValue = () => {
+  const d = new Date()
+
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesModalProps) => {
   const [activeTab, setActiveTab] = useState(0)
   const [certConfirm, setCertConfirm] = useState<CertConfirm | null>(null)
   const [certLoading, setCertLoading] = useState(false)
+  const [certPagadoEn, setCertPagadoEn] = useState(todayInputValue())
+  const [certMonto, setCertMonto] = useState('')
+  const [certMetodo, setCertMetodo] = useState('TRANSFERENCIA')
+  const [certComprobante, setCertComprobante] = useState('')
 
   const queryClient = useQueryClient()
   const { data: usuario, isLoading } = useUsuario(usuarioId || '')
+
+  useEffect(() => {
+    if (!certConfirm || certConfirm.habilitadoActual) return
+    setCertPagadoEn(todayInputValue())
+    setCertMonto(certConfirm.precioSugerido != null ? String(certConfirm.precioSugerido) : '')
+    setCertMetodo('TRANSFERENCIA')
+    setCertComprobante('')
+  }, [certConfirm])
 
   const handleTabChange = (_: SyntheticEvent, newValue: number) => {
     setActiveTab(newValue)
@@ -68,18 +100,58 @@ const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesM
   const handleToggleCert = async () => {
     if (!certConfirm) return
 
+    const habilitando = !certConfirm.habilitadoActual
+
+    if (habilitando) {
+      if (!certPagadoEn) {
+        toast.error('Indica la fecha de pago')
+
+        return
+      }
+
+      if (certMonto === '' || Number(certMonto) < 0) {
+        toast.error('Indica el monto del pedido')
+
+        return
+      }
+    }
+
     setCertLoading(true)
 
     try {
-      await axios.patch(`/api/admin/inscripciones/${certConfirm.inscripcionId}/certificado`, {
-        habilitado: !certConfirm.habilitadoActual,
-        tipo: certConfirm.tipo
-      })
+      const payload: Record<string, unknown> = {
+        habilitado: habilitando,
+        tipo: certConfirm.tipo,
+      }
+
+      if (habilitando) {
+        payload.pagado_en = new Date(`${certPagadoEn}T12:00:00`).toISOString()
+        payload.monto = Number(certMonto)
+        payload.metodo_pago = certMetodo
+        if (certComprobante.trim()) payload.numero_comprobante = certComprobante.trim()
+      }
+
+      const res = await axios.patch(`/api/admin/inscripciones/${certConfirm.inscripcionId}/certificado`, payload)
+
+      if (!res.data?.status) {
+        toast.error(res.data?.message || 'Error al actualizar el certificado')
+
+        return
+      }
+
       queryClient.invalidateQueries({ queryKey: ['usuarios', usuarioId] })
-      toast.success(certConfirm.habilitadoActual ? 'Certificado deshabilitado' : 'Certificado habilitado correctamente')
+      const nro = res.data?.result?.numeroPedido
+
+      toast.success(
+        certConfirm.habilitadoActual
+          ? 'Certificado deshabilitado'
+          : nro
+            ? `Pedido #${nro} registrado · Certificado habilitado`
+            : 'Certificado habilitado correctamente'
+      )
       setCertConfirm(null)
-    } catch {
-      toast.error('Error al actualizar el certificado')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Error al actualizar el certificado')
     } finally {
       setCertLoading(false)
     }
@@ -238,14 +310,18 @@ const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesM
                                     </Tooltip>
                                   )}
                                   {tieneCertPago && (
-                                    <Tooltip title={`${habilitado ? 'Deshabilitar' : 'Habilitar'} certificado ${label}`}>
+                                    <Tooltip title={`${habilitado ? 'Deshabilitar' : 'Registrar pago y habilitar'} certificado ${label}`}>
                                       <IconButton
                                         size='small'
                                         onClick={() => setCertConfirm({
                                           inscripcionId: insc.id,
                                           cursoTitulo: insc.curso.titulo,
                                           habilitadoActual: habilitado,
-                                          tipo
+                                          tipo,
+                                          precioSugerido: insc.curso.precio_certificado != null
+                                            ? Number(insc.curso.precio_certificado)
+                                            : null,
+                                          moneda: insc.curso.moneda || 'PEN',
                                         })}
                                         sx={{
                                           bgcolor: habilitado ? 'rgba(22,163,74,0.1)' : 'rgba(245,158,11,0.1)',
@@ -362,29 +438,90 @@ const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesM
 
       {/* Modal de confirmación para habilitar/deshabilitar certificado */}
       {certConfirm && (
-        <AppModal open={!!certConfirm} handleClose={() => !certLoading && setCertConfirm(null)}>
-          <Box sx={{ textAlign: 'center' }}>
+        <AppModal
+          open={!!certConfirm}
+          handleClose={() => !certLoading && setCertConfirm(null)}
+          sx={{ maxWidth: certConfirm.habilitadoActual ? 440 : 520 }}
+        >
+          <Box sx={{ textAlign: certConfirm.habilitadoActual ? 'center' : 'left' }}>
             <Box sx={{
               width: 64, height: 64, borderRadius: '50%', mx: 'auto', mb: 3,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               bgcolor: certConfirm.habilitadoActual ? 'rgba(220,38,38,0.1)' : 'rgba(22,163,74,0.1)'
             }}>
               <i
-                className={certConfirm.habilitadoActual ? 'tabler-lock text-4xl' : 'tabler-certificate text-4xl'}
+                className={certConfirm.habilitadoActual ? 'tabler-lock text-4xl' : 'tabler-receipt text-4xl'}
                 style={{ color: certConfirm.habilitadoActual ? '#dc2626' : '#16a34a' }}
               />
             </Box>
-            <Typography variant='h5' fontWeight={700} sx={{ mb: 1 }}>
-              {certConfirm.habilitadoActual ? `Deshabilitar certificado ${certConfirm.tipo.toUpperCase()}` : `Habilitar certificado ${certConfirm.tipo.toUpperCase()}`}
+            <Typography variant='h5' fontWeight={700} sx={{ mb: 1, textAlign: 'center' }}>
+              {certConfirm.habilitadoActual
+                ? `Deshabilitar certificado ${certConfirm.tipo.toUpperCase()}`
+                : `Registrar pago · ${certConfirm.tipo.toUpperCase()}`}
             </Typography>
-            <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5 }}>
+            <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5, textAlign: 'center' }}>
               {certConfirm.habilitadoActual
                 ? `El estudiante ya no podrá descargar el certificado ${certConfirm.tipo.toUpperCase()} de:`
-                : `El estudiante podrá descargar el certificado ${certConfirm.tipo.toUpperCase()} de:`}
+                : 'Para habilitar el certificado debes registrar un pedido con la fecha de pago.'}
             </Typography>
-            <Typography variant='body1' fontWeight={600} sx={{ mb: 4 }}>
+            <Typography variant='body1' fontWeight={600} sx={{ mb: certConfirm.habilitadoActual ? 4 : 2.5, textAlign: 'center' }}>
               {certConfirm.cursoTitulo}
             </Typography>
+
+            {!certConfirm.habilitadoActual && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
+                <Alert severity='info'>
+                  Se creará un pedido tipo certificado (o se completará uno pendiente) para dejar registro del pago.
+                </Alert>
+                <TextField
+                  label='Fecha de pago'
+                  type='date'
+                  fullWidth
+                  required
+                  value={certPagadoEn}
+                  onChange={e => setCertPagadoEn(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  disabled={certLoading}
+                />
+                <TextField
+                  label='Monto del pedido'
+                  type='number'
+                  fullWidth
+                  required
+                  value={certMonto}
+                  onChange={e => setCertMonto(e.target.value)}
+                  disabled={certLoading}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position='start'>
+                        {certConfirm.moneda === 'USD' ? '$' : 'S/'}
+                      </InputAdornment>
+                    ),
+                  }}
+                  inputProps={{ min: 0, step: '0.01' }}
+                />
+                <TextField
+                  select
+                  label='Método de pago'
+                  fullWidth
+                  value={certMetodo}
+                  onChange={e => setCertMetodo(e.target.value)}
+                  disabled={certLoading}
+                >
+                  {METODOS_PAGO.map(m => (
+                    <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label='N° operación / comprobante (opcional)'
+                  fullWidth
+                  value={certComprobante}
+                  onChange={e => setCertComprobante(e.target.value)}
+                  disabled={certLoading}
+                />
+              </Box>
+            )}
+
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
               <Button
                 variant='tonal'
@@ -406,7 +543,7 @@ const UsuarioDetallesModal = ({ open, handleClose, usuarioId }: UsuarioDetallesM
               >
                 {certLoading
                   ? 'Guardando...'
-                  : certConfirm.habilitadoActual ? 'Sí, deshabilitar' : 'Sí, habilitar'
+                  : certConfirm.habilitadoActual ? 'Sí, deshabilitar' : 'Crear pedido y habilitar'
                 }
               </Button>
             </Box>

@@ -160,12 +160,14 @@ export function PedidoDetallePage() {
 
           {/* Tabla de cursos comprados */}
           <Grid item xs={12}>
-            <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Cursos Comprados (Detalle)</Typography>
+            <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+              {(pedido as any)?.tipo === 'CERTIFICADO' ? 'Certificado solicitado' : 'Cursos Comprados (Detalle)'}
+            </Typography>
             <TableContainer component={Paper} variant="outlined">
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Curso</TableCell>
+                    <TableCell>{(pedido as any)?.tipo === 'CERTIFICADO' ? 'Ítem' : 'Curso'}</TableCell>
                     <TableCell align="right">Precio Original</TableCell>
                     <TableCell align="right">Subtotal Pagado</TableCell>
                   </TableRow>
@@ -176,7 +178,12 @@ export function PedidoDetallePage() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar variant="rounded" src={detalle.curso?.miniatura || ''} sx={{ width: 40, height: 30 }} />
-                          <Typography variant="body2" fontWeight={600}>{detalle.curso?.titulo}</Typography>
+                          <Typography variant="body2" fontWeight={600}>
+                            {detalle.titulo_display ||
+                              (detalle.certificado_tipo
+                                ? `${detalle.curso?.titulo} (Certificado ${String(detalle.certificado_tipo).toUpperCase() === 'CIP' ? 'Colegio de Ingenieros' : 'IPG'})`
+                                : detalle.curso?.titulo)}
+                          </Typography>
                         </div>
                       </TableCell>
                       <TableCell align="right">{pedido.moneda} {Number(detalle.curso?.precio || 0).toFixed(2)}</TableCell>

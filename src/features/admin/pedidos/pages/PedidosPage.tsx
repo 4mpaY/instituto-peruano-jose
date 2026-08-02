@@ -184,11 +184,20 @@ export function PedidosPage({ initialData, initialTotal = 0 }: PedidosPageProps)
         header: 'Curso(s)',
         cell: ({ row }) => (
           <div className='flex flex-col'>
-            {row.original.detalles?.map((detalle, index) => (
-              <Typography key={index} variant='body2' color='text.primary'>
-                {detalle.curso?.titulo}
-              </Typography>
-            ))}
+            {row.original.detalles?.map((detalle, index) => {
+              const certTipo = (detalle as any).certificado_tipo
+              const titulo = detalle.curso?.titulo || ''
+
+              const label = certTipo
+                ? `${titulo} (Certificado ${String(certTipo).toUpperCase() === 'CIP' ? 'Colegio de Ingenieros' : 'IPG'})`
+                : titulo
+
+              return (
+                <Typography key={index} variant='body2' color='text.primary'>
+                  {label}
+                </Typography>
+              )
+            })}
           </div>
         )
       }),

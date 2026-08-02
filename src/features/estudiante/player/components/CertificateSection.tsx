@@ -11,6 +11,7 @@ import {
 import HydratedDate from '@/utils/components/HydratedDate'
 import AppModal from '@/utils/components/AppModal'
 import CompleteProfileModal from './CompleteProfileModal'
+import TramiteCertificadoFlow, { type TramiteCertificadoCursoInfo } from './TramiteCertificadoFlow'
 
 interface CertificateData {
     id: string
@@ -25,6 +26,8 @@ interface Elegibilidad {
     promedioScore: number
     promedioMinimo: number
     isEligible: boolean
+    puedeTramitar?: boolean
+    evaluacionesOk?: boolean
     totalExamenes: number
 }
 
@@ -33,9 +36,24 @@ interface PlantillaPreview {
     nombre: string
     thumbnail: string
     habilitado: boolean
+    enEspera?: boolean
+    disponibleDesde?: string | Date | null
+    mensajeEspera?: string | null
     certificadoId?: string | null
     codigoVerificacion?: string | null
     emitidoEn?: string | null
+}
+
+interface SolicitudCertPendiente {
+    pedidoId: string
+    numeroPedido: number
+    certificadoTipo: 'IPG' | 'CIP' | string
+    total: number
+    creadoEn?: string | Date
+    tieneComprobante?: boolean
+    etiquetaEntrega?: string
+    disponibleDesde?: string | Date | null
+    nombreTipo?: string
 }
 
 const CertificadoPreviewGrid = ({
@@ -50,11 +68,63 @@ const CertificadoPreviewGrid = ({
     onCardClick?: (plantilla: PlantillaPreview) => void
 }) => {
     const habilitadas = plantillas.filter(p => p.habilitado)
+    const enEspera = plantillas.filter(p => p.enEspera && !p.habilitado)
 
-    if (habilitadas.length === 0) return null
+    if (habilitadas.length === 0 && enEspera.length === 0) return null
 
     return (
         <Box sx={{ mt: 3 }}>
+            {enEspera.length > 0 && (
+                <Box sx={{ mb: habilitadas.length > 0 ? 2.5 : 0 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 1.5 }}>
+                        Certificados en espera
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                        {enEspera.map(p => (
+                            <Box
+                                key={`espera-${p.id}`}
+                                sx={{
+                                    p: 2,
+                                    borderRadius: 2,
+                                    border: '1px solid',
+                                    borderColor: 'warning.light',
+                                    bgcolor: 'rgba(245,158,11,0.06)',
+                                    display: 'flex',
+                                    gap: 1.5,
+                                    alignItems: 'flex-start',
+                                }}
+                            >
+                                <i className="tabler-clock" style={{ fontSize: '1.25rem', color: '#d97706', marginTop: 2 }} />
+                                <Box>
+                                    <Typography variant="subtitle2" fontWeight={700}>{p.nombre}</Typography>
+                                    {p.disponibleDesde ? (
+                                        <Typography variant="body2" color="text.secondary">
+                                            Disponible desde{' '}
+                                            <HydratedDate
+                                                date={p.disponibleDesde}
+                                                options={{
+                                                    day: '2-digit',
+                                                    month: 'long',
+                                                    year: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                }}
+                                            />
+                                        </Typography>
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary">
+                                            {p.mensajeEspera || 'Tu certificado aún no está disponible.'}
+                                        </Typography>
+                                    )}
+                                </Box>
+                            </Box>
+                        ))}
+                    </Box>
+                </Box>
+            )}
+
+            {habilitadas.length > 0 && (
+            <>
             <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 1.5 }}>
                 Certificados habilitados
             </Typography>
@@ -130,6 +200,8 @@ const CertificadoPreviewGrid = ({
                     </Box>
                 ))}
             </Box>
+            </>
+            )}
         </Box>
     )
 }
@@ -314,6 +386,16 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     const [cursoTitulo, setCursoTitulo] = useState<string | null>(null)
     const [whatsappNumero, setWhatsappNumero] = useState<string | null>(null)
     const [documentoCompleto, setDocumentoCompleto] = useState(false)
+    const [tramitarDisponible, setTramitarDisponible] = useState(false)
+
+    const [tiposTramitables, setTiposTramitables] = useState<{ ipg: boolean; cip: boolean }>({
+        ipg: false,
+        cip: false,
+    })
+
+    const [cursoCertificacion, setCursoCertificacion] = useState<TramiteCertificadoCursoInfo | null>(null)
+    const [showTramite, setShowTramite] = useState(false)
+    const [solicitudesPendientes, setSolicitudesPendientes] = useState<SolicitudCertPendiente[]>([])
     const autoGeneradoRef = useRef(false)
 
     useEffect(() => {
@@ -335,6 +417,13 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                     setCursoTitulo(res.data.result.cursoTitulo ?? null)
                     setWhatsappNumero(resPago?.data?.result?.whatsapp_numero || null)
                     setDocumentoCompleto(res.data.result.documentoCompleto ?? false)
+                    setTramitarDisponible(!!res.data.result.tramitarDisponible)
+                    setTiposTramitables({
+                        ipg: !!res.data.result.tiposTramitables?.ipg,
+                        cip: !!res.data.result.tiposTramitables?.cip,
+                    })
+                    setCursoCertificacion(res.data.result.cursoCertificacion ?? null)
+                    setSolicitudesPendientes(res.data.result.solicitudesPendientes ?? [])
                 } else {
                     setFetchError(true)
                 }
@@ -348,12 +437,39 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         fetchData()
     }, [cursoId])
 
-    // Auto-generar si no hay evaluaciones, está al 100% y no hay pago pendiente
+    const plantillasEnEspera = plantillasPreview.filter(p => p.enEspera && !p.habilitado)
+    const plantillasHabilitadas = plantillasPreview.filter(p => p.habilitado)
+    const hayEsperaActiva = plantillasEnEspera.length > 0
+
+    const refreshCertificadoState = async () => {
+        const res = await axios.get(`/api/estudiante/certificado?cursoId=${cursoId}`)
+
+        if (res.data.status) {
+            setCertificado(res.data.result.certificado ?? null)
+            setElegibilidad(res.data.result.elegibilidad ?? null)
+            setPagoPendiente(res.data.result.pagoPendiente ?? false)
+            setPlantillasPreview(res.data.result.plantillasPreview ?? [])
+            setCursoTitulo(res.data.result.cursoTitulo ?? null)
+            setDocumentoCompleto(res.data.result.documentoCompleto ?? false)
+            setTramitarDisponible(!!res.data.result.tramitarDisponible)
+            setTiposTramitables({
+                ipg: !!res.data.result.tiposTramitables?.ipg,
+                cip: !!res.data.result.tiposTramitables?.cip,
+            })
+            setCursoCertificacion(res.data.result.cursoCertificacion ?? null)
+            setSolicitudesPendientes(res.data.result.solicitudesPendientes ?? [])
+        }
+
+        return res
+    }
+
+    // Auto-generar si no hay evaluaciones, está al 100% y no hay pago/espera pendiente
     useEffect(() => {
         if (
             !loading &&
             !certificado &&
             !pagoPendiente &&
+            !hayEsperaActiva &&
             elegibilidad?.isEligible &&
             elegibilidad?.totalExamenes === 0 &&
             !autoGeneradoRef.current
@@ -361,13 +477,13 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
             autoGeneradoRef.current = true
             setGenerating(true)
             axios.post('/api/estudiante/certificado', { cursoId })
-                .then(res => {
-                    if (res.data.status) setCertificado(res.data.result.certificado)
+                .then(async res => {
+                    if (res.data.status) await refreshCertificadoState()
                 })
                 .catch(() => { })
                 .finally(() => setGenerating(false))
         }
-    }, [loading, certificado, pagoPendiente, elegibilidad, cursoId])
+    }, [loading, certificado, pagoPendiente, hayEsperaActiva, elegibilidad, cursoId])
 
     const handleCompletarTodo = async () => {
         setCompletandoTodo(true)
@@ -376,16 +492,8 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
             await axios.post('/api/estudiante/progreso/completar-todo', { cursoId })
             toast.success('¡Todas las lecciones completadas!')
             onAllLessonsCompleted?.()
-            const res = await axios.get(`/api/estudiante/certificado?cursoId=${cursoId}`)
-
-            if (res.data.status) {
-                setElegibilidad(res.data.result.elegibilidad ?? null)
-                setPagoPendiente(res.data.result.pagoPendiente ?? false)
-                setPlantillasPreview(res.data.result.plantillasPreview ?? [])
-                setCertificado(res.data.result.certificado ?? null)
-                setDocumentoCompleto(res.data.result.documentoCompleto ?? false)
-                autoGeneradoRef.current = false
-            }
+            await refreshCertificadoState()
+            autoGeneradoRef.current = false
         } catch (err: any) {
             toast.error(err.response?.data?.message || 'Error al completar las lecciones')
         } finally {
@@ -410,7 +518,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
             const res = await axios.post('/api/estudiante/certificado', { cursoId })
 
             if (res.data.status) {
-                setCertificado(res.data.result.certificado)
+                await refreshCertificadoState()
                 toast.success('🎓 ¡Certificado generado exitosamente!')
             }
         } catch (err: any) {
@@ -491,7 +599,10 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         }, 1200)
     }
 
-    const tienePreviewsHabilitados = plantillasPreview.some(p => p.habilitado)
+    const tienePreviewsHabilitados = plantillasHabilitadas.length > 0 || hayEsperaActiva
+
+    // Solo "obtenido" si alguna plantilla está realmente liberada (respeta deshabilitación admin)
+    const certificadoListoParaMostrar = plantillasHabilitadas.length > 0
 
     const previewModal = (
         <CertificadoPreviewModal
@@ -506,48 +617,67 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
 
     // ── Wrapper visual ──────────────────────────────────────────────
     const Wrapper = ({ children }: { children: React.ReactNode }) => {
-        const hasPago = pagoPendiente && !certificado
+        const hasSolicitudEnviada = solicitudesPendientes.length > 0 && !certificadoListoParaMostrar
+        const hasPago = pagoPendiente && !certificadoListoParaMostrar && !showTramite && !hasSolicitudEnviada
+        const enEspera = hayEsperaActiva && !certificadoListoParaMostrar
+        const enTramite = showTramite
 
-        const borderColor = certificado
+        const borderColor = certificadoListoParaMostrar
             ? 'success.light'
-            : hasPago
+            : hasSolicitudEnviada
+                ? 'success.light'
+            : enEspera || hasPago || enTramite
                 ? '#f59e0b'
                 : elegibilidad?.isEligible
                     ? 'primary.light'
                     : 'divider'
 
-        const headerBg = certificado
+        const headerBg = certificadoListoParaMostrar || hasSolicitudEnviada
             ? 'rgba(22,163,74,0.06)'
-            : hasPago
+            : enEspera || hasPago || enTramite
                 ? 'rgba(245,158,11,0.06)'
                 : elegibilidad?.isEligible
                     ? 'rgba(2,94,68,0.06)'
                     : 'rgba(0,0,0,0.02)'
 
-        const iconBg = certificado
+        const iconBg = certificadoListoParaMostrar || hasSolicitudEnviada
             ? 'rgba(22,163,74,0.12)'
-            : hasPago
+            : enEspera || hasPago || enTramite
                 ? 'rgba(245,158,11,0.12)'
                 : 'rgba(2,94,68,0.1)'
 
-        const iconColor = certificado ? '#16a34a' : hasPago ? '#d97706' : '#025E44'
+        const iconColor = certificadoListoParaMostrar || hasSolicitudEnviada
+            ? '#16a34a'
+            : enEspera || hasPago || enTramite
+                ? '#d97706'
+                : '#025E44'
 
-        const subtitle = certificado
+        const subtitle = certificadoListoParaMostrar
             ? 'Certificado de finalización obtenido'
-            : hasPago
-                ? 'Requiere pago para obtenerlo'
-                : elegibilidad?.isEligible
-                    ? '¡Puedes obtener tu certificado!'
-                    : 'Completa el curso para obtenerlo'
+            : enTramite
+                ? 'Completa el trámite de tu certificado'
+                : solicitudesPendientes.length > 0
+                    ? 'Solicitud enviada — pendiente de validación'
+                : enEspera
+                    ? (plantillasEnEspera[0]?.disponibleDesde
+                        ? 'En proceso de emisión'
+                        : (plantillasEnEspera[0]?.mensajeEspera || 'Tu certificado está en proceso de emisión'))
+                    : hasPago
+                        ? 'Requiere pago para obtenerlo'
+                        : elegibilidad?.isEligible
+                            ? '¡Puedes obtener tu certificado!'
+                            : 'Completa el curso para obtenerlo'
 
         return (
-            <Box sx={{
-                mt: 3,
-                borderRadius: '16px',
-                border: '1.5px solid',
-                borderColor,
-                overflow: 'hidden',
-            }}>
+            <Box
+                sx={{
+                    mt: 3,
+                    borderRadius: '16px',
+                    border: '1.5px solid',
+                    borderColor,
+                    overflow: 'hidden',
+                }}
+            >
                 {/* Header band */}
                 <Box sx={{
                     px: 3, py: 1.5,
@@ -561,9 +691,9 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         bgcolor: iconBg
                     }}>
-                        <i className="tabler-certificate" style={{ fontSize: '1.25rem', color: iconColor }} />
+                        <i className={enEspera ? 'tabler-clock' : hasSolicitudEnviada ? 'tabler-send' : 'tabler-certificate'} style={{ fontSize: '1.25rem', color: iconColor }} />
                     </Box>
-                    <Box>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
                         <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
                             Tu Certificado
                         </Typography>
@@ -571,7 +701,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                             {subtitle}
                         </Typography>
                     </Box>
-                    {certificado && (
+                    {certificadoListoParaMostrar && (
                         <Chip
                             size="small"
                             icon={<i className="tabler-circle-check-filled" style={{ fontSize: '0.85rem' }} />}
@@ -580,7 +710,25 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                             sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem' }}
                         />
                     )}
-                    {hasPago && (
+                    {hasSolicitudEnviada && !certificadoListoParaMostrar && (
+                        <Chip
+                            size="small"
+                            icon={<i className="tabler-send" style={{ fontSize: '0.85rem' }} />}
+                            label="Enviado"
+                            color="success"
+                            sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem', flexShrink: 0 }}
+                        />
+                    )}
+                    {enEspera && (
+                        <Chip
+                            size="small"
+                            icon={<i className="tabler-clock" style={{ fontSize: '0.85rem' }} />}
+                            label="En espera"
+                            color="warning"
+                            sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem', flexShrink: 0 }}
+                        />
+                    )}
+                    {hasPago && !enEspera && !hasSolicitudEnviada && (
                         <Chip
                             size="small"
                             icon={<i className="tabler-lock" style={{ fontSize: '0.85rem' }} />}
@@ -626,12 +774,205 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         )
     }
 
-    // ── Certificado con costo pendiente de pago (antes que certificado emitido) ──
-    if (pagoPendiente && elegibilidad?.isEligible) {
+    // ── Flujo de trámite de certificado (pago como pedido) ───────────
+    // Debe verse DENTRO de la pestaña Certificación (misma caja)
+    const preciosCurso = cursoCertificacion
+        ? [
+            cursoCertificacion.precio_certificado_ipg,
+            cursoCertificacion.precio_certificado_cip,
+            cursoCertificacion.precio_certificado,
+          ].some(p => p != null && Number(p) > 0)
+        : false
+
+    const evaluacionesAprobadas =
+        !!elegibilidad?.evaluacionesOk ||
+        !!elegibilidad?.puedeTramitar ||
+        !!elegibilidad?.isEligible ||
+        (elegibilidad != null &&
+            (elegibilidad.totalExamenes === 0 ||
+                Number(elegibilidad.promedioScore) >= Number(elegibilidad.promedioMinimo || 60)))
+
+    const puedeTramitarCert =
+        tramitarDisponible ||
+        (evaluacionesAprobadas && (tiposTramitables.ipg || tiposTramitables.cip))
+
+    const etiquetaAdquirirOtro = (() => {
+        if (tiposTramitables.cip && !tiposTramitables.ipg) return 'Adquirir Certificado CIP'
+        if (tiposTramitables.ipg && !tiposTramitables.cip) return 'Adquirir Certificado IPG'
+
+        return 'Adquirir otro certificado'
+    })()
+
+    const mostrarTramiteCta =
+        !certificadoListoParaMostrar &&
+        !hayEsperaActiva &&
+        !!cursoCertificacion &&
+        preciosCurso &&
+        puedeTramitarCert &&
+        solicitudesPendientes.length === 0
+
+    if (showTramite && cursoCertificacion) {
+        return (
+            <Wrapper>
+                <TramiteCertificadoFlow
+                    curso={cursoCertificacion}
+                    tiposDisponibles={tiposTramitables}
+                    onClose={() => setShowTramite(false)}
+                    onSuccess={async () => {
+                        setShowTramite(false)
+                        await refreshCertificadoState()
+                    }}
+                />
+            </Wrapper>
+        )
+    }
+
+    // ── Solicitud ya enviada (pedido pendiente de validación) ─────────
+    if (solicitudesPendientes.length > 0 && !certificadoListoParaMostrar) {
+        return (
+            <Wrapper>
+                <Box sx={{ textAlign: 'center', py: 1 }}>
+                    <Box sx={{
+                        width: 72, height: 72, borderRadius: '50%', mx: 'auto', mb: 2,
+                        background: 'linear-gradient(135deg, #025E44 0%, #3AB079 100%)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <i className="tabler-send" style={{ fontSize: '2rem', color: '#fff' }} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>
+                        ¡Formulario enviado!
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 520, mx: 'auto' }}>
+                        Tu solicitud de certificado fue registrada. El administrador validará el pago.
+                        Cuando se apruebe, el certificado se habilitará según los tiempos de entrega configurados.
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, textAlign: 'left', maxWidth: 520, mx: 'auto' }}>
+                        {solicitudesPendientes.map(s => (
+                            <Box
+                                key={s.pedidoId}
+                                sx={{
+                                    p: 2,
+                                    borderRadius: 2,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    bgcolor: 'rgba(2,94,68,0.04)',
+                                }}
+                            >
+                                <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 0.5 }}>
+                                    Pedido #{s.numeroPedido} · {s.nombreTipo || s.certificadoTipo}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
+                                    Estado: <strong>Pendiente de validación de pago</strong>
+                                    {s.tieneComprobante ? ' (comprobante recibido)' : ''}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    {s.etiquetaEntrega || 'La fecha de entrega se confirmará al validar el pago.'}
+                                </Typography>
+                                {s.disponibleDesde && (
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+                                        Disponible estimado desde:{' '}
+                                        <HydratedDate
+                                            date={s.disponibleDesde}
+                                            options={{
+                                                day: 'numeric',
+                                                month: 'long',
+                                                year: 'numeric',
+                                                hour: 'numeric',
+                                                minute: '2-digit',
+                                            }}
+                                        />
+                                    </Typography>
+                                )}
+                            </Box>
+                        ))}
+                    </Box>
+
+                    {tramitarDisponible && (tiposTramitables.ipg || tiposTramitables.cip) && (
+                        <Button
+                            variant="outlined"
+                            onClick={() => setShowTramite(true)}
+                            sx={{ mt: 3, textTransform: 'none', fontWeight: 700 }}
+                        >
+                            {etiquetaAdquirirOtro}
+                        </Button>
+                    )}
+                </Box>
+            </Wrapper>
+        )
+    }
+
+    // ── Certificado pendiente: tramitar aquí (no WhatsApp) ───────────
+    if (mostrarTramiteCta) {
+        return (
+            <Wrapper>
+                <Box sx={{ textAlign: 'center', py: 1 }}>
+                    <Box sx={{
+                        width: 72, height: 72, borderRadius: '50%', mx: 'auto', mb: 2,
+                        background: 'linear-gradient(135deg, #025E44 0%, #3AB079 100%)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <i className="tabler-certificate" style={{ fontSize: '2rem', color: '#fff' }} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>
+                        ¿Desea tramitar su certificado?
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 480, mx: 'auto' }}>
+                        Ya aprobaste las evaluaciones. Confirma tus datos, elige el tipo de certificado (IPG o Colegio de Ingenieros) y realiza el pago. Validaremos tu solicitud en Pedidos.
+                    </Typography>
+                    <Button
+                        variant="contained"
+                        onClick={() => setShowTramite(true)}
+                        startIcon={<i className="tabler-file-certificate" />}
+                        sx={{
+                            bgcolor: '#025E44', borderRadius: '12px', textTransform: 'none',
+                            fontWeight: 700, fontSize: '0.95rem', px: 4, py: 1.25,
+                            boxShadow: 'none', '&:hover': { bgcolor: '#014d36', boxShadow: 'none' }
+                        }}
+                    >
+                        Tramitar mi certificado
+                    </Button>
+                </Box>
+            </Wrapper>
+        )
+    }
+
+    // ── Tiene precios pero faltan evaluaciones para tramitar ─────────
+    if (pagoPendiente && !certificadoListoParaMostrar && !hayEsperaActiva && preciosCurso && !evaluacionesAprobadas) {
+        const score = elegibilidad?.promedioScore ?? 0
+        const minimo = elegibilidad?.promedioMinimo ?? 60
+
+        return (
+            <Wrapper>
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 3 }}>
+                    <Box sx={{
+                        width: 72, height: 72, borderRadius: '18px', flexShrink: 0,
+                        background: 'linear-gradient(135deg, #025E44 0%, #3AB079 100%)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <i className="tabler-clipboard-check" style={{ fontSize: '2rem', color: '#fff' }} />
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 800, color: '#025E44', mb: 0.5 }}>
+                            Completa las evaluaciones
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                            Para tramitar el certificado debes aprobar las evaluaciones del curso
+                            (promedio actual: <strong>{score}%</strong>, mínimo: <strong>{minimo}%</strong>).
+                            No es necesario completar todas las lecciones.
+                        </Typography>
+                    </Box>
+                </Box>
+            </Wrapper>
+        )
+    }
+
+    // ── Pago requerido sin precios configurados ──────────────────────
+    if (pagoPendiente && !certificadoListoParaMostrar && !hayEsperaActiva && !preciosCurso) {
         const phone = (phoneNumberProfesor || whatsappNumero || '').replace(/\D/g, '')
 
         const waUrl = phone
-            ? `https://wa.me/${phone}?text=${encodeURIComponent(`Hola, quiero obtener mi certificado del curso "${cursoTitulo || ''}". Por favor, indícame los pasos para realizar el pago.`)}`
+            ? `https://wa.me/${phone}?text=${encodeURIComponent(`Hola, quiero información sobre el certificado del curso "${cursoTitulo || ''}".`)}`
             : null
 
         return (
@@ -645,49 +986,121 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                         <i className="tabler-lock" style={{ fontSize: '2rem', color: '#fff' }} />
                     </Box>
                     <Box sx={{ flex: 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
-                            <Typography variant="h6" sx={{ fontWeight: 800, color: '#d97706' }}>
-                                Certificado disponible
-                            </Typography>
-                        </Box>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.6 }}>
-                            Has completado el curso. Para solicitar la emisión de tu certificado, es necesario haber aprobado satisfactoriamente el curso y realizar el pago correspondiente. Posteriormente, deberás comunicarte con nosotros para habilitar la descarga de tu certificado.
+                        <Typography variant="h6" sx={{ fontWeight: 800, color: '#d97706', mb: 0.5 }}>
+                            Certificado disponible
                         </Typography>
-                        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-                            {waUrl && (
-                                <Button
-                                    component="a"
-                                    href={waUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    variant="contained"
-                                    size="small"
-                                    startIcon={<i className="tabler-brand-whatsapp" />}
-                                    sx={{
-                                        bgcolor: '#d97706',
-                                        color: '#fff',
-                                        borderRadius: '10px',
-                                        textTransform: 'none',
-                                        fontWeight: 700,
-                                        boxShadow: 'none',
-                                        '&:hover': { bgcolor: '#b45309', boxShadow: 'none' }
-                                    }}
-                                >
-                                    Ver más detalles
-                                </Button>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: waUrl ? 2 : 0, lineHeight: 1.6 }}>
+                            Este curso requiere pago de certificado, pero aún no tiene precios configurados.
+                            {phone ? (
+                                <>
+                                    {' '}Contacta a tu asesor académico por WhatsApp:{' '}
+                                    <Box component="span" sx={{ fontWeight: 700, color: '#128C7E' }}>
+                                        +{phone}
+                                    </Box>
+                                    .
+                                </>
+                            ) : (
+                                ' Contacta a tu asesor académico o al administrador.'
                             )}
-                        </Box>
+                        </Typography>
+                        {waUrl && (
+                            <Button
+                                component="a"
+                                href={waUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                variant="contained"
+                                size="small"
+                                startIcon={<i className="tabler-brand-whatsapp" />}
+                                sx={{
+                                    bgcolor: '#25D366',
+                                    color: '#fff',
+                                    borderRadius: '10px',
+                                    textTransform: 'none',
+                                    fontWeight: 700,
+                                    boxShadow: 'none',
+                                    '&:hover': { bgcolor: '#1ebe5d', boxShadow: 'none' }
+                                }}
+                            >
+                                Contactar por WhatsApp
+                            </Button>
+                        )}
                     </Box>
                 </Box>
             </Wrapper>
         )
     }
 
+    // ── Certificado habilitado pero aún en tiempo de espera ─────────
+    if (hayEsperaActiva && plantillasHabilitadas.length === 0) {
+        return (
+            <>
+                <Wrapper>
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 3 }}>
+                        <Box sx={{
+                            width: 72, height: 72, borderRadius: '18px', flexShrink: 0,
+                            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <i className="tabler-clock" style={{ fontSize: '2rem', color: '#fff' }} />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 800, color: '#d97706', mb: 0.5 }}>
+                                Certificado en proceso de emisión
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.6 }}>
+                                Tu certificado ya fue habilitado. Debes esperar el tiempo configurado por el curso antes de poder verlo y descargarlo.
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                                {plantillasEnEspera.map(p => (
+                                    <Box
+                                        key={`espera-body-${p.id}`}
+                                        sx={{
+                                            p: 1.75,
+                                            borderRadius: 2,
+                                            border: '1px solid',
+                                            borderColor: 'warning.light',
+                                            bgcolor: 'rgba(245,158,11,0.06)',
+                                        }}
+                                    >
+                                        <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.25 }}>
+                                            {p.nombre}
+                                        </Typography>
+                                        {p.disponibleDesde ? (
+                                            <Typography variant="body2" color="text.secondary">
+                                                Disponible desde{' '}
+                                                <HydratedDate
+                                                    date={p.disponibleDesde}
+                                                    options={{
+                                                        day: '2-digit',
+                                                        month: 'long',
+                                                        year: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                    }}
+                                                />
+                                            </Typography>
+                                        ) : (
+                                            <Typography variant="body2" color="text.secondary">
+                                                {p.mensajeEspera || 'Aún no disponible.'}
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                ))}
+                            </Box>
+                        </Box>
+                    </Box>
+                </Wrapper>
+                {previewModal}
+            </>
+        )
+    }
+
     // ── Ya tiene certificado ────────────────────────────────────────
-    if (certificado && elegibilidad?.isEligible) {
-        const obtenidas = tienePreviewsHabilitados
-            ? plantillasPreview.filter(p => p.habilitado)
-            : [{ id: '', nombre: '', thumbnail: '', habilitado: true, certificadoId: certificado.id, codigoVerificacion: certificado.codigoVerificacion, emitidoEn: certificado.emitidoEn }]
+    if (certificadoListoParaMostrar && elegibilidad?.isEligible) {
+        const obtenidas = plantillasHabilitadas.length > 0
+            ? plantillasHabilitadas
+            : [{ id: '', nombre: '', thumbnail: '', habilitado: true, certificadoId: certificado!.id, codigoVerificacion: certificado!.codigoVerificacion, emitidoEn: certificado!.emitidoEn }]
 
         return (
             <>
@@ -722,7 +1135,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                                     </Typography>
                                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                                         {p.emitidoEn
-                                            ? <>{certificado.nombreCompleto} · Emitido el{' '}
+                                            ? <>{(certificado?.nombreCompleto || '')} · Emitido el{' '}
                                                 <HydratedDate date={p.emitidoEn} options={{ day: '2-digit', month: 'long', year: 'numeric' }} /></>
                                             : 'Certificado disponible para descargar'}
                                     </Typography>
@@ -748,26 +1161,74 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                                         >
                                             {(p.id ? downloadingPlantilla === p.id : downloading) ? 'Descargando...' : 'Descargar PDF'}
                                         </Button>
-                                        {p.codigoVerificacion && (
-                                            <Button
-                                                component="a"
-                                                href={`/verificar-certificado/${p.codigoVerificacion}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                variant="outlined"
-                                                size="small"
-                                                color={esCip ? 'error' : 'success'}
-                                                startIcon={<i className="tabler-shield-check" />}
-                                                sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700 }}
-                                            >
-                                                Verificar
-                                            </Button>
-                                        )}
                                     </Box>
                                 </Box>
                             </Box>
                         )
                     })}
+                    {hayEsperaActiva && (
+                        <Box sx={{ mt: 3 }}>
+                            <CertificadoPreviewGrid plantillas={plantillasEnEspera} />
+                        </Box>
+                    )}
+
+                    {solicitudesPendientes.length > 0 && (
+                        <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                                Solicitudes en validación
+                            </Typography>
+                            {solicitudesPendientes.map(s => (
+                                <Box
+                                    key={s.pedidoId}
+                                    sx={{
+                                        p: 2,
+                                        borderRadius: 2,
+                                        border: '1px solid',
+                                        borderColor: 'divider',
+                                        bgcolor: 'rgba(2,94,68,0.04)',
+                                    }}
+                                >
+                                    <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 0.5 }}>
+                                        Pedido #{s.numeroPedido} · {s.nombreTipo || s.certificadoTipo}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Estado: <strong>Pendiente de validación de pago</strong>
+                                        {s.tieneComprobante ? ' (comprobante recibido)' : ''}
+                                    </Typography>
+                                    {s.etiquetaEntrega && (
+                                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                            {s.etiquetaEntrega}
+                                        </Typography>
+                                    )}
+                                </Box>
+                            ))}
+                        </Box>
+                    )}
+
+                    {(tiposTramitables.ipg || tiposTramitables.cip) && cursoCertificacion && (
+                        <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                {plantillasHabilitadas.length === 1
+                                    ? 'También puedes adquirir el otro tipo de certificado para este curso.'
+                                    : 'Puedes adquirir un certificado adicional para este curso.'}
+                            </Typography>
+                            <Button
+                                variant="contained"
+                                onClick={() => setShowTramite(true)}
+                                startIcon={<i className="tabler-certificate" />}
+                                sx={{
+                                    bgcolor: '#025E44',
+                                    borderRadius: '12px',
+                                    textTransform: 'none',
+                                    fontWeight: 700,
+                                    boxShadow: 'none',
+                                    '&:hover': { bgcolor: '#014d36', boxShadow: 'none' },
+                                }}
+                            >
+                                {etiquetaAdquirirOtro}
+                            </Button>
+                        </Box>
+                    )}
                 </Wrapper>
                 {previewModal}
             </>
@@ -784,7 +1245,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <i className="tabler-certificate" style={{ fontSize: '1.5rem', color: '#94a3b8' }} />
                     <Typography variant="body2" color="text.secondary">
-                        Completa todas las lecciones y evaluaciones del curso para obtener tu certificado.
+                        Aprueba las evaluaciones del curso y tramita la compra de tu certificado (IPG o Colegio de Ingenieros) para poder descargarlo.
                     </Typography>
                 </Box>
             </Wrapper>
@@ -816,7 +1277,9 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                             {generating
                                 ? 'Estamos generando tu certificado automáticamente.'
-                                : 'Has completado todas las lecciones y alcanzado el promedio requerido.'
+                                : el.totalExamenes > 0
+                                  ? 'Has aprobado las evaluaciones. Si el certificado tiene costo, tramita el pago correspondiente para descargarlo.'
+                                  : 'Ya puedes obtener tu certificado. Si tiene costo, tramita el pago correspondiente.'
                             }
                         </Typography>
                         {el.totalExamenes > 0 && (
@@ -837,22 +1300,20 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                     </Box>
                 ) : (
 
-                /* No elegible → mostrar progreso */
+                /* No elegible → mostrar progreso de evaluaciones */
                 <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-                        Para obtener el certificado debes completar todas las lecciones
-                        {el.totalExamenes > 0 ? ' y alcanzar el promedio mínimo en las evaluaciones.' : '.'}
+                        {el.totalExamenes > 0
+                          ? 'Para descargar el certificado debes aprobar las evaluaciones del curso y haber comprado el certificado (IPG o Colegio de Ingenieros).'
+                          : 'Para descargar el certificado debes haber comprado el certificado correspondiente (IPG o Colegio de Ingenieros).'}
                     </Typography>
 
-                    {/* Progreso de lecciones */}
+                    {/* Progreso de lecciones (informativo) */}
                     <Box sx={{ mb: el.totalExamenes > 0 ? 2 : 0 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                                {el.progreso >= 100
-                                    ? <i className="tabler-circle-check-filled" style={{ fontSize: '1rem', color: '#16a34a' }} />
-                                    : <i className="tabler-circle" style={{ fontSize: '1rem', color: '#94a3b8' }} />
-                                }
-                                <Typography variant="caption" sx={{ fontWeight: 600 }}>Lecciones completadas</Typography>
+                                <i className="tabler-book" style={{ fontSize: '1rem', color: '#94a3b8' }} />
+                                <Typography variant="caption" sx={{ fontWeight: 600 }}>Progreso de lecciones (opcional)</Typography>
                             </Box>
                             <Typography variant="caption" sx={{ fontWeight: 700, color: progresoColor }}>
                                 {el.progreso}%

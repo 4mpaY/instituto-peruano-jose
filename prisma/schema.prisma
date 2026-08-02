@@ -87,6 +87,11 @@ model Curso {
   es_privado           Boolean           @default(false)
   completar_automatico Boolean           @default(false)
   precio_certificado   Decimal?          @db.Decimal(10, 2)
+  precio_certificado_ipg Decimal?        @db.Decimal(10, 2)
+  precio_certificado_cip Decimal?        @db.Decimal(10, 2)
+  certificado_ipg_espera_valor  Int?     @default(0)
+  certificado_ipg_espera_unidad String?  @default("DIAS")
+  certificado_cip_entregas      Json?    @default("[]")
   precio               Decimal           @default(0) @db.Decimal(10, 2)
   precio_falso         Decimal           @default(0) @db.Decimal(10, 2)
   moneda               String            @default("PEN")
@@ -191,6 +196,7 @@ model Pedido {
   id                    String            @id @default(uuid())
   numero_pedido         Int               @unique @default(autoincrement())
   estado                EstadoPedido      @default(PENDIENTE)
+  tipo                  TipoPedido        @default(CURSO)
   metodo_pago           MetodoPago?
   total                 Decimal           @db.Decimal(10, 2)
   mensaje               String?
@@ -222,6 +228,7 @@ model Pedido {
   @@index([estado])
   @@index([transaccion_id])
   @@index([metodo_pago_manual_id])
+  @@index([tipo])
   @@map("pedidos")
 }
 
@@ -244,16 +251,17 @@ model MetodoPagoManual {
 }
 
 model DetallePedido {
-  id              String  @id @default(uuid())
-  cantidad        Int     @default(1)
-  descuento       Decimal @default(0) @db.Decimal(10, 2)
-  precio_unitario Decimal @db.Decimal(10, 2)
-  subtotal        Decimal @db.Decimal(10, 2)
-  total           Decimal @db.Decimal(10, 2)
-  pedido_id       String
-  curso_id        String
-  curso           Curso   @relation(fields: [curso_id], references: [id])
-  pedido          Pedido  @relation(fields: [pedido_id], references: [id], onDelete: Cascade)
+  id               String           @id @default(uuid())
+  cantidad         Int              @default(1)
+  descuento        Decimal          @default(0) @db.Decimal(10, 2)
+  precio_unitario  Decimal          @db.Decimal(10, 2)
+  subtotal         Decimal          @db.Decimal(10, 2)
+  total            Decimal          @db.Decimal(10, 2)
+  pedido_id        String
+  curso_id         String
+  certificado_tipo CertificadoTipo?
+  curso            Curso            @relation(fields: [curso_id], references: [id])
+  pedido           Pedido           @relation(fields: [pedido_id], references: [id], onDelete: Cascade)
 
   @@index([pedido_id])
   @@index([curso_id])
@@ -270,6 +278,8 @@ model Inscripcion {
   certificado_habilitado Boolean           @default(false)
   certificado_ipg_habilitado Boolean       @default(false)
   certificado_cip_habilitado Boolean       @default(false)
+  certificado_ipg_habilitado_en DateTime?
+  certificado_cip_habilitado_en DateTime?
   usuario_id             String
   curso_id               String
   pedido_id              String?
@@ -625,6 +635,11 @@ enum EstadoInscripcion {
   ACTIVO
   COMPLETADO
   CANCELADO
+}
+
+enum TipoPedido {
+  CURSO
+  CERTIFICADO
 }
 
 enum EstadoPedido {

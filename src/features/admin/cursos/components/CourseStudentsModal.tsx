@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 import axios from 'axios'
 import { useQueryClient } from '@tanstack/react-query'
@@ -20,7 +20,9 @@ import {
   Tooltip,
   Button,
   TextField,
-  InputAdornment
+  InputAdornment,
+  MenuItem,
+  Alert
 } from '@mui/material'
 
 import * as XLSX from 'xlsx'
@@ -40,8 +42,27 @@ interface CourseStudentsModalProps {
 interface CertConfirm {
   inscripcionId: string
   alumnoNombre: string
+  alumnoId: string
   habilitadoActual: boolean
   tipo: 'ipg' | 'cip'
+  pedidoPendiente?: { id: string; numero_pedido: number } | null
+}
+
+const METODOS_PAGO = [
+  { value: 'TRANSFERENCIA', label: 'Transferencia' },
+  { value: 'YAPE', label: 'Yape' },
+  { value: 'PLIN', label: 'Plin' },
+  { value: 'TARJETA_CREDITO', label: 'Tarjeta' },
+  { value: 'OTRO', label: 'Otro' },
+]
+
+const todayInputValue = () => {
+  const d = new Date()
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+
+  return `${yyyy}-${mm}-${dd}`
 }
 
 interface NotaEdit {
@@ -80,6 +101,10 @@ export default function CourseStudentsModal({
   const [searchTerm, setSearchTerm] = useState('')
   const [certConfirm, setCertConfirm] = useState<CertConfirm | null>(null)
   const [certLoading, setCertLoading] = useState(false)
+  const [certPagadoEn, setCertPagadoEn] = useState(todayInputValue())
+  const [certMonto, setCertMonto] = useState('')
+  const [certMetodo, setCertMetodo] = useState('TRANSFERENCIA')
+  const [certComprobante, setCertComprobante] = useState('')
   const [completarConfirm, setCompletarConfirm] = useState<{ inscripcionId: string; alumnoNombre: string } | null>(null)
   const [completarLoading, setCompletarLoading] = useState(false)
   const [editNotas, setEditNotas] = useState<EditNotasState | null>(null)
@@ -94,6 +119,24 @@ export default function CourseStudentsModal({
 
   const tieneCertPago = data?.precio_certificado && data.precio_certificado > 0
 
+  const preciosCert = data?.precios_certificado as
+    | { ipg?: number | null; cip?: number | null; moneda?: string }
+    | undefined
+
+  useEffect(() => {
+    if (!certConfirm || certConfirm.habilitadoActual) return
+
+    const precio =
+      certConfirm.tipo === 'cip'
+        ? preciosCert?.cip ?? data?.precio_certificado
+        : preciosCert?.ipg ?? data?.precio_certificado
+
+    setCertPagadoEn(todayInputValue())
+    setCertMonto(precio != null ? String(Number(precio)) : '')
+    setCertMetodo('TRANSFERENCIA')
+    setCertComprobante('')
+  }, [certConfirm, preciosCert, data?.precio_certificado])
+
   const handleCloseModal = () => {
     setSearchTerm('')
     handleClose()
@@ -102,13 +145,41 @@ export default function CourseStudentsModal({
   const handleToggleCert = async () => {
     if (!certConfirm) return
 
+    const habilitando = !certConfirm.habilitadoActual
+
+    if (habilitando) {
+      if (!certPagadoEn) {
+        toast.error('Indica la fecha de pago')
+
+        return
+      }
+
+      if (certMonto === '' || Number(certMonto) < 0) {
+        toast.error('Indica el monto del pedido')
+
+        return
+      }
+    }
+
     setCertLoading(true)
 
     try {
-      const res = await axios.patch(`/api/admin/inscripciones/${certConfirm.inscripcionId}/certificado`, {
-        habilitado: !certConfirm.habilitadoActual,
-        tipo: certConfirm.tipo
-      })
+      const payload: Record<string, unknown> = {
+        habilitado: habilitando,
+        tipo: certConfirm.tipo,
+      }
+
+      if (habilitando) {
+        payload.pagado_en = new Date(`${certPagadoEn}T12:00:00`).toISOString()
+        payload.monto = Number(certMonto)
+        payload.metodo_pago = certMetodo
+        if (certComprobante.trim()) payload.numero_comprobante = certComprobante.trim()
+      }
+
+      const res = await axios.patch(
+        `/api/admin/inscripciones/${certConfirm.inscripcionId}/certificado`,
+        payload
+      )
 
       if (!res.data?.status) {
         toast.error(res.data?.message || 'Error al actualizar el certificado')
@@ -118,11 +189,14 @@ export default function CourseStudentsModal({
 
       await queryClient.refetchQueries({ queryKey: CURSO_ALUMNOS_QUERY_KEY(cursoId, searchTerm) })
       const tipoLabel = certConfirm.tipo === 'cip' ? 'CIP' : 'IPG'
+      const numeroPedido = res.data?.result?.numeroPedido
 
       toast.success(
         certConfirm.habilitadoActual
           ? `Certificado ${tipoLabel} deshabilitado`
-          : `Certificado ${tipoLabel} habilitado`
+          : numeroPedido
+            ? `Pedido #${numeroPedido} registrado · Certificado ${tipoLabel} habilitado`
+            : `Certificado ${tipoLabel} habilitado`
       )
       setCertConfirm(null)
     } catch (err: any) {
@@ -376,15 +450,23 @@ export default function CourseStudentsModal({
                             <Tooltip title={
                               alumno.certificado_ipg_habilitado
                                 ? 'Deshabilitar certificado IPG'
-                                : 'Habilitar certificado IPG'
+                                : 'Registrar pago y habilitar IPG'
                             }>
                               <IconButton
                                 size='small'
                                 onClick={() => setCertConfirm({
                                   inscripcionId: alumno.inscripcion_id,
                                   alumnoNombre: `${alumno.nombre} ${alumno.apellido}`,
+                                  alumnoId: alumno.id,
                                   habilitadoActual: !!alumno.certificado_ipg_habilitado,
-                                  tipo: 'ipg'
+                                  tipo: 'ipg',
+                                  pedidoPendiente:
+                                    alumno.pedido_cert_ipg?.estado === 'PENDIENTE'
+                                      ? {
+                                          id: alumno.pedido_cert_ipg.id,
+                                          numero_pedido: alumno.pedido_cert_ipg.numero_pedido,
+                                        }
+                                      : null,
                                 })}
                                 sx={{
                                   bgcolor: alumno.certificado_ipg_habilitado
@@ -407,15 +489,23 @@ export default function CourseStudentsModal({
                             <Tooltip title={
                               alumno.certificado_cip_habilitado
                                 ? 'Deshabilitar certificado CIP'
-                                : 'Habilitar certificado CIP'
+                                : 'Registrar pago y habilitar CIP'
                             }>
                               <IconButton
                                 size='small'
                                 onClick={() => setCertConfirm({
                                   inscripcionId: alumno.inscripcion_id,
                                   alumnoNombre: `${alumno.nombre} ${alumno.apellido}`,
+                                  alumnoId: alumno.id,
                                   habilitadoActual: !!alumno.certificado_cip_habilitado,
-                                  tipo: 'cip'
+                                  tipo: 'cip',
+                                  pedidoPendiente:
+                                    alumno.pedido_cert_cip?.estado === 'PENDIENTE'
+                                      ? {
+                                          id: alumno.pedido_cert_cip.id,
+                                          numero_pedido: alumno.pedido_cert_cip.numero_pedido,
+                                        }
+                                      : null,
                                 })}
                                 sx={{
                                   bgcolor: alumno.certificado_cip_habilitado
@@ -622,8 +712,12 @@ export default function CourseStudentsModal({
 
       {/* Modal de confirmación para habilitar/deshabilitar certificado */}
       {certConfirm && (
-        <AppModal open={!!certConfirm} handleClose={() => !certLoading && setCertConfirm(null)}>
-          <Box sx={{ textAlign: 'center' }}>
+        <AppModal
+          open={!!certConfirm}
+          handleClose={() => !certLoading && setCertConfirm(null)}
+          sx={{ maxWidth: certConfirm.habilitadoActual ? 440 : 520 }}
+        >
+          <Box sx={{ textAlign: certConfirm.habilitadoActual ? 'center' : 'left' }}>
             <Box sx={{
               width: 64, height: 64, borderRadius: '50%', mx: 'auto', mb: 3,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -632,7 +726,7 @@ export default function CourseStudentsModal({
                 : 'rgba(22,163,74,0.1)'
             }}>
               <i
-                className={certConfirm.habilitadoActual ? 'tabler-lock text-4xl' : 'tabler-certificate text-4xl'}
+                className={certConfirm.habilitadoActual ? 'tabler-lock text-4xl' : 'tabler-receipt text-4xl'}
                 style={{
                   color: certConfirm.habilitadoActual
                     ? '#dc2626'
@@ -640,19 +734,77 @@ export default function CourseStudentsModal({
                 }}
               />
             </Box>
-            <Typography variant='h5' fontWeight={700} sx={{ mb: 1 }}>
+            <Typography variant='h5' fontWeight={700} sx={{ mb: 1, textAlign: 'center' }}>
               {certConfirm.habilitadoActual
                 ? `Deshabilitar certificado ${certConfirm.tipo === 'cip' ? 'CIP' : 'IPG'}`
-                : `Habilitar certificado ${certConfirm.tipo === 'cip' ? 'CIP' : 'IPG'}`}
+                : `Registrar pago · ${certConfirm.tipo === 'cip' ? 'CIP' : 'IPG'}`}
             </Typography>
-            <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5 }}>
+            <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5, textAlign: 'center' }}>
               {certConfirm.habilitadoActual
                 ? `El estudiante ya no podrá descargar el certificado ${certConfirm.tipo === 'cip' ? 'CIP' : 'IPG'} de este curso.`
-                : `El estudiante podrá descargar el certificado ${certConfirm.tipo === 'cip' ? 'CIP' : 'IPG'} de este curso.`}
+                : 'Para habilitar el certificado debes registrar un pedido con la fecha de pago.'}
             </Typography>
-            <Typography variant='body1' fontWeight={700} sx={{ mb: 4 }}>
+            <Typography variant='body1' fontWeight={700} sx={{ mb: certConfirm.habilitadoActual ? 4 : 2.5, textAlign: 'center' }}>
               {certConfirm.alumnoNombre}
             </Typography>
+
+            {!certConfirm.habilitadoActual && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
+                {certConfirm.pedidoPendiente && (
+                  <Alert severity='info' sx={{ textAlign: 'left' }}>
+                    Hay un pedido pendiente <strong>#{certConfirm.pedidoPendiente.numero_pedido}</strong>.
+                    Al confirmar se completará ese pedido con la fecha de pago indicada.
+                  </Alert>
+                )}
+                <TextField
+                  label='Fecha de pago'
+                  type='date'
+                  fullWidth
+                  required
+                  value={certPagadoEn}
+                  onChange={e => setCertPagadoEn(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  disabled={certLoading}
+                />
+                <TextField
+                  label='Monto del pedido'
+                  type='number'
+                  fullWidth
+                  required
+                  value={certMonto}
+                  onChange={e => setCertMonto(e.target.value)}
+                  disabled={certLoading}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position='start'>
+                        {preciosCert?.moneda === 'USD' ? '$' : 'S/'}
+                      </InputAdornment>
+                    ),
+                  }}
+                  inputProps={{ min: 0, step: '0.01' }}
+                />
+                <TextField
+                  select
+                  label='Método de pago'
+                  fullWidth
+                  value={certMetodo}
+                  onChange={e => setCertMetodo(e.target.value)}
+                  disabled={certLoading}
+                >
+                  {METODOS_PAGO.map(m => (
+                    <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label='N° operación / comprobante (opcional)'
+                  fullWidth
+                  value={certComprobante}
+                  onChange={e => setCertComprobante(e.target.value)}
+                  disabled={certLoading}
+                />
+              </Box>
+            )}
+
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
               <Button
                 variant='tonal'
@@ -674,7 +826,11 @@ export default function CourseStudentsModal({
               >
                 {certLoading
                   ? 'Guardando...'
-                  : certConfirm.habilitadoActual ? 'Sí, deshabilitar' : 'Sí, habilitar'
+                  : certConfirm.habilitadoActual
+                    ? 'Sí, deshabilitar'
+                    : certConfirm.pedidoPendiente
+                      ? 'Completar pedido y habilitar'
+                      : 'Crear pedido y habilitar'
                 }
               </Button>
             </Box>

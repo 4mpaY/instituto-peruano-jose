@@ -25,9 +25,15 @@ import CompleteProfileModal from './CompleteProfileModal'
 
 interface CourseContentSidebarProps {
     onLessonSelect: (lessonId: string) => void
+
+    /** Si se pasa, se usa en lugar de setCurrentView('certificate') (útil en mobile con tabs). */
+    onOpenCertificate?: () => void
+
+    /** Resalta "Mi Certificado" cuando el certificado se muestra vía tab (mobile). */
+    isCertificateActive?: boolean
 }
 
-const CourseContentSidebar = ({ onLessonSelect }: CourseContentSidebarProps) => {
+const CourseContentSidebar = ({ onLessonSelect, onOpenCertificate, isCertificateActive = false }: CourseContentSidebarProps) => {
     const {
         course,
         currentLessonId,
@@ -48,6 +54,12 @@ const CourseContentSidebar = ({ onLessonSelect }: CourseContentSidebarProps) => 
     const handleOpenCertificate = () => {
         if (!session?.user?.numero_documento) {
             setShowProfileModal(true)
+
+            return
+        }
+
+        if (onOpenCertificate) {
+            onOpenCertificate()
 
             return
         }
@@ -343,16 +355,17 @@ const CourseContentSidebar = ({ onLessonSelect }: CourseContentSidebarProps) => 
                     <Box sx={{ p: 3 }}>
                         <Button
                             fullWidth
-                            variant={currentView === 'certificate' ? 'contained' : 'outlined'}
+                            variant={currentView === 'certificate' || isCertificateActive ? 'contained' : 'outlined'}
                             startIcon={<i className="tabler-certificate" />}
                             onClick={handleOpenCertificate}
+                            data-certificado-sidebar
                             sx={{
                                 borderRadius: '10px',
                                 py: 1.25,
                                 fontWeight: 700,
                                 textTransform: 'none',
                                 fontSize: '0.875rem',
-                                ...(currentView === 'certificate'
+                                ...(currentView === 'certificate' || isCertificateActive
                                     ? { bgcolor: '#025E44', '&:hover': { bgcolor: '#014d36' }, boxShadow: 'none' }
                                     : { borderColor: '#025E44', color: '#025E44', '&:hover': { bgcolor: 'rgba(2,94,68,0.05)' } }
                                 )
@@ -372,7 +385,8 @@ const CourseContentSidebar = ({ onLessonSelect }: CourseContentSidebarProps) => 
             requireCelular={false}
             onSuccess={() => {
                 setShowProfileModal(false)
-                setCurrentView('certificate')
+                if (onOpenCertificate) onOpenCertificate()
+                else setCurrentView('certificate')
             }}
         />
         </>

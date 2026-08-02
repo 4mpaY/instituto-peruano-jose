@@ -8,11 +8,15 @@ import {
   Chip, Button, Tooltip, IconButton, Skeleton, InputAdornment
 } from '@mui/material'
 import { useSnackbar } from 'notistack'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import axios from 'axios'
 
 import CustomTextField from '@core/components/mui/TextField'
 import { AxiosMisCertificados } from '../http/axiosMisCertificados'
 import type { MiCertificado } from '../entity/Certificado'
+import TramiteCertificadoFlow, {
+  type TramiteCertificadoCursoInfo,
+} from '@/features/estudiante/player/components/TramiteCertificadoFlow'
 
 const NIVEL_LABELS: Record<string, string> = {
   BASICO: 'Básico',
@@ -208,7 +212,9 @@ interface MisCertificadosPageProps {
 
 export default function MisCertificadosPage({ initialCertificados }: MisCertificadosPageProps) {
   const { data: session } = useSession()
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [tramiteCurso, setTramiteCurso] = useState<TramiteCertificadoCursoInfo | null>(null)
 
   const { data: certificados = initialCertificados, isLoading } = useQuery<MiCertificado[]>({
     queryKey: ['mis-certificados'],
@@ -222,15 +228,39 @@ export default function MisCertificadosPage({ initialCertificados }: MisCertific
     staleTime: 60_000
   })
 
+  const { data: tramitables = [] } = useQuery({
+    queryKey: ['certificados-tramitables'],
+    queryFn: async () => {
+      const res = await axios.get('/api/estudiante/certificados/tramitables')
+
+      return res.data?.result?.tramitables ?? []
+    },
+    staleTime: 30_000,
+  })
+
   const filtered = certificados.filter(c =>
     c.curso.titulo.toLowerCase().includes(search.toLowerCase()) ||
     c.codigo_verificacion.toLowerCase().includes(search.toLowerCase())
   )
 
+  if (tramiteCurso) {
+    return (
+      <Box sx={{ py: { xs: 4, md: 6 }, px: { xs: 2, sm: 4, md: 8, lg: 12 } }}>
+        <TramiteCertificadoFlow
+          curso={tramiteCurso}
+          onClose={() => setTramiteCurso(null)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['certificados-tramitables'] })
+            queryClient.invalidateQueries({ queryKey: ['mis-certificados'] })
+          }}
+        />
+      </Box>
+    )
+  }
+
   return (
     <Box sx={{ py: { xs: 4, md: 6 } }}>
       <Box sx={{ px: { xs: 2, sm: 4, md: 8, lg: 12 } }}>
-        {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, mb: 5 }}>
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 900, mb: 1, color: 'text.primary' }}>
@@ -251,7 +281,37 @@ export default function MisCertificadosPage({ initialCertificados }: MisCertific
           )}
         </Box>
 
-        {/* Buscador */}
+        {tramitables.length > 0 && (
+          <Box sx={{ mb: 5 }}>
+            <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>
+              ¿Desea tramitar su certificado?
+            </Typography>
+            <Grid container spacing={2}>
+              {tramitables.map((t: any) => (
+                <Grid item xs={12} md={6} key={t.cursoId}>
+                  <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+                    <CardContent sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography fontWeight={800} noWrap>{t.titulo}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Completaste el curso. Puedes iniciar el trámite de pago de tu certificado.
+                        </Typography>
+                      </Box>
+                      <Button
+                        variant="contained"
+                        onClick={() => setTramiteCurso(t.cursoCertificacion)}
+                        sx={{ textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
+                      >
+                        Tramitar
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        )}
+
         {certificados.length > 0 && (
           <Box sx={{ mb: 4, maxWidth: { xs: '100%', sm: 400 } }}>
             <CustomTextField
@@ -275,7 +335,6 @@ export default function MisCertificadosPage({ initialCertificados }: MisCertific
           </Box>
         )}
 
-        {/* Contenido */}
         {isLoading ? (
           <Grid container spacing={4}>
             {[1, 2, 3].map(i => (
@@ -284,7 +343,7 @@ export default function MisCertificadosPage({ initialCertificados }: MisCertific
               </Grid>
             ))}
           </Grid>
-        ) : certificados.length === 0 ? (
+        ) : certificados.length === 0 && tramitables.length === 0 ? (
           <Box sx={{
             textAlign: 'center', py: 12,
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
@@ -311,7 +370,7 @@ export default function MisCertificadosPage({ initialCertificados }: MisCertific
               Ver mis cursos
             </Button>
           </Box>
-        ) : filtered.length === 0 ? (
+        ) : filtered.length === 0 && certificados.length > 0 ? (
           <Box sx={{ textAlign: 'center', py: 10 }}>
             <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 700 }}>
               No se encontraron resultados para &quot;{search}&quot;

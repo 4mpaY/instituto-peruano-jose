@@ -72,6 +72,7 @@ interface CourseState {
     setCertificateId: (id: string | null) => void
     setCurrentView: (view: PlayerView) => void
     openExam: (examenId: string) => void
+    markExamApproved: (examenId: string) => void
 }
 
 export const useCourseStore = create<CourseState>((set) => ({
@@ -153,5 +154,18 @@ export const useCourseStore = create<CourseState>((set) => ({
     setCertificateId: (id) => set({ certificateId: id }),
     setCurrentView: (view) => set({ currentView: view }),
 
-    openExam: (examenId) => set({ currentExamenId: examenId, currentView: 'exam' })
+    openExam: (examenId) => set({ currentExamenId: examenId, currentView: 'exam' }),
+
+    markExamApproved: (examenId) => set((state) => {
+        if (!state.course?.examenes) return state
+
+        return {
+            course: {
+                ...state.course,
+                examenes: state.course.examenes.map(ex =>
+                    ex.id === examenId ? { ...ex, ya_aprobado: true } : ex
+                ),
+            },
+        }
+    }),
 }))

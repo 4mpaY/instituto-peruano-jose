@@ -27,12 +27,32 @@ export async function GET(
     // Validar existencia del curso
     const curso = await prisma.curso.findUnique({
       where: { id: cursoId },
-      select: { id: true, precio_certificado: true }
+      select: { id: true, precio_certificado: true, moneda: true }
     })
 
     if (!curso) {
       return ApiResponse.error(request, 'Curso no encontrado', 404)
     }
+
+    const [preciosRow] = await prisma.$queryRaw<
+      Array<{ precio_certificado_ipg: unknown; precio_certificado_cip: unknown }>
+    >`
+      SELECT precio_certificado_ipg, precio_certificado_cip FROM cursos WHERE id = ${cursoId}
+    `
+
+    const { resolvePrecioCertificadoIpg, resolvePrecioCertificadoCip } = await import(
+      '@/utils/functions/certificadoPrecios'
+    )
+
+    const precioIpg = resolvePrecioCertificadoIpg({
+      precio_certificado: curso.precio_certificado ? Number(curso.precio_certificado) : null,
+      precio_certificado_ipg: preciosRow?.precio_certificado_ipg,
+    })
+
+    const precioCip = resolvePrecioCertificadoCip({
+      precio_certificado: curso.precio_certificado ? Number(curso.precio_certificado) : null,
+      precio_certificado_cip: preciosRow?.precio_certificado_cip,
+    })
 
     const where: any = {
       curso_id: cursoId,
@@ -91,6 +111,50 @@ export async function GET(
 
     const habilitacionMap = await getCertificadoHabilitacionPorCurso(cursoId)
 
+    const pedidosCert = await prisma.$queryRaw<
+      Array<{
+        usuario_id: string
+        certificado_tipo: string | null
+        estado: string
+        id: string
+        numero_pedido: number
+        pagado_en: Date | null
+      }>
+    >`
+      SELECT
+        p.usuario_id,
+        d.certificado_tipo::text AS certificado_tipo,
+        p.estado::text AS estado,
+        p.id,
+        p.numero_pedido,
+        p.pagado_en
+      FROM pedidos p
+      JOIN detalles_pedido d ON d.pedido_id = p.id
+      WHERE p.tipo = 'CERTIFICADO'::"TipoPedido"
+        AND d.curso_id = ${cursoId}
+        AND p.estado IN ('PENDIENTE'::"EstadoPedido", 'COMPLETADO'::"EstadoPedido")
+      ORDER BY p.creado_en DESC
+    `
+
+    const pedidoPorUsuarioTipo = new Map<
+      string,
+      { estado: string; id: string; numero_pedido: number; pagado_en: Date | null }
+    >()
+
+    for (const p of pedidosCert) {
+      const tipo = String(p.certificado_tipo || 'IPG').toUpperCase() === 'CIP' ? 'CIP' : 'IPG'
+      const key = `${p.usuario_id}:${tipo}`
+
+      if (!pedidoPorUsuarioTipo.has(key)) {
+        pedidoPorUsuarioTipo.set(key, {
+          estado: p.estado,
+          id: p.id,
+          numero_pedido: p.numero_pedido,
+          pagado_en: p.pagado_en,
+        })
+      }
+    }
+
     const alumnos = inscripciones.map(i => {
       // Agrupar el mejor intento por examen (viene como porcentaje 0-100)
       const mejoresIntentos: Record<string, number> = {}
@@ -139,6 +203,8 @@ export async function GET(
       }))
 
       const hab = habilitacionMap.get(i.id)
+      const pedidoIpg = pedidoPorUsuarioTipo.get(`${i.usuario.id}:IPG`) ?? null
+      const pedidoCip = pedidoPorUsuarioTipo.get(`${i.usuario.id}:CIP`) ?? null
 
       return {
         id: i.usuario.id,
@@ -160,13 +226,26 @@ export async function GET(
         notas: totalExamenes > 0 ? notas : 'Sin exámenes',
         notas_detalle: notasDetalle,
         promedio: promedioFinal,
-        tiene_certificado: i.usuario.certificados.length > 0
+        tiene_certificado: i.usuario.certificados.length > 0,
+        pedido_cert_ipg: pedidoIpg,
+        pedido_cert_cip: pedidoCip,
       }
     })
 
     const precioCertificado = curso.precio_certificado ? Number(curso.precio_certificado) : null
 
-    return ApiResponse.success(request, { alumnos, total: alumnos.length, totalExamenes, examenes, precio_certificado: precioCertificado })
+    return ApiResponse.success(request, {
+      alumnos,
+      total: alumnos.length,
+      totalExamenes,
+      examenes,
+      precio_certificado: precioCertificado,
+      precios_certificado: {
+        ipg: precioIpg,
+        cip: precioCip,
+        moneda: curso.moneda || 'PEN',
+      },
+    })
   } catch (error) {
     return handleApiError(error, request)
   }

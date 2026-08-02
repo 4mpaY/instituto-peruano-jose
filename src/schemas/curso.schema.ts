@@ -55,6 +55,22 @@ export const actualizarCursoSchema = z.object({
   es_privado: z.boolean().optional(),
   completar_automatico: z.boolean().optional(),
   precio_certificado: z.coerce.number().min(0).optional().nullable(),
+  precio_certificado_ipg: z.coerce.number().min(0).optional().nullable(),
+  precio_certificado_cip: z.coerce.number().min(0).optional().nullable(),
+  certificado_ipg_espera_valor: z.coerce.number().int().min(0).optional().nullable(),
+  certificado_ipg_espera_unidad: z.enum(['DIAS', 'HORAS', 'MINUTOS']).optional().nullable(),
+  certificado_cip_entregas: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        pagos_desde: z.string().min(1),
+        pagos_hasta: z.string().min(1),
+        fecha_entrega: z.string().min(1),
+        hora: z.string().min(1),
+      })
+    )
+    .optional()
+    .nullable(),
   precio: z.coerce.number().min(0, 'El precio no puede ser negativo').optional(),
   precio_falso: z.coerce.number().min(0, 'El precio falso no puede ser negativo').optional(),
   moneda: z.string().max(3).optional(),

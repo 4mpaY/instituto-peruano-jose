@@ -37,13 +37,27 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
     const [precio, setPrecio] = useState(curso.precio)
     const [precioFalso, setPrecioFalso] = useState(curso.precio_falso)
     const [moneda, setMoneda] = useState(curso.moneda)
-    const [precioCertificado, setPrecioCertificado] = useState<number | ''>(curso.precio_certificado ?? '')
+
+    const [precioCertificadoIpg, setPrecioCertificadoIpg] = useState<number | ''>(
+        curso.precio_certificado_ipg ?? curso.precio_certificado ?? ''
+    )
+
+    const [precioCertificadoCip, setPrecioCertificadoCip] = useState<number | ''>(
+        curso.precio_certificado_cip ?? ''
+    )
+
     const [vigenciaMeses, setVigenciaMeses] = useState<number | ''>((curso as any).vigencia_meses ?? '')
     const [numeroAsesor, setNumeroAsesor] = useState(curso.numero_asesor ?? '')
     const [grupoWhatsapp, setGrupoWhatsapp] = useState(curso.grupo_whatsapp ?? '')
 
     const handleSavePrice = async () => {
         try {
+            const ipg = precioCertificadoIpg === '' ? null : Number(precioCertificadoIpg)
+            const cip = precioCertificadoCip === '' ? null : Number(precioCertificadoCip)
+
+            const legacy =
+                Math.max(ipg && ipg > 0 ? ipg : 0, cip && cip > 0 ? cip : 0) || null
+
             await editMutation.mutateAsync({
                 id: curso.id,
                 data: {
@@ -51,8 +65,10 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
                     precio: esGratis ? 0 : precio,
                     precio_falso: esGratis ? 0 : precioFalso,
                     moneda,
-                    precio_certificado: precioCertificado === '' ? null : Number(precioCertificado),
-                }
+                    precio_certificado: legacy,
+                    precio_certificado_ipg: ipg,
+                    precio_certificado_cip: cip,
+                } as any
             })
             enqueueSnackbar('Configuración actualizada', { variant: 'success' })
             onSuccess()
@@ -141,26 +157,31 @@ export function TabConfiguracion({ curso, onSuccess }: TabConfiguracionProps) {
 
                 <Box sx={{ mt: 3, pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
                     <Typography variant='subtitle2' sx={{ mb: 0.5, fontWeight: 700 }}>
-                        Precio del certificado
+                        Precio de certificados
                     </Typography>
                     <Typography variant='caption' color='text.secondary' sx={{ mb: 2, display: 'block' }}>
-                        Independiente del precio del curso. Si tiene costo, el admin debe habilitar IPG y/o CIP por alumno desde Alumnos Inscritos.
+                        Cada tipo de certificado puede tener un precio distinto. Si tiene costo, el admin habilita IPG y/o CIP por alumno desde Alumnos Inscritos. También puedes ajustarlos en la pestaña Certificación.
                     </Typography>
-                    <CustomTextField
-                        type='number'
-                        label='Precio del certificado'
-                        value={precioCertificado}
-                        onChange={e => setPrecioCertificado(e.target.value === '' ? '' : Number(e.target.value))}
-                        sx={{ width: 260 }}
-                        inputProps={{ min: 0, step: 0.01 }}
-                        helperText='Déjalo vacío si el certificado es gratuito'
-                        FormHelperTextProps={{
-                            sx: {
-                                color: 'error.main',
-                                fontWeight: 800,
-                            },
-                        }}
-                    />
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                        <CustomTextField
+                            type='number'
+                            label='Precio certificado IPG (S/)'
+                            value={precioCertificadoIpg}
+                            onChange={e => setPrecioCertificadoIpg(e.target.value === '' ? '' : Number(e.target.value))}
+                            sx={{ width: 260 }}
+                            inputProps={{ min: 0, step: 0.01 }}
+                            helperText='Vacío = gratuito / no tramitable'
+                        />
+                        <CustomTextField
+                            type='number'
+                            label='Precio certificado Colegio de Ingenieros (S/)'
+                            value={precioCertificadoCip}
+                            onChange={e => setPrecioCertificadoCip(e.target.value === '' ? '' : Number(e.target.value))}
+                            sx={{ width: 320 }}
+                            inputProps={{ min: 0, step: 0.01 }}
+                            helperText='Vacío = gratuito / no tramitable'
+                        />
+                    </Box>
                 </Box>
                 <Box sx={{ mt: 2 }}>
                     <Button

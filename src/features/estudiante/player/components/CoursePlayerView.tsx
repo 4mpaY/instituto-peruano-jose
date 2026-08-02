@@ -19,6 +19,7 @@ import CertificateSection from './CertificateSection'
 import CompletionSummary from './CompletionSummary'
 import LiveLessonPlaceholder from './LiveLessonPlaceholder'
 import RatingModal from './RatingModal'
+import CertificateGuideSpotlight from './CertificateGuideSpotlight'
 
 import { useCourseStore } from '../store/useCourseStore'
 
@@ -60,7 +61,8 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
         setExamenId,
         setExamStatus,
         openExam,
-        setCurrentView
+        setCurrentView,
+        markExamApproved,
     } = useCourseStore()
 
     const [mounted, setMounted] = useState(false)
@@ -97,41 +99,74 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
     }, [examenId, storeCourse, setExamStatus, mounted])
 
     const [certPopupOpen, setCertPopupOpen] = useState(false)
+    const [certSpotlightOpen, setCertSpotlightOpen] = useState(false)
+    const [certPopupPago, setCertPopupPago] = useState(false)
+    const certPopupCheckedRef = useRef(false)
+
+    const openCertGuidePopup = (pagoPendiente = false) => {
+        if (!storeCourse) return
+        setCertPopupPago(pagoPendiente)
+        setCertPopupOpen(true)
+    }
 
     useEffect(() => {
-        const checkCertificadoPending = async () => {
-            if (!storeCourse || !mounted) return
+        certPopupCheckedRef.current = false
+    }, [storeCourse?.id])
 
-            const lsKey = `popup_cert_${storeCourse.id}`
+    useEffect(() => {
+        const checkCursoCompletado = async () => {
+            if (!storeCourse || !mounted || certPopupCheckedRef.current) return
 
-            if (localStorage.getItem(lsKey)) return
+            const allExams = (storeCourse.examenes || []).filter((ex: any) => ex.esta_publicado !== false)
+            const tieneExamenes = allExams.length > 0
+            const todasEvaluacionesOk = !tieneExamenes || allExams.every((ex: any) => ex.ya_aprobado)
 
-            // Evaluamos localmente si el estudiante parece haber aprobado antes de consultar la API
-            const allExams = storeCourse.examenes || []
-            const totalExams = allExams.length
+            if (!todasEvaluacionesOk) return
 
-            if (totalExams > 0) {
-                const allPassed = allExams.every(ex => ex.ya_aprobado)
-
-                if (!allPassed) return
-            }
+            certPopupCheckedRef.current = true
 
             try {
                 const res = await axios.get(`/api/estudiante/certificado?cursoId=${storeCourse.id}`)
 
-                if (res.data.status) {
-                    const { elegibilidad, pagoPendiente } = res.data.result
-
-                    if (elegibilidad?.isEligible && pagoPendiente) {
-                        setCertPopupOpen(true)
-                        localStorage.setItem(lsKey, 'true')
-                    }
+                if (!res.data.status) {
+                    if (tieneExamenes) openCertGuidePopup(false)
+                    
+return
                 }
-            } catch (e) { /* silenced */ }
+
+                const { elegibilidad, pagoPendiente } = res.data.result
+                const cursoTerminado = !!elegibilidad?.isEligible || (tieneExamenes && todasEvaluacionesOk && (elegibilidad?.progreso ?? 0) >= 100)
+
+                if (cursoTerminado || (tieneExamenes && todasEvaluacionesOk)) {
+                    openCertGuidePopup(!!pagoPendiente)
+                }
+            } catch {
+                if (tieneExamenes) openCertGuidePopup(false)
+            }
         }
 
-        checkCertificadoPending()
+        void checkCursoCompletado()
     }, [mounted, storeCourse])
+
+    const continuarRevisandoContenido = () => {
+        setCertPopupOpen(false)
+        setCertSpotlightOpen(false)
+        setCurrentView('lesson')
+    }
+
+    const senalarBotonCertificado = () => {
+        setCertPopupOpen(false)
+        setCurrentView('lesson')
+        setSidebarOpen(true)
+
+        if (isMobile) {
+            const tabs = ['Temario', 'Sobre el curso', 'Evaluaciones', 'Materiales', 'Certificación', 'Comentarios']
+
+            setActiveTab(tabs.indexOf('Temario'))
+        }
+
+        window.setTimeout(() => setCertSpotlightOpen(true), 400)
+    }
 
     useEffect(() => {
         if (initialLessonId && mounted) setCurrentLessonId(initialLessonId)
@@ -171,8 +206,28 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
 
     const handleLessonSelect = (lessonId: string) => {
         setCurrentLessonId(lessonId)
-        if (isMobile) setActiveTab(TAB('Temario'))
+        setCurrentView('lesson')
+
+        // En mobile, salir del temario y mostrar el contenido de la lección (Sobre el curso)
+        if (isMobile) setActiveTab(TAB('Sobre el curso'))
     }
+
+    const handleOpenCertificateMobile = () => {
+        setCurrentView('lesson')
+        setActiveTab(TAB('Certificación'))
+        window.setTimeout(() => {
+            mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+        }, 50)
+    }
+
+    // En mobile, certificado/resumen nunca deben ocupar toda la pantalla (se pierden tabs/temario)
+    useEffect(() => {
+        if (!mounted || !isMobile) return
+        if (currentView !== 'certificate' && currentView !== 'completion') return
+
+        setCurrentView('lesson')
+        setActiveTab(['Temario', 'Sobre el curso', 'Evaluaciones', 'Materiales', 'Certificación', 'Comentarios'].indexOf('Certificación'))
+    }, [mounted, isMobile, currentView, setCurrentView])
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleLessonComplete = async (lessonId: string, completed: boolean = true) => {
@@ -214,7 +269,31 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
     }
 
     const handleExamPassed = () => {
+        if (currentExamenId) markExamApproved(currentExamenId)
         if (currentExamenId === examenId) setExamStatus('passed')
+
+        const allExams = (useCourseStore.getState().course?.examenes || [])
+            .filter((ex: any) => ex.esta_publicado !== false)
+
+        if (allExams.length > 0 && allExams.every((ex: any) => ex.ya_aprobado)) {
+            // Dar un respiro tras aprobar y luego mostrar el popup
+            window.setTimeout(() => {
+                void (async () => {
+                    if (!storeCourse) return
+
+                    try {
+                        const res = await axios.get(`/api/estudiante/certificado?cursoId=${storeCourse.id}`)
+                        const pagoPendiente = !!res.data?.result?.pagoPendiente
+                        const certificado = res.data?.result?.certificado
+
+                        if (certificado) return
+                        openCertGuidePopup(pagoPendiente)
+                    } catch {
+                        openCertGuidePopup(false)
+                    }
+                })()
+            }, 900)
+        }
     }
 
     const handleContinueAfterExam = () => {
@@ -253,8 +332,12 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
 
     const TAB = (label: string) => TABS.indexOf(label)
 
+    const isCertTabActive = isMobile && activeTab === TAB('Certificación')
+    const hideLessonChromeOnMobile = isCertTabActive
+
     const renderMainContent = () => {
-        if (currentView === 'completion' && storeCourse) {
+        // Solo desktop: vista a pantalla completa (el sidebar lateral sigue disponible)
+        if (currentView === 'completion' && storeCourse && !isMobile) {
             return (
                 <Grid item xs={12} key="completion-section">
                     <CompletionSummary cursoId={storeCourse.id} />
@@ -262,7 +345,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
             )
         }
 
-        if (currentView === 'certificate' && storeCourse) {
+        if (currentView === 'certificate' && storeCourse && !isMobile) {
             return (
                 <Grid item xs={12} key="certificate-section">
                     <CertificateSection
@@ -282,7 +365,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
         return (
             <>
                 {/* ── Lesson info row ── */}
-                {currentView === 'lesson' && currentLesson && (
+                {!hideLessonChromeOnMobile && currentView === 'lesson' && currentLesson && (
                     <Grid item xs={12}>
                         <Box sx={{
                             display: 'flex',
@@ -349,7 +432,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                 )}
 
                 {/* ── Material de clase ── */}
-                {currentView === 'lesson' && currentLesson?.recursos && currentLesson.recursos.length > 0 && currentLesson.recursos[0]?.url && (
+                {!hideLessonChromeOnMobile && currentView === 'lesson' && currentLesson?.recursos && currentLesson.recursos.length > 0 && currentLesson.recursos[0]?.url && (
                     <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center', my: 1 }}>
                         <Button
                             variant="contained"
@@ -376,6 +459,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                 )}
 
                 {/* ── Video player / Exam area ── */}
+                {!hideLessonChromeOnMobile && (
                 <Grid item xs={12} key={currentView === 'exam' ? `exam-${currentExamenId}` : `video-${currentLesson?.id || 'none'}`}>
                     {currentView === 'exam' && currentExamenId ? (
                         isMobile ? (
@@ -454,9 +538,10 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                         </Box>
                     )}
                 </Grid>
+                )}
 
                 {/* ── Navigation bar ── */}
-                {currentView === 'lesson' && (
+                {!hideLessonChromeOnMobile && currentView === 'lesson' && (
                     <Grid item xs={12}>
                     <Box sx={{
                         display: 'flex',
@@ -528,11 +613,11 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                 {/* ── Tabs ── */}
                 <Grid item xs={12} sx={{
                     position: {
-                        xs: currentLesson?.es_en_vivo ? 'relative' : 'sticky',
+                        xs: hideLessonChromeOnMobile || currentLesson?.es_en_vivo ? 'relative' : 'sticky',
                         md: 'relative',
                     },
                     top: {
-                        xs: currentLesson?.es_en_vivo ? 'auto' : 'calc((100vw * 9)/16)',
+                        xs: hideLessonChromeOnMobile || currentLesson?.es_en_vivo ? 'auto' : 'calc((100vw * 9)/16)',
                         md: 0,
                     },
                     zIndex: 5,
@@ -569,7 +654,11 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                     {/* Temario (mobile, primer tab) */}
                     {activeTab === TAB('Temario') && TAB('Temario') !== -1 && (
                         <Box sx={{ mt: 0 }}>
-                            <CourseContentSidebar onLessonSelect={handleLessonSelect} />
+                            <CourseContentSidebar
+                                onLessonSelect={handleLessonSelect}
+                                onOpenCertificate={handleOpenCertificateMobile}
+                                isCertificateActive={isCertTabActive}
+                            />
                         </Box>
                     )}
 
@@ -1080,38 +1169,81 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                 />
             )}
 
-            {/* Modal de Certificado Pendiente */}
-            <AppModal open={certPopupOpen} handleClose={() => setCertPopupOpen(false)}>
+            {/* Modal: curso terminado / evaluaciones completadas */}
+            <AppModal open={certPopupOpen} handleClose={continuarRevisandoContenido}>
                 <Box textAlign="center" p={2}>
-                    <i className="tabler-certificate" style={{ fontSize: 60, color: '#f59e0b', display: 'block', marginBottom: 16 }} />
-                    <Typography variant="h6" fontWeight={800} gutterBottom>
-                        ¡Has aprobado el curso!
-                    </Typography>
-                    <Typography color="text.secondary" variant="body2" mb={4}>
-                        Para obtener tu certificado, necesitas completar el pago correspondiente.
-                    </Typography>
-                    <Button
-                        variant="contained"
-                        fullWidth
-                        onClick={() => {
-                            setCertPopupOpen(false)
-                            setCurrentView('certificate')
-                            if (isMobile) setActiveTab(TAB('Certificación'))
-                        }}
+                    <Box
                         sx={{
-                            borderRadius: '12px',
-                            py: 1.5,
-                            fontWeight: 800,
-                            bgcolor: '#f59e0b',
-                            color: '#fff',
-                            '&:hover': { bgcolor: '#d97706' },
-                            boxShadow: 'none'
+                            width: 72,
+                            height: 72,
+                            borderRadius: '50%',
+                            mx: 'auto',
+                            mb: 2,
+                            background: certPopupPago
+                                ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                                : 'linear-gradient(135deg, #025E44 0%, #3AB079 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                         }}
                     >
-                        Ir a Certificación
-                    </Button>
+                        <i className="tabler-certificate" style={{ fontSize: 34, color: '#fff' }} />
+                    </Box>
+                    <Typography variant="h6" fontWeight={800} gutterBottom>
+                        ¡Ya completaste este curso!
+                    </Typography>
+                    <Typography color="text.secondary" variant="body2" mb={3.5}>
+                        {certPopupPago
+                            ? 'Terminaste las evaluaciones. Puedes seguir revisando el contenido o ir por tu certificado.'
+                            : 'Terminaste las evaluaciones. ¿Quieres seguir revisando el contenido o obtener tu certificado?'}
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                        <Button
+                            variant="contained"
+                            fullWidth
+                            onClick={senalarBotonCertificado}
+                            endIcon={<i className="tabler-arrow-right" />}
+                            sx={{
+                                borderRadius: '12px',
+                                py: 1.5,
+                                fontWeight: 800,
+                                textTransform: 'none',
+                                bgcolor: certPopupPago ? '#f59e0b' : '#025E44',
+                                color: '#fff',
+                                boxShadow: 'none',
+                                '&:hover': {
+                                    bgcolor: certPopupPago ? '#d97706' : '#014d36',
+                                    boxShadow: 'none',
+                                },
+                            }}
+                        >
+                            Obtener mi certificado
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            fullWidth
+                            onClick={continuarRevisandoContenido}
+                            startIcon={<i className="tabler-book" />}
+                            sx={{
+                                borderRadius: '12px',
+                                py: 1.35,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                borderColor: 'divider',
+                                color: 'text.secondary',
+                                '&:hover': { borderColor: 'text.disabled', bgcolor: 'action.hover' },
+                            }}
+                        >
+                            Continuar revisando el contenido
+                        </Button>
+                    </Box>
                 </Box>
             </AppModal>
+
+            <CertificateGuideSpotlight
+                open={certSpotlightOpen}
+                onClose={() => setCertSpotlightOpen(false)}
+            />
         </Box>
     )
 }

@@ -6,6 +6,7 @@ import { ApiResponse } from '@/utils/libs/apiResponse'
 import prisma from '@/utils/libs/prisma'
 import { requireAdmin } from '@/utils/libs/auth-helpers'
 import { updatePedidoSchema } from '@/schemas/pedido.schema'
+import { labelDetalleCertificado } from '@/utils/libs/order-service'
 
 /**
  * GET /api/pedidos/[id]
@@ -26,6 +27,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       include: {
         usuario: { select: { id: true, nombre: true, apellido: true, correo: true, avatar: true } },
         cupon: true,
+        metodo_pago_manual: true,
         detalles: {
           include: {
             curso: { select: { id: true, titulo: true, miniatura: true, precio: true } }
@@ -38,7 +40,30 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return ApiResponse.error(request, 'Pedido no encontrado', 404)
     }
 
-    return ApiResponse.success(request, { data: pedido })
+    const [tipoRow] = await prisma.$queryRaw<Array<{ tipo: string }>>`
+      SELECT tipo::text AS tipo FROM pedidos WHERE id = ${id}
+    `
+
+    const certs = await prisma.$queryRaw<Array<{ id: string; certificado_tipo: string | null }>>`
+      SELECT id, certificado_tipo::text AS certificado_tipo
+      FROM detalles_pedido WHERE pedido_id = ${id}
+    `
+
+    const certById = new Map(certs.map(c => [c.id, c.certificado_tipo]))
+
+    return ApiResponse.success(request, {
+      data: {
+        ...pedido,
+        tipo: tipoRow?.tipo || 'CURSO',
+        detalles: pedido.detalles.map(d => ({
+          ...d,
+          certificado_tipo: certById.get(d.id) || null,
+          titulo_display: certById.get(d.id)
+            ? labelDetalleCertificado(d.curso.titulo, certById.get(d.id)!)
+            : d.curso.titulo,
+        })),
+      },
+    })
   } catch (error) {
     return handleApiError(error, request)
   }
@@ -46,7 +71,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
 /**
  * PATCH /api/pedidos/[id]
- * Actualizar pedido (solo ADMIN)
+ * Actualizar pedido (solo ADMIN).
+ * Si pasa a COMPLETADO:
+ *  - pedidos CURSO → crea inscripciones
+ *  - pedidos CERTIFICADO → habilita IPG/CIP automáticamente
  */
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -73,7 +101,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         detalles: {
           include: {
             curso: {
-              select: { id: true, vigencia_meses: true }
+              select: { id: true, vigencia_meses: true, titulo: true }
             }
           }
         }
@@ -84,12 +112,20 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return ApiResponse.error(request, 'Pedido no encontrado', 404)
     }
 
-    // Si cambió a COMPLETADO, deberíamos teóricamente generar las inscripciones
-    // Si cambió de COMPLETADO a CANCELADO/REEMBOLSADO, deberíamos revocar
+    const [tipoRow] = await prisma.$queryRaw<Array<{ tipo: string }>>`
+      SELECT tipo::text AS tipo FROM pedidos WHERE id = ${id}
+    `
 
-    // Iniciar transacción para actualizar pedido y revocar/conceder inscripciones
+    const tipoPedido = tipoRow?.tipo === 'CERTIFICADO' ? 'CERTIFICADO' : 'CURSO'
+
+    const detalleTipos = await prisma.$queryRaw<Array<{ id: string; certificado_tipo: string | null }>>`
+      SELECT id, certificado_tipo::text AS certificado_tipo
+      FROM detalles_pedido WHERE pedido_id = ${id}
+    `
+
+    const tipoByDetalleId = new Map(detalleTipos.map(d => [d.id, d.certificado_tipo]))
+
     await prisma.$transaction(async tx => {
-      // Modificar pedido
       const pagado_en = estado === 'COMPLETADO' && !pedidoAnterior.pagado_en ? new Date() : pedidoAnterior.pagado_en
 
       await tx.pedido.update({
@@ -104,55 +140,135 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         }
       })
 
-      // Lógica de revocación si pasa de completado a otro estado
+      // Revocar al sacar de COMPLETADO
       if (pedidoAnterior.estado === 'COMPLETADO' && estado !== 'COMPLETADO') {
-        const cursosIds = pedidoAnterior.detalles.map(d => d.curso_id)
+        if (tipoPedido === 'CERTIFICADO') {
+          for (const detalle of pedidoAnterior.detalles) {
+            const certTipo = (tipoByDetalleId.get(detalle.id) || 'IPG').toUpperCase()
 
-        await tx.inscripcion.deleteMany({
-          where: {
-            usuario_id: pedidoAnterior.usuario_id,
-            curso_id: { in: cursosIds },
-            pedido_id: id // Opcional, por seguridad extra
+            const insc = await tx.inscripcion.findUnique({
+              where: {
+                usuario_id_curso_id: {
+                  usuario_id: pedidoAnterior.usuario_id,
+                  curso_id: detalle.curso_id,
+                },
+              },
+              select: { id: true },
+            })
+
+            if (!insc) continue
+
+            if (certTipo === 'CIP') {
+              await tx.$executeRaw`
+                UPDATE inscripciones
+                SET certificado_cip_habilitado = false,
+                    certificado_cip_habilitado_en = NULL,
+                    certificado_habilitado = certificado_ipg_habilitado
+                WHERE id = ${insc.id}
+              `
+            } else {
+              await tx.$executeRaw`
+                UPDATE inscripciones
+                SET certificado_ipg_habilitado = false,
+                    certificado_ipg_habilitado_en = NULL,
+                    certificado_habilitado = certificado_cip_habilitado
+                WHERE id = ${insc.id}
+              `
+            }
           }
-        })
+        } else {
+          const cursosIds = pedidoAnterior.detalles.map(d => d.curso_id)
+
+          await tx.inscripcion.deleteMany({
+            where: {
+              usuario_id: pedidoAnterior.usuario_id,
+              curso_id: { in: cursosIds },
+              pedido_id: id
+            }
+          })
+        }
       }
 
-      // Lógica de aprobación manual si pasa a COMPLETADO
+      // Aprobar: COMPLETADO
       if (pedidoAnterior.estado !== 'COMPLETADO' && estado === 'COMPLETADO') {
-        const cursosIds = pedidoAnterior.detalles.map(d => d.curso_id)
+        if (tipoPedido === 'CERTIFICADO') {
+          for (const detalle of pedidoAnterior.detalles) {
+            const certTipo = (tipoByDetalleId.get(detalle.id) || 'IPG').toUpperCase()
 
-        // Evitar duplicados
-        const yaInscritos = await tx.inscripcion.findMany({
-          where: {
-            usuario_id: pedidoAnterior.usuario_id,
-            curso_id: { in: cursosIds }
-          }
-        })
-
-        const inscritosIds = yaInscritos.map(i => i.curso_id)
-        const cursosAInscribir = cursosIds.filter(cid => !inscritosIds.includes(cid))
-
-        if (cursosAInscribir.length > 0) {
-          await Promise.all(
-            cursosAInscribir.map(cid => {
-              const fechaInscripcion = new Date()
-
-              return tx.inscripcion.create({
-                data: {
+            const insc = await tx.inscripcion.findUnique({
+              where: {
+                usuario_id_curso_id: {
                   usuario_id: pedidoAnterior.usuario_id,
-                  curso_id: cid,
-                  pedido_id: id,
-                  estado: 'ACTIVO',
-                  inscrito_en: fechaInscripcion
-                }
-              })
+                  curso_id: detalle.curso_id,
+                },
+              },
+              select: { id: true },
             })
-          )
+
+            if (!insc) {
+              throw new Error(
+                `No hay inscripción activa para habilitar el certificado del curso ${detalle.curso.titulo}`
+              )
+            }
+
+            if (certTipo === 'CIP') {
+              await tx.$executeRaw`
+                UPDATE inscripciones
+                SET certificado_cip_habilitado = true,
+                    certificado_cip_habilitado_en = COALESCE(certificado_cip_habilitado_en, NOW()),
+                    certificado_habilitado = true
+                WHERE id = ${insc.id}
+              `
+            } else {
+              await tx.$executeRaw`
+                UPDATE inscripciones
+                SET certificado_ipg_habilitado = true,
+                    certificado_ipg_habilitado_en = COALESCE(certificado_ipg_habilitado_en, NOW()),
+                    certificado_habilitado = true
+                WHERE id = ${insc.id}
+              `
+            }
+          }
+        } else {
+          const cursosIds = pedidoAnterior.detalles.map(d => d.curso_id)
+
+          const yaInscritos = await tx.inscripcion.findMany({
+            where: {
+              usuario_id: pedidoAnterior.usuario_id,
+              curso_id: { in: cursosIds }
+            }
+          })
+
+          const inscritosIds = yaInscritos.map(i => i.curso_id)
+          const cursosAInscribir = cursosIds.filter(cid => !inscritosIds.includes(cid))
+
+          if (cursosAInscribir.length > 0) {
+            await Promise.all(
+              cursosAInscribir.map(cid => {
+                const fechaInscripcion = new Date()
+
+                return tx.inscripcion.create({
+                  data: {
+                    usuario_id: pedidoAnterior.usuario_id,
+                    curso_id: cid,
+                    pedido_id: id,
+                    estado: 'ACTIVO',
+                    inscrito_en: fechaInscripcion
+                  }
+                })
+              })
+            )
+          }
         }
       }
     })
 
-    return ApiResponse.success(request, { message: 'Pedido actualizado correctamente' })
+    const mensajeOk =
+      tipoPedido === 'CERTIFICADO' && estado === 'COMPLETADO'
+        ? 'Pedido actualizado. El certificado fue habilitado automáticamente.'
+        : 'Pedido actualizado correctamente'
+
+    return ApiResponse.success(request, { message: mensajeOk })
   } catch (error) {
     return handleApiError(error, request)
   }
@@ -180,18 +296,25 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return ApiResponse.error(request, 'Pedido no encontrado', 404)
     }
 
-    await prisma.$transaction(async tx => {
-      // 1. Eliminar inscripciones vinculadas a este pedido
-      await tx.inscripcion.deleteMany({
-        where: { pedido_id: id }
-      })
+    const [tipoRow] = await prisma.$queryRaw<Array<{ tipo: string }>>`
+      SELECT tipo::text AS tipo FROM pedidos WHERE id = ${id}
+    `
 
-      // 2. Eliminar detalles del pedido
+    const esCertificado = tipoRow?.tipo === 'CERTIFICADO'
+
+    await prisma.$transaction(async tx => {
+      // Pedidos de curso: borrar inscripciones creadas por el pedido.
+      // Pedidos de certificado: no tocar la inscripción del curso.
+      if (!esCertificado) {
+        await tx.inscripcion.deleteMany({
+          where: { pedido_id: id }
+        })
+      }
+
       await tx.detallePedido.deleteMany({
         where: { pedido_id: id }
       })
 
-      // 3. Eliminar el pedido base
       await tx.pedido.delete({
         where: { id }
       })

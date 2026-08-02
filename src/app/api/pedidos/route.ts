@@ -1,5 +1,7 @@
 export const dynamic = 'force-dynamic'
 
+import { Prisma } from '@prisma/client'
+
 import prisma from '@/utils/libs/prisma'
 import { validateRequest, handleApiError } from '@/utils/libs/validation'
 import { requireAdmin } from '@/utils/libs/auth-helpers'
@@ -100,8 +102,38 @@ export async function GET(request: Request) {
       prisma.pedido.count({ where })
     ])
 
+    const pedidoIds = pedidos.map(p => p.id)
+    let tipoByPedido = new Map<string, string>()
+    let certByDetalle = new Map<string, string | null>()
+
+    if (pedidoIds.length > 0) {
+      const tipos = await prisma.$queryRaw<Array<{ id: string; tipo: string }>>`
+        SELECT id, tipo::text AS tipo FROM pedidos
+        WHERE id IN (${Prisma.join(pedidoIds)})
+      `
+
+      tipoByPedido = new Map(tipos.map(t => [t.id, t.tipo]))
+
+      const certs = await prisma.$queryRaw<Array<{ id: string; certificado_tipo: string | null }>>`
+        SELECT id, certificado_tipo::text AS certificado_tipo
+        FROM detalles_pedido
+        WHERE pedido_id IN (${Prisma.join(pedidoIds)})
+      `
+
+      certByDetalle = new Map(certs.map(c => [c.id, c.certificado_tipo]))
+    }
+
+    const pedidosEnriquecidos = pedidos.map(p => ({
+      ...p,
+      tipo: tipoByPedido.get(p.id) || 'CURSO',
+      detalles: p.detalles.map(d => ({
+        ...d,
+        certificado_tipo: certByDetalle.get(d.id) || null,
+      })),
+    }))
+
     return ApiResponse.success(request, {
-      pedidos,
+      pedidos: pedidosEnriquecidos,
       paginacion: {
         total,
         page,

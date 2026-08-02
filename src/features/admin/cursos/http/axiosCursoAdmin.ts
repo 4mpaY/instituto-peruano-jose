@@ -34,7 +34,13 @@ export class AxiosCursoAdmin extends AxiosInternalHttpClient {
   async getAlumnos(
     cursoId: string,
     search?: string
-  ): Promise<{ alumnos: any[]; total: number; totalExamenes?: number; precio_certificado?: number | null }> {
+  ): Promise<{
+    alumnos: any[]
+    total: number
+    totalExamenes?: number
+    precio_certificado?: number | null
+    precios_certificado?: { ipg?: number | null; cip?: number | null; moneda?: string }
+  }> {
     try {
       const query = search ? `?search=${encodeURIComponent(search)}` : ''
 
@@ -43,6 +49,7 @@ export class AxiosCursoAdmin extends AxiosInternalHttpClient {
         total: number
         totalExamenes?: number
         precio_certificado?: number | null
+        precios_certificado?: { ipg?: number | null; cip?: number | null; moneda?: string }
       }>(`/${cursoId}/alumnos${query}`)
 
       return payload

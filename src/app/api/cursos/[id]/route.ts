@@ -120,7 +120,32 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return ApiResponse.error(request, 'No tienes permiso para ver este curso', 403)
     }
 
-    return ApiResponse.success(request, curso)
+    // Precios por tipo de certificado (columnas nuevas; enriquecimiento por si el client Prisma está desfasado)
+    let precioIpg: number | null = (curso as any).precio_certificado_ipg != null
+      ? Number((curso as any).precio_certificado_ipg)
+      : null
+    let precioCip: number | null = (curso as any).precio_certificado_cip != null
+      ? Number((curso as any).precio_certificado_cip)
+      : null
+
+    try {
+      const [row] = await prisma.$queryRaw<
+        Array<{ precio_certificado_ipg: unknown; precio_certificado_cip: unknown }>
+      >`SELECT precio_certificado_ipg, precio_certificado_cip FROM cursos WHERE id = ${id}`
+
+      if (row) {
+        precioIpg = row.precio_certificado_ipg != null ? Number(row.precio_certificado_ipg) : null
+        precioCip = row.precio_certificado_cip != null ? Number(row.precio_certificado_cip) : null
+      }
+    } catch {
+      // Columnas aún no migradas
+    }
+
+    return ApiResponse.success(request, {
+      ...curso,
+      precio_certificado_ipg: precioIpg,
+      precio_certificado_cip: precioCip,
+    })
   } catch (error) {
     return handleApiError(error, request)
   }
@@ -160,6 +185,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     const updateData: any = { ...data }
+    const precioIpgUpdate = data.precio_certificado_ipg
+    const precioCipUpdate = data.precio_certificado_cip
+
+    delete updateData.precio_certificado_ipg
+    delete updateData.precio_certificado_cip
 
     // Si se actualiza el título, regenerar slug
     if (data.titulo && data.titulo !== curso.titulo) {
@@ -214,7 +244,51 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       include: cursoInclude
     })
 
-    return ApiResponse.success(request, { curso: cursoActualizado })
+    if (precioIpgUpdate !== undefined) {
+      if (precioIpgUpdate === null) {
+        await prisma.$executeRaw`UPDATE cursos SET precio_certificado_ipg = NULL WHERE id = ${id}`
+      } else {
+        await prisma.$executeRaw`UPDATE cursos SET precio_certificado_ipg = ${Number(precioIpgUpdate)} WHERE id = ${id}`
+      }
+    }
+
+    if (precioCipUpdate !== undefined) {
+      if (precioCipUpdate === null) {
+        await prisma.$executeRaw`UPDATE cursos SET precio_certificado_cip = NULL WHERE id = ${id}`
+      } else {
+        await prisma.$executeRaw`UPDATE cursos SET precio_certificado_cip = ${Number(precioCipUpdate)} WHERE id = ${id}`
+      }
+    }
+
+    let precioIpgOut: number | null =
+      (cursoActualizado as any).precio_certificado_ipg != null
+        ? Number((cursoActualizado as any).precio_certificado_ipg)
+        : null
+    let precioCipOut: number | null =
+      (cursoActualizado as any).precio_certificado_cip != null
+        ? Number((cursoActualizado as any).precio_certificado_cip)
+        : null
+
+    try {
+      const [row] = await prisma.$queryRaw<
+        Array<{ precio_certificado_ipg: unknown; precio_certificado_cip: unknown }>
+      >`SELECT precio_certificado_ipg, precio_certificado_cip FROM cursos WHERE id = ${id}`
+
+      if (row) {
+        precioIpgOut = row.precio_certificado_ipg != null ? Number(row.precio_certificado_ipg) : null
+        precioCipOut = row.precio_certificado_cip != null ? Number(row.precio_certificado_cip) : null
+      }
+    } catch {
+      // ignore
+    }
+
+    return ApiResponse.success(request, {
+      curso: {
+        ...cursoActualizado,
+        precio_certificado_ipg: precioIpgOut,
+        precio_certificado_cip: precioCipOut,
+      },
+    })
   } catch (error) {
     return handleApiError(error, request)
   }

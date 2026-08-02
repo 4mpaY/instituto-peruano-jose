@@ -256,7 +256,10 @@ export function PedidoEditPage() {
                   icon={<i className='tabler-alert-triangle' style={{ fontSize: 20 }} />}
                   sx={{ mb: 3, borderRadius: 2, '& .MuiAlert-message': { fontSize: '0.8125rem' } }}
                 >
-                  Cambiar el estado a <strong>COMPLETADO</strong> inscribirá al estudiante automáticamente.
+                  Cambiar el estado a <strong>COMPLETADO</strong> activará automáticamente
+                  {(pedido as any)?.tipo === 'CERTIFICADO'
+                    ? ' el certificado del estudiante.'
+                    : ' la inscripción del estudiante al curso.'}
                   Cambiar de Completado a Cancelado/Reembolsado <strong>revocará los accesos irreversiblemente</strong>.
                 </Alert>
 

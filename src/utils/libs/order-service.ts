@@ -5,23 +5,25 @@ interface OrderCompletionData {
   metodo_pago: 'PAYPAL' | 'IZIPAY' | 'CULQI' | 'MERCADOPAGO' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'OTRO'
   transaccion_id?: string
   respuesta_pago?: any
+
+  /** Si se omite, se usa la fecha/hora actual */
+  pagado_en?: Date | string
 }
 
 /**
  * Servicio centralizado para completar un pedido.
- * Maneja transacciones, inscripciones, cupones, notificaciones administrativas
- * y el envío automático del correo de confirmación al usuario.
+ * Maneja transacciones, inscripciones (cursos) o habilitación de certificados,
+ * cupones, notificaciones administrativas y correo de confirmación.
  */
 export async function completeOrder(pedidoId: string, data: OrderCompletionData) {
   try {
-    // 1. Verificar si el pedido ya fue completado (para evitar duplicados por webhooks concurrentes)
     const pedidoInit = await prisma.pedido.findUnique({
       where: { id: pedidoId },
       include: {
         detalles: {
           include: {
             curso: {
-              select: { id: true, vigencia_meses: true }
+              select: { id: true, vigencia_meses: true, titulo: true }
             }
           }
         },
@@ -41,22 +43,33 @@ export async function completeOrder(pedidoId: string, data: OrderCompletionData)
       return { pedido: pedidoInit, inscripciones, yaCompletado: true }
     }
 
-    // 2. Transacción de Base de Datos
+    const [tipoRow] = await prisma.$queryRaw<Array<{ tipo: string }>>`
+      SELECT tipo::text AS tipo FROM pedidos WHERE id = ${pedidoId}
+    `
+
+    const tipoPedido = tipoRow?.tipo === 'CERTIFICADO' ? 'CERTIFICADO' : 'CURSO'
+
+    const detalleTipos = await prisma.$queryRaw<Array<{ id: string; certificado_tipo: string | null }>>`
+      SELECT id, certificado_tipo::text AS certificado_tipo
+      FROM detalles_pedido
+      WHERE pedido_id = ${pedidoId}
+    `
+
+    const tipoByDetalleId = new Map(detalleTipos.map(d => [d.id, d.certificado_tipo]))
+
     const result = await prisma.$transaction(
       async tx => {
-        // a) Actualizar pedido
         const pedidoActualizado = await tx.pedido.update({
           where: { id: pedidoId },
           data: {
             estado: 'COMPLETADO',
-            pagado_en: new Date(),
+            pagado_en: data.pagado_en ? new Date(data.pagado_en) : new Date(),
             metodo_pago: data.metodo_pago as any,
             transaccion_id: data.transaccion_id || null,
-            respuesta_izipay: data.respuesta_pago || null // Se usa este campo para el log de respuesta
+            respuesta_izipay: data.respuesta_pago || null
           }
         })
 
-        // b) Incrementar uso de cupón si aplica
         if (pedidoInit.cupon_id) {
           await tx.cupon.update({
             where: { id: pedidoInit.cupon_id },
@@ -64,55 +77,97 @@ export async function completeOrder(pedidoId: string, data: OrderCompletionData)
           })
         }
 
-        // c) Crear inscripciones activas
         const inscripciones = []
 
-        for (const detalle of pedidoInit.detalles) {
-          const fechaInscripcion = new Date()
+        if (tipoPedido === 'CERTIFICADO') {
+          for (const detalle of pedidoInit.detalles) {
+            const certTipo = (tipoByDetalleId.get(detalle.id) || 'IPG').toUpperCase()
 
-          const ins = await tx.inscripcion.upsert({
-            where: {
-              usuario_id_curso_id: {
-                usuario_id: pedidoInit.usuario_id,
-                curso_id: detalle.curso_id
-              }
-            },
-            update: {
-              estado: 'ACTIVO',
-              pedido_id: pedidoId
-            },
-            create: {
-              usuario_id: pedidoInit.usuario_id,
-              curso_id: detalle.curso_id,
-              pedido_id: pedidoId,
-              estado: 'ACTIVO',
-              inscrito_en: fechaInscripcion
+            const insc = await tx.inscripcion.findUnique({
+              where: {
+                usuario_id_curso_id: {
+                  usuario_id: pedidoInit.usuario_id,
+                  curso_id: detalle.curso_id
+                }
+              },
+              select: { id: true }
+            })
+
+            if (!insc) {
+              throw new Error(
+                `No hay inscripción activa para habilitar el certificado del curso ${detalle.curso.titulo}`
+              )
             }
-          })
 
-          inscripciones.push(ins)
+            if (certTipo === 'CIP') {
+              await tx.$executeRaw`
+                UPDATE inscripciones
+                SET certificado_cip_habilitado = true,
+                    certificado_cip_habilitado_en = COALESCE(certificado_cip_habilitado_en, NOW()),
+                    certificado_habilitado = true
+                WHERE id = ${insc.id}
+              `
+            } else {
+              await tx.$executeRaw`
+                UPDATE inscripciones
+                SET certificado_ipg_habilitado = true,
+                    certificado_ipg_habilitado_en = COALESCE(certificado_ipg_habilitado_en, NOW()),
+                    certificado_habilitado = true
+                WHERE id = ${insc.id}
+              `
+            }
+
+            inscripciones.push(insc)
+          }
+        } else {
+          for (const detalle of pedidoInit.detalles) {
+            const fechaInscripcion = new Date()
+
+            const ins = await tx.inscripcion.upsert({
+              where: {
+                usuario_id_curso_id: {
+                  usuario_id: pedidoInit.usuario_id,
+                  curso_id: detalle.curso_id
+                }
+              },
+              update: {
+                estado: 'ACTIVO',
+                pedido_id: pedidoId
+              },
+              create: {
+                usuario_id: pedidoInit.usuario_id,
+                curso_id: detalle.curso_id,
+                pedido_id: pedidoId,
+                estado: 'ACTIVO',
+                inscrito_en: fechaInscripcion
+              }
+            })
+
+            inscripciones.push(ins)
+          }
         }
 
         return { pedido: pedidoActualizado, inscripciones }
       },
-      {
-        timeout: 30000 // Aumentamos el tiempo de espera a 30 segundos
-      }
+      { timeout: 30000 }
     )
 
-    // d) Notificar a Admins (Fuera de la transacción para optimizar)
     try {
       const admins = await prisma.usuario.findMany({
         where: { rol: 'ADMIN' },
         select: { id: true }
       })
 
-      // Creamos las notificaciones en paralelo para mayor velocidad
+      const tituloNotif =
+        tipoPedido === 'CERTIFICADO'
+          ? `Nuevo Pedido de Certificado (${data.metodo_pago})`
+          : `Nuevo Pedido (${data.metodo_pago})`
+
       await Promise.all(
         admins.map(admin =>
           prisma.notificacion.create({
             data: {
-              titulo: `Nuevo Pedido (${data.metodo_pago})`,
+              titulo: tituloNotif,
               mensaje: `El usuario ${pedidoInit.usuario.nombre} ha realizado un pedido exitoso por ${pedidoInit.moneda} ${pedidoInit.total}.`,
               tipo: 'PEDIDO_NUEVO',
               usuario_id: admin.id,
@@ -123,12 +178,8 @@ export async function completeOrder(pedidoId: string, data: OrderCompletionData)
       )
     } catch (notifyError) {
       console.error(`[Order-Service] Error enviando notificaciones a admins para pedido ${pedidoId}:`, notifyError)
-
-      // No lanzamos el error para no invalidar la respuesta exitosa del pedido si solo fallan las notificaciones
     }
 
-    // 3. Envío de Correo Asíncrono (No bloquea la respuesta del API)
-    // Se dispara después de que la transacción haya sido confirmada exitosamente.
     sendOrderConfirmationEmail(pedidoId).catch(err => {
       console.error(`[Order-Service] Error enviando mail después de completar pedido ${pedidoId}:`, err)
     })
@@ -138,4 +189,11 @@ export async function completeOrder(pedidoId: string, data: OrderCompletionData)
     console.error(`[Order-Service] Error crítico completando pedido ${pedidoId}:`, error)
     throw error
   }
+}
+
+/** Etiqueta de línea de pedido para certificados */
+export function labelDetalleCertificado(cursoTitulo: string, tipo: 'IPG' | 'CIP' | string) {
+  const sufijo = String(tipo).toUpperCase() === 'CIP' ? 'Colegio de Ingenieros' : 'IPG'
+
+  return `${cursoTitulo} (Certificado ${sufijo})`
 }

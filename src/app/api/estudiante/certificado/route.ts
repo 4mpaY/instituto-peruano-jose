@@ -9,6 +9,11 @@ import {
   resolveCertificadoPagoEstado,
 } from '@/app/api/_shared/certificados/getInscripcionCertificadoHabilitacion'
 import { calcularElegibilidad, ensureCertificado, EnsureCertificadoError } from '@/app/api/_shared/certificados/ensureCertificado'
+import { resolveCertificadoDisponibilidad, type CipEntregaRango } from '@/utils/functions/certificadoDisponibilidad'
+import {
+  resolvePrecioCertificadoCip,
+  resolvePrecioCertificadoIpg,
+} from '@/utils/functions/certificadoPrecios'
 
 /**
  * GET /api/estudiante/certificado?cursoId=xxx
@@ -27,7 +32,7 @@ export async function GET(request: Request) {
       return ApiResponse.error(request, 'El ID del curso es requerido', 400)
     }
 
-    const [certificados, elegibilidad, inscripcionHab, curso, usuarioActual] = await Promise.all([
+    const [certificados, elegibilidad, inscripcionHab, curso, usuarioActual, inscripcionPedido] = await Promise.all([
       prisma.certificado.findMany({
         where: { usuario_id: auth.user.id, curso_id: cursoId },
         include: {
@@ -37,8 +42,25 @@ export async function GET(request: Request) {
       }),
       calcularElegibilidad(auth.user.id, cursoId),
       getInscripcionCertificadoHabilitacion(auth.user.id, cursoId),
-      prisma.curso.findUnique({ where: { id: cursoId }, select: { precio_certificado: true, titulo: true } }),
-      prisma.usuario.findUnique({ where: { id: auth.user.id }, select: { numero_documento: true } })
+      prisma.curso.findUnique({
+        where: { id: cursoId },
+        select: {
+          precio_certificado: true,
+          titulo: true,
+          moneda: true,
+          certificado_ipg_espera_valor: true,
+          certificado_ipg_espera_unidad: true,
+          certificado_cip_entregas: true,
+        },
+      }),
+      prisma.usuario.findUnique({ where: { id: auth.user.id }, select: { numero_documento: true } }),
+      prisma.inscripcion.findUnique({
+        where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } },
+        select: {
+          inscrito_en: true,
+          pedido: { select: { pagado_en: true, creado_en: true } },
+        },
+      }),
     ])
 
     // Verificar documento directamente en BD (evita depender del JWT, que puede quedar desactualizado)
@@ -49,10 +71,76 @@ export async function GET(request: Request) {
 
     const precioCert = curso?.precio_certificado ? Number(curso.precio_certificado) : null
 
+    const [preciosRow] = await prisma.$queryRaw<
+      Array<{ precio_certificado_ipg: any; precio_certificado_cip: any }>
+    >`
+      SELECT precio_certificado_ipg, precio_certificado_cip FROM cursos WHERE id = ${cursoId}
+    `
+
+    const precioIpg = resolvePrecioCertificadoIpg({
+      precio_certificado: precioCert,
+      precio_certificado_ipg: preciosRow?.precio_certificado_ipg,
+    })
+
+    const precioCip = resolvePrecioCertificadoCip({
+      precio_certificado: precioCert,
+      precio_certificado_cip: preciosRow?.precio_certificado_cip,
+    })
+
+    const tienePrecioTramite = precioIpg != null || precioCip != null
+
+    const cipEntregas = (Array.isArray(curso?.certificado_cip_entregas)
+      ? curso?.certificado_cip_entregas
+      : []) as CipEntregaRango[]
+
+    const esperaIpg = Number(curso?.certificado_ipg_espera_valor ?? 0) > 0
+
+    const requiereHabilitacion =
+      !!(precioCert && precioCert > 0) || esperaIpg || cipEntregas.length > 0 || tienePrecioTramite
+
     const { ipgHabilitado, cipHabilitado, pagoPendiente } = resolveCertificadoPagoEstado(
       inscripcionHab,
-      precioCert
+      precioCert,
+      { requiereHabilitacion }
     )
+
+    const fechaPago =
+      inscripcionPedido?.pedido?.pagado_en ||
+      inscripcionPedido?.pedido?.creado_en ||
+      inscripcionPedido?.inscrito_en ||
+      null
+
+    // Si hay precio o tiempo de espera, el admin controla la liberación
+    const requiereHabilitacionIpg = precioIpg != null || esperaIpg
+    const requiereHabilitacionCip = precioCip != null || cipEntregas.length > 0
+
+    const dispIpg = resolveCertificadoDisponibilidad({
+      tipo: 'ipg',
+      habilitado: ipgHabilitado,
+      habilitadoEn: inscripcionHab?.certificado_ipg_habilitado_en ?? null,
+      ipgEsperaValor: curso?.certificado_ipg_espera_valor,
+      ipgEsperaUnidad: curso?.certificado_ipg_espera_unidad,
+    })
+
+    const dispCip = resolveCertificadoDisponibilidad({
+      tipo: 'cip',
+      habilitado: cipHabilitado,
+      habilitadoEn: inscripcionHab?.certificado_cip_habilitado_en ?? null,
+      cipEntregas,
+      fechaPago,
+    })
+
+    const ipgDescargable =
+      elegibilidad.evaluacionesOk &&
+      (requiereHabilitacionIpg
+        ? ipgHabilitado && dispIpg.disponible
+        : !!certIpg && !dispIpg.enEspera)
+
+    const cipDescargable =
+      elegibilidad.evaluacionesOk &&
+      (requiereHabilitacionCip
+        ? cipHabilitado && dispCip.disponible
+        : !!certCip && !dispCip.enEspera)
 
     const toResumen = (c: typeof certIpg) =>
       c
@@ -65,12 +153,113 @@ export async function GET(request: Request) {
           }
         : null
 
+    const pedidosCertPendientes = await prisma.$queryRaw<
+      Array<{
+        id: string
+        numero_pedido: number
+        creado_en: Date
+        certificado_tipo: string | null
+        total: unknown
+        comprobante_url: string | null
+      }>
+    >`
+      SELECT
+        p.id,
+        p.numero_pedido,
+        p.creado_en,
+        d.certificado_tipo::text AS certificado_tipo,
+        p.total,
+        p.comprobante_url
+      FROM pedidos p
+      JOIN detalles_pedido d ON d.pedido_id = p.id
+      WHERE p.usuario_id = ${auth.user.id}
+        AND p.tipo = 'CERTIFICADO'::"TipoPedido"
+        AND p.estado = 'PENDIENTE'
+        AND d.curso_id = ${cursoId}
+      ORDER BY p.creado_en DESC
+    `
+
+    const { estimarDisponibilidadAlTramitar } = await import('@/utils/functions/certificadoPrecios')
+
+    const solicitudesPendientes = pedidosCertPendientes.map(p => {
+      const tipo = String(p.certificado_tipo || 'IPG').toUpperCase() === 'CIP' ? 'CIP' : 'IPG'
+
+      const disp = estimarDisponibilidadAlTramitar({
+        tipo: tipo === 'CIP' ? 'cip' : 'ipg',
+        ipgEsperaValor: curso?.certificado_ipg_espera_valor,
+        ipgEsperaUnidad: curso?.certificado_ipg_espera_unidad,
+        cipEntregas,
+      })
+
+      return {
+        pedidoId: p.id,
+        numeroPedido: p.numero_pedido,
+        certificadoTipo: tipo,
+        total: Number(p.total),
+        creadoEn: p.creado_en,
+        tieneComprobante: !!p.comprobante_url,
+        etiquetaEntrega: disp.etiqueta,
+        disponibleDesde: disp.disponibleDesde,
+        nombreTipo: tipo === 'CIP' ? 'Colegio de Ingenieros' : 'IPG Ingenieros',
+      }
+    })
+
+    const tiposPendientes = new Set(solicitudesPendientes.map(s => s.certificadoTipo))
+
+    // Bloqueados: ya descargables, habilitados, en espera o con pedido pendiente
+    const ipgBloqueadoParaTramite =
+      ipgDescargable || ipgHabilitado || dispIpg.enEspera || tiposPendientes.has('IPG')
+
+    const cipBloqueadoParaTramite =
+      cipDescargable || cipHabilitado || dispCip.enEspera || tiposPendientes.has('CIP')
+
+    const tiposTramitables = {
+      ipg: precioIpg != null && !ipgBloqueadoParaTramite,
+      cip: precioCip != null && !cipBloqueadoParaTramite,
+    }
+
+    const tieneAlgunTipoTramitable = tiposTramitables.ipg || tiposTramitables.cip
+
+    // Permite tramitar el faltante aunque ya se tenga el otro certificado
+    const tramitarDisponible =
+      (!!elegibilidad.puedeTramitar || !!elegibilidad.evaluacionesOk || !!elegibilidad.isEligible) &&
+      tienePrecioTramite &&
+      tieneAlgunTipoTramitable
+
     return ApiResponse.success(request, {
-      certificado: toResumen(certIpg),
+      // Solo exponer como obtenido si está habilitado (o curso sin gate admin)
+      certificado: ipgDescargable
+        ? toResumen(certIpg)
+        : cipDescargable
+          ? toResumen(certCip)
+          : null,
       cursoTitulo: curso?.titulo ?? null,
       elegibilidad,
       pagoPendiente,
       precioCertificado: precioCert,
+      preciosCertificado: {
+        ipg: precioIpg,
+        cip: precioCip,
+        moneda: (curso as any)?.moneda || 'PEN',
+      },
+      tramitarDisponible,
+      tiposTramitables,
+      solicitudesPendientes,
+      cursoCertificacion: {
+        id: cursoId,
+        titulo: curso?.titulo ?? '',
+        moneda: (curso as any)?.moneda || 'PEN',
+        precio_certificado: precioCert,
+        precio_certificado_ipg: precioIpg,
+        precio_certificado_cip: precioCip,
+        certificado_ipg_espera_valor: curso?.certificado_ipg_espera_valor ?? 0,
+        certificado_ipg_espera_unidad: curso?.certificado_ipg_espera_unidad ?? 'DIAS',
+        certificado_cip_entregas: cipEntregas,
+      },
+
+      // Flags explícitos para el front (evita depender de campos opcionales)
+      puedeTramitar: !!elegibilidad.puedeTramitar,
+      evaluacionesOk: !!elegibilidad.evaluacionesOk,
       documentoCompleto,
       certificadosHabilitados: {
         ipg: ipgHabilitado,
@@ -81,19 +270,25 @@ export async function GET(request: Request) {
           id: 'minimalista',
           nombre: 'Certificado IPG',
           thumbnail: '/images/plantillas-certificado/minimalista.png',
-          habilitado: ipgHabilitado,
-          certificadoId: certIpg?.id ?? null,
-          codigoVerificacion: certIpg?.codigo_verificacion ?? null,
-          emitidoEn: certIpg?.emitido_en ?? null,
+          habilitado: ipgDescargable,
+          enEspera: dispIpg.enEspera,
+          disponibleDesde: dispIpg.disponibleDesde,
+          mensajeEspera: dispIpg.mensaje,
+          certificadoId: ipgDescargable ? (certIpg?.id ?? null) : null,
+          codigoVerificacion: ipgDescargable ? (certIpg?.codigo_verificacion ?? null) : null,
+          emitidoEn: ipgDescargable ? (certIpg?.emitido_en ?? null) : null,
         },
         {
           id: 'colegio_ingenieros',
           nombre: 'Certificado CIP',
           thumbnail: '/images/plantillas-certificado/colegio_ingenieros.png',
-          habilitado: cipHabilitado,
-          certificadoId: certCip?.id ?? null,
-          codigoVerificacion: certCip?.codigo_verificacion ?? null,
-          emitidoEn: certCip?.emitido_en ?? null,
+          habilitado: cipDescargable,
+          enEspera: dispCip.enEspera,
+          disponibleDesde: dispCip.disponibleDesde,
+          mensajeEspera: dispCip.mensaje,
+          certificadoId: cipDescargable ? (certCip?.id ?? null) : null,
+          codigoVerificacion: cipDescargable ? (certCip?.codigo_verificacion ?? null) : null,
+          emitidoEn: cipDescargable ? (certCip?.emitido_en ?? null) : null,
         },
       ],
     })
@@ -105,7 +300,7 @@ export async function GET(request: Request) {
 /**
  * POST /api/estudiante/certificado
  * Genera (o devuelve, si ya existe) el certificado del tipo pedido, validando
- * inscripción, habilitación de pago y elegibilidad (progreso + evaluaciones).
+ * inscripción, habilitación de pago y evaluaciones aprobadas.
  * Body: { cursoId: string, tipo?: 'IPG' | 'CIP' }  (tipo por defecto: IPG)
  */
 export async function POST(request: Request) {

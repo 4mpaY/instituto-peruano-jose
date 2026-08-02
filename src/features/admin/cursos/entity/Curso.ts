@@ -77,6 +77,17 @@ export interface Curso {
   es_privado: boolean
   completar_automatico: boolean
   precio_certificado: number | null
+  precio_certificado_ipg?: number | null
+  precio_certificado_cip?: number | null
+  certificado_ipg_espera_valor?: number | null
+  certificado_ipg_espera_unidad?: string | null
+  certificado_cip_entregas?: Array<{
+    id: string
+    pagos_desde: string
+    pagos_hasta: string
+    fecha_entrega: string
+    hora: string
+  }> | null
   precio: number
   precio_falso: number
   moneda: string

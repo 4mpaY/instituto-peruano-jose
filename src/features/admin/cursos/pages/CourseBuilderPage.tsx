@@ -26,6 +26,7 @@ import { TabDetallesPremium } from '../components/CourseBuilder/TabDetallesPremi
 import { TabComentarios } from '../components/CourseBuilder/TabComentarios'
 import { TabEvaluacion } from '../components/CourseBuilder/TabEvaluacion'
 import { TabValoraciones } from '../components/CourseBuilder/TabValoraciones'
+import { TabCertificacion } from '../components/CourseBuilder/TabCertificacion'
 
 import { useCurso } from '../hooks/useCursos'
 
@@ -86,6 +87,7 @@ export function CourseBuilderPage({ cursoId, profesores }: CourseBuilderPageProp
                         <Tab icon={<i className='tabler-star' />} iconPosition='start' label='Detalles Premium' value='4' />
                         {/* <Tab icon={<i className='tabler-clipboard-check' />} iconPosition='start' label='Evaluación' value='6' /> */}
                         <Tab icon={<i className='tabler-settings' />} iconPosition='start' label='Configuración' value='3' />
+                        <Tab icon={<i className='tabler-certificate' />} iconPosition='start' label='Certificación' value='8' />
                         <Tab icon={<i className='tabler-message' />} iconPosition='start' label='Comentarios' value='5' />
                         <Tab icon={<i className='tabler-star-filled' />} iconPosition='start' label='Valoraciones' value='7' />
                     </TabList>
@@ -116,6 +118,10 @@ export function CourseBuilderPage({ cursoId, profesores }: CourseBuilderPageProp
 
                     <TabPanel value='7' sx={{ p: 5 }}>
                         <TabValoraciones cursoId={curso.id} />
+                    </TabPanel>
+
+                    <TabPanel value='8' sx={{ p: 5 }}>
+                        <TabCertificacion curso={curso} onSuccess={refetch} />
                     </TabPanel>
                 </Card>
             </TabContext>

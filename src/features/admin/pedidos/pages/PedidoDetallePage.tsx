@@ -82,12 +82,20 @@ export function PedidoDetallePage() {
                 />
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary">Tipo de Comprobante</Typography>
-                <Typography variant="body1" className="capitalize">{pedido.tipo_comprobante || '-'}</Typography>
+                <Typography variant="body2" color="text.secondary">Banco / billetera del pago</Typography>
+                <Typography variant="body1" fontWeight={600}>
+                  {pedido.referencia_pago || '-'}
+                </Typography>
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary">Número de Documento</Typography>
-                <Typography variant="body1">{pedido.numero_comprobante || '-'}</Typography>
+                <Typography variant="body2" color="text.secondary">Código de operación</Typography>
+                <Typography variant="body1" fontWeight={700} sx={{ fontFamily: 'monospace' }}>
+                  {pedido.numero_comprobante || '-'}
+                </Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" color="text.secondary">Tipo de comprobante</Typography>
+                <Typography variant="body1" className="capitalize">{pedido.tipo_comprobante || '-'}</Typography>
               </Grid>
             </Grid>
           </Grid>
@@ -122,37 +130,83 @@ export function PedidoDetallePage() {
             )}
           </Grid>
 
-          {/* Voucher y acción de completar */}
-          {(pedido.comprobante_url || pedido.metodo_pago_manual) && (
+          {/* Voucher y verificación de pago */}
+          {(pedido.comprobante_url || pedido.metodo_pago_manual || pedido.numero_comprobante || pedido.referencia_pago) && (
             <Grid item xs={12}>
               <Divider sx={{ mb: 3 }} />
+              <Typography variant='h6' gutterBottom sx={{ mb: 2 }}>
+                Verificación de pago
+              </Typography>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems='flex-start'>
-                {pedido.comprobante_url && (
+                {pedido.comprobante_url ? (
                   <Box>
-                    <Typography variant='h6' gutterBottom>Comprobante de Pago</Typography>
+                    <Typography variant='subtitle2' fontWeight={700} gutterBottom>
+                      Imagen del voucher
+                    </Typography>
                     <Box
                       component='img'
                       src={pedido.comprobante_url}
-                      alt='Comprobante'
-                      sx={{ maxWidth: 280, maxHeight: 320, borderRadius: 2, border: '1px solid', borderColor: 'divider', cursor: 'pointer' }}
+                      alt='Voucher de pago'
+                      sx={{
+                        maxWidth: { xs: '100%', md: 360 },
+                        maxHeight: 420,
+                        width: 'auto',
+                        borderRadius: 2,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        cursor: 'pointer',
+                        display: 'block',
+                        bgcolor: 'action.hover',
+                      }}
                       onClick={() => window.open(pedido.comprobante_url!, '_blank')}
                     />
-                    {pedido.comprobante_subido_en && (
-                      <Typography variant='caption' color='text.secondary' display='block' sx={{ mt: 0.5 }}>
-                        Subido: <HydratedDate date={pedido.comprobante_subido_en} format='locale' />
-                      </Typography>
-                    )}
+                    <Typography variant='caption' color='text.secondary' display='block' sx={{ mt: 0.75 }}>
+                      Clic para ampliar
+                      {pedido.comprobante_subido_en && (
+                        <> · Subido: <HydratedDate date={pedido.comprobante_subido_en} format='locale' /></>
+                      )}
+                    </Typography>
                   </Box>
+                ) : (
+                  <Paper variant='outlined' sx={{ p: 3, minWidth: 220 }}>
+                    <Typography variant='body2' color='text.secondary'>
+                      Sin imagen de voucher adjunta
+                    </Typography>
+                  </Paper>
                 )}
 
-                <Box flex={1}>
-                  {pedido.metodo_pago_manual && (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant='h6' gutterBottom>Método Seleccionado</Typography>
-                      <Typography variant='body2'><b>{pedido.metodo_pago_manual.nombre}</b></Typography>
-                      <Typography variant='body2' color='text.secondary'>{pedido.metodo_pago_manual.numero_cuenta} · {pedido.metodo_pago_manual.nombre_cuenta}</Typography>
-                    </Box>
-                  )}
+                <Box flex={1} sx={{ width: '100%' }}>
+                  <Paper variant='outlined' sx={{ p: 3 }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant='caption' color='text.secondary'>Banco / billetera</Typography>
+                        <Typography variant='body1' fontWeight={700}>
+                          {pedido.referencia_pago || '-'}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant='caption' color='text.secondary'>Código de operación</Typography>
+                        <Typography variant='body1' fontWeight={700} sx={{ fontFamily: 'monospace' }}>
+                          {pedido.numero_comprobante || '-'}
+                        </Typography>
+                      </Grid>
+                      {pedido.metodo_pago_manual && (
+                        <Grid item xs={12}>
+                          <Divider sx={{ my: 1 }} />
+                          <Typography variant='caption' color='text.secondary'>Método de destino seleccionado</Typography>
+                          <Typography variant='body2' fontWeight={700}>
+                            {pedido.metodo_pago_manual.nombre}
+                            {pedido.metodo_pago_manual.nombre_banco
+                              ? ` · ${pedido.metodo_pago_manual.nombre_banco}`
+                              : ''}
+                          </Typography>
+                          <Typography variant='body2' color='text.secondary'>
+                            {pedido.metodo_pago_manual.numero_cuenta}
+                          </Typography>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </Paper>
                 </Box>
               </Stack>
             </Grid>

@@ -93,7 +93,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return validation.error
     }
 
-    const { estado, metodo_pago, mensaje, tipo_comprobante, numero_comprobante } = validation.data
+    const { estado, metodo_pago, mensaje, tipo_comprobante, numero_comprobante, referencia_pago } =
+      validation.data
 
     const pedidoAnterior = await prisma.pedido.findUnique({
       where: { id },
@@ -136,6 +137,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           mensaje,
           tipo_comprobante,
           numero_comprobante,
+          ...(referencia_pago !== undefined ? { referencia_pago } : {}),
           pagado_en: estado === 'COMPLETADO' ? pagado_en : null
         }
       })
@@ -276,7 +278,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
 /**
  * DELETE /api/pedidos/[id]
- * Eliminar pedido e inscripciones vinculadas (solo ADMIN)
+ * Eliminar pedido e inscripciones vinculadas (solo ADMIN).
+ * Si es CERTIFICADO: deshabilita el tipo (IPG/CIP) y elimina el certificado emitido
+ * para que el estudiante pueda tramitar de nuevo.
  */
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -289,7 +293,12 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     const { id } = params
 
     const pedido = await prisma.pedido.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        detalles: {
+          select: { id: true, curso_id: true },
+        },
+      },
     })
 
     if (!pedido) {
@@ -302,25 +311,79 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     const esCertificado = tipoRow?.tipo === 'CERTIFICADO'
 
+    const detalleTipos = esCertificado
+      ? await prisma.$queryRaw<Array<{ id: string; certificado_tipo: string | null; curso_id: string }>>`
+          SELECT id, certificado_tipo::text AS certificado_tipo, curso_id
+          FROM detalles_pedido
+          WHERE pedido_id = ${id}
+        `
+      : []
+
     await prisma.$transaction(async tx => {
-      // Pedidos de curso: borrar inscripciones creadas por el pedido.
-      // Pedidos de certificado: no tocar la inscripción del curso.
-      if (!esCertificado) {
+      if (esCertificado) {
+        for (const detalle of detalleTipos) {
+          const certTipo = String(detalle.certificado_tipo || 'IPG').toUpperCase() === 'CIP' ? 'CIP' : 'IPG'
+
+          const insc = await tx.inscripcion.findUnique({
+            where: {
+              usuario_id_curso_id: {
+                usuario_id: pedido.usuario_id,
+                curso_id: detalle.curso_id,
+              },
+            },
+            select: { id: true },
+          })
+
+          if (insc) {
+            if (certTipo === 'CIP') {
+              await tx.$executeRaw`
+                UPDATE inscripciones
+                SET certificado_cip_habilitado = false,
+                    certificado_cip_habilitado_en = NULL,
+                    certificado_habilitado = certificado_ipg_habilitado
+                WHERE id = ${insc.id}
+              `
+            } else {
+              await tx.$executeRaw`
+                UPDATE inscripciones
+                SET certificado_ipg_habilitado = false,
+                    certificado_ipg_habilitado_en = NULL,
+                    certificado_habilitado = certificado_cip_habilitado
+                WHERE id = ${insc.id}
+              `
+            }
+          }
+
+          // Quitar certificado emitido de ese tipo para permitir un nuevo trámite
+          await tx.certificado.deleteMany({
+            where: {
+              usuario_id: pedido.usuario_id,
+              curso_id: detalle.curso_id,
+              tipo: certTipo,
+            },
+          })
+        }
+      } else {
+        // Pedidos de curso: borrar inscripciones creadas por el pedido
         await tx.inscripcion.deleteMany({
-          where: { pedido_id: id }
+          where: { pedido_id: id },
         })
       }
 
       await tx.detallePedido.deleteMany({
-        where: { pedido_id: id }
+        where: { pedido_id: id },
       })
 
       await tx.pedido.delete({
-        where: { id }
+        where: { id },
       })
     })
 
-    return ApiResponse.success(request, { message: 'Pedido eliminado correctamente' })
+    return ApiResponse.success(request, {
+      message: esCertificado
+        ? 'Pedido eliminado. El certificado fue deshabilitado y el estudiante puede tramitarlo de nuevo.'
+        : 'Pedido eliminado correctamente',
+    })
   } catch (error) {
     return handleApiError(error, request)
   }

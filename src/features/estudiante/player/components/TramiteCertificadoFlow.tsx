@@ -22,6 +22,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import { MuiTelInput } from 'mui-tel-input'
 
 import type { CipEntregaRango } from '@/utils/functions/certificadoDisponibilidad'
 import {
@@ -29,6 +30,8 @@ import {
   resolvePrecioCertificadoCip,
   resolvePrecioCertificadoIpg,
 } from '@/utils/functions/certificadoPrecios'
+import { isValidCelular, normalizeCelular } from '@/utils/functions/validatePhone'
+import { getTelFlagElement } from '@/utils/functions/getTelFlagElement'
 
 type Step = 'datos' | 'certificacion' | 'resumen' | 'pago'
 
@@ -59,7 +62,15 @@ export interface TramiteCertificadoCursoInfo {
 interface Props {
   curso: TramiteCertificadoCursoInfo
   onClose?: () => void
-  onSuccess?: () => void | Promise<void>
+
+  /** Se llama al cerrar la pantalla de éxito (no al crear el pedido). */
+  onSuccess?: (info?: {
+    pedidoId: string
+    numeroPedido: number
+    certificadoTipo: CertTipo
+    etiquetaEntrega?: string
+    disponibleDesde?: string | null
+  }) => void | Promise<void>
 
   /** Si se pasa, solo se muestran esos tipos (p. ej. el faltante). */
   tiposDisponibles?: { ipg?: boolean; cip?: boolean }
@@ -91,9 +102,18 @@ export default function TramiteCertificadoFlow({
   const [tipo, setTipo] = useState<CertTipo | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [pedidoCreado, setPedidoCreado] = useState<{ numeroPedido: number; pedidoId: string } | null>(null)
+
+  const [pedidoCreado, setPedidoCreado] = useState<{
+    numeroPedido: number
+    pedidoId: string
+    certificadoTipo: CertTipo
+    etiquetaEntrega: string
+    disponibleDesde: string | null
+  } | null>(null)
+
   const [metodos, setMetodos] = useState<MetodoPagoManual[]>([])
   const [metodoId, setMetodoId] = useState<string | null>(null)
+  const [bancoPago, setBancoPago] = useState('')
   const [codigoOperacion, setCodigoOperacion] = useState('')
   const [voucher, setVoucher] = useState<File | null>(null)
   const [voucherPreview, setVoucherPreview] = useState<string | null>(null)
@@ -105,6 +125,8 @@ export default function TramiteCertificadoFlow({
     numero_documento: '',
     celular: '',
   })
+
+  const [datosTouched, setDatosTouched] = useState(false)
 
   const precioIpgRaw = resolvePrecioCertificadoIpg(curso)
   const precioCipRaw = resolvePrecioCertificadoCip(curso)
@@ -161,7 +183,9 @@ export default function TramiteCertificadoFlow({
           apellido: u.apellido || '',
           correo: u.correo || '',
           numero_documento: u.numero_documento || '',
-          celular: u.celular || '',
+
+          // E.164: evita falso "inválido" cuando BD guarda el número sin +51
+          celular: normalizeCelular(u.celular || ''),
         })
 
         const lista = metodosRes.data?.result?.metodos || metodosRes.data?.result || []
@@ -179,12 +203,24 @@ export default function TramiteCertificadoFlow({
     load()
   }, [])
 
-  const canContinueDatos =
-    confirmDatos &&
-    form.nombre.trim() &&
-    form.apellido.trim() &&
-    form.correo.trim() &&
-    form.numero_documento.trim()
+  const erroresDatos = {
+    nombre: !form.nombre.trim() ? 'El nombre es obligatorio' : null,
+    apellido: !form.apellido.trim() ? 'El apellido es obligatorio' : null,
+    correo: !form.correo.trim() ? 'El correo es obligatorio' : null,
+    numero_documento: !form.numero_documento.trim()
+      ? 'El DNI es obligatorio'
+      : !/^\d{8}$/.test(form.numero_documento.trim())
+        ? 'El DNI debe tener exactamente 8 dígitos'
+        : null,
+    celular: !form.celular.trim()
+      ? 'El celular es obligatorio'
+      : !isValidCelular(form.celular)
+        ? 'Número de celular inválido para el país seleccionado'
+        : null,
+    confirmDatos: !confirmDatos ? 'Debes confirmar que los datos son correctos' : null,
+  }
+
+  const canContinueDatos = Object.values(erroresDatos).every(e => e == null)
 
   const handleVoucher = (file: File | null) => {
     setVoucher(file)
@@ -198,6 +234,15 @@ export default function TramiteCertificadoFlow({
 
     if (!metodoId) {
       const msg = 'Selecciona un medio de pago'
+
+      setSubmitError(msg)
+      enqueueSnackbar(msg, { variant: 'warning' })
+
+      return
+    }
+
+    if (!bancoPago.trim()) {
+      const msg = 'Indica el banco o billetera donde realizaste el pago'
 
       setSubmitError(msg)
       enqueueSnackbar(msg, { variant: 'warning' })
@@ -231,6 +276,7 @@ export default function TramiteCertificadoFlow({
         certificadoTipo: tipo,
         metodoPagoManualId: metodoId,
         numeroComprobante: codigoOperacion.trim(),
+        bancoPago: bancoPago.trim(),
         datosPerfil: {
           nombre: form.nombre,
           apellido: form.apellido,
@@ -243,7 +289,7 @@ export default function TramiteCertificadoFlow({
         throw new Error(checkoutRes.data?.message || 'No se pudo crear el pedido')
       }
 
-      const { pedidoId, numeroPedido } = checkoutRes.data.result
+      const { pedidoId, numeroPedido, certificadoTipo } = checkoutRes.data.result
       const fd = new FormData()
 
       fd.append('voucher', voucher)
@@ -252,6 +298,7 @@ export default function TramiteCertificadoFlow({
       const voucherRes = await fetch(`/api/pedidos/${pedidoId}/voucher`, {
         method: 'POST',
         body: fd,
+        credentials: 'include',
       })
 
       const voucherData = await voucherRes.json().catch(() => ({}))
@@ -263,14 +310,44 @@ export default function TramiteCertificadoFlow({
         )
       }
 
-      setPedidoCreado({ pedidoId, numeroPedido })
+      const tipoCreado = (String(certificadoTipo || tipo).toUpperCase() === 'CIP' ? 'CIP' : 'IPG') as CertTipo
+
+      const disp =
+        tipoCreado === 'CIP'
+          ? estimarDisponibilidadAlTramitar({
+              tipo: 'cip',
+              cipEntregas: curso.certificado_cip_entregas,
+            })
+          : estimarDisponibilidadAlTramitar({
+              tipo: 'ipg',
+              ipgEsperaValor: curso.certificado_ipg_espera_valor,
+              ipgEsperaUnidad: curso.certificado_ipg_espera_unidad,
+            })
+
+      setPedidoCreado({
+        pedidoId,
+        numeroPedido,
+        certificadoTipo: tipoCreado,
+        etiquetaEntrega: disp.etiqueta,
+        disponibleDesde: disp.disponibleDesde ? disp.disponibleDesde.toISOString() : null,
+      })
       enqueueSnackbar(`Pedido #${numeroPedido} enviado. Validaremos tu pago pronto.`, {
         variant: 'success',
       })
 
-      // El padre cierra el formulario y muestra el estado "enviado" + tiempos de espera
-      await onSuccess?.()
-      onClose?.()
+      // Notificar al padre de inmediato (sobrevive remounts del formulario).
+      // No propagar errores de refresh: el pedido ya quedó creado.
+      try {
+        await onSuccess?.({
+          pedidoId,
+          numeroPedido,
+          certificadoTipo: tipoCreado,
+          etiquetaEntrega: disp.etiqueta,
+          disponibleDesde: disp.disponibleDesde ? disp.disponibleDesde.toISOString() : null,
+        })
+      } catch {
+        /* ignore */
+      }
     } catch (err: any) {
       const msg =
         err?.response?.data?.message || err?.message || 'Error al enviar el pago'
@@ -282,6 +359,10 @@ export default function TramiteCertificadoFlow({
     }
   }
 
+  const handleEntendido = () => {
+    onClose?.()
+  }
+
   if (loadingPerfil) {
     return (
       <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
@@ -291,6 +372,9 @@ export default function TramiteCertificadoFlow({
   }
 
   if (pedidoCreado) {
+    const nombreTipo =
+      pedidoCreado.certificadoTipo === 'CIP' ? 'Colegio de Ingenieros' : 'IPG Ingenieros'
+
     return (
       <Box sx={{ textAlign: 'center', py: 2 }}>
         <Box
@@ -306,19 +390,69 @@ export default function TramiteCertificadoFlow({
             justifyContent: 'center',
           }}
         >
-          <i className="tabler-check" style={{ fontSize: '2rem', color: '#fff' }} />
+          <i className="tabler-hourglass" style={{ fontSize: '2rem', color: '#fff' }} />
         </Box>
         <Typography variant="h6" fontWeight={800} sx={{ mb: 0.5 }}>
           ¡Solicitud enviada!
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, maxWidth: 420, mx: 'auto' }}>
-          Tu pedido #{pedidoCreado.numeroPedido} fue registrado. Validaremos el pago y habilitación
-          del certificado desde Pedidos.
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5, maxWidth: 460, mx: 'auto' }}>
+          Tu pedido #{pedidoCreado.numeroPedido} ({nombreTipo}) fue registrado. Estamos esperando la
+          aprobación del pago por parte del administrador.
         </Typography>
+
+        <Box
+          sx={{
+            textAlign: 'left',
+            maxWidth: 460,
+            mx: 'auto',
+            mb: 3,
+            p: 2,
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'rgba(245,158,11,0.06)',
+          }}
+        >
+          <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <i className="tabler-clock" style={{ fontSize: 18, color: '#d97706' }} />
+            ¿Qué sigue?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            1. Validaremos tu voucher y el código de operación.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            2. Al aprobar el pago, se habilitará tu certificado.
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            3. {pedidoCreado.etiquetaEntrega}
+          </Typography>
+          {pedidoCreado.disponibleDesde && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.25 }}>
+              Disponible estimado desde:{' '}
+              <strong>
+                {new Date(pedidoCreado.disponibleDesde).toLocaleString('es-PE', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </strong>
+            </Typography>
+          )}
+        </Box>
+
         <Button
           variant="contained"
-          onClick={() => onClose?.()}
-          sx={{ textTransform: 'none', fontWeight: 700 }}
+          onClick={handleEntendido}
+          sx={{
+            bgcolor: '#025E44',
+            textTransform: 'none',
+            fontWeight: 700,
+            borderRadius: '12px',
+            px: 4,
+            '&:hover': { bgcolor: '#014d36' },
+          }}
         >
           Entendido
         </Button>
@@ -398,7 +532,7 @@ export default function TramiteCertificadoFlow({
               Confirma tus datos
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-              Revisa que la información esté correcta antes de continuar.
+              Todos los campos son obligatorios. Revisa que la información esté correcta antes de continuar.
             </Typography>
             <Grid container spacing={2}>
               {(
@@ -407,27 +541,65 @@ export default function TramiteCertificadoFlow({
                   ['apellido', 'Apellidos'],
                   ['correo', 'Correo electrónico'],
                   ['numero_documento', 'DNI'],
-                  ['celular', 'Número de celular'],
                 ] as const
               ).map(([key, label]) => (
                 <Grid item xs={12} sm={key === 'correo' ? 12 : 6} key={key}>
                   <TextField
                     fullWidth
+                    required
                     label={label}
                     value={form[key]}
                     disabled={key === 'correo'}
-                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                    error={datosTouched && !!erroresDatos[key]}
+                    helperText={datosTouched ? erroresDatos[key] : undefined}
+                    inputProps={
+                      key === 'numero_documento'
+                        ? { maxLength: 8, inputMode: 'numeric', pattern: '[0-9]*' }
+                        : undefined
+                    }
+                    onChange={e => {
+                      const value =
+                        key === 'numero_documento'
+                          ? e.target.value.replace(/\D/g, '').slice(0, 8)
+                          : e.target.value
+
+                      setForm(f => ({ ...f, [key]: value }))
+                    }}
                   />
                 </Grid>
               ))}
+              <Grid item xs={12} sm={6}>
+                <MuiTelInput
+                  fullWidth
+                  required
+                  label="Número de celular"
+                  defaultCountry="PE"
+                  forceCallingCode
+                  preferredCountries={['PE', 'CO', 'MX', 'CL', 'AR', 'VE']}
+                  value={form.celular}
+                  getFlagElement={getTelFlagElement}
+                  error={datosTouched && !!erroresDatos.celular}
+                  helperText={datosTouched ? erroresDatos.celular ?? undefined : undefined}
+                  onChange={newValue => setForm(f => ({ ...f, celular: newValue }))}
+                />
+              </Grid>
             </Grid>
             <FormControlLabel
               sx={{ mt: 2, alignItems: 'flex-start' }}
               control={
-                <Checkbox checked={confirmDatos} onChange={e => setConfirmDatos(e.target.checked)} />
+                <Checkbox
+                  checked={confirmDatos}
+                  onChange={e => setConfirmDatos(e.target.checked)}
+                  color={datosTouched && !!erroresDatos.confirmDatos ? 'error' : 'primary'}
+                />
               }
-              label="Confirmo que los datos ingresados son correctos y serán usados para la emisión del certificado."
+              label="Confirmo que los datos ingresados son correctos y serán usados para la emisión del certificado. *"
             />
+            {datosTouched && erroresDatos.confirmDatos && (
+              <Typography variant="caption" color="error" sx={{ display: 'block', mt: -0.5, ml: 4 }}>
+                {erroresDatos.confirmDatos}
+              </Typography>
+            )}
           </>
         )}
 
@@ -437,7 +609,7 @@ export default function TramiteCertificadoFlow({
               Elige tu tipo de certificación
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-              Solo puedes seleccionar una opción
+              Solo puedes obtener un tipo de certificado por curso (IPG o Colegio de Ingenieros).
             </Typography>
             <Grid container spacing={2}>
               {precioIpg != null && (
@@ -680,14 +852,26 @@ export default function TramiteCertificadoFlow({
               </>
             )}
 
-            {/* Paso 3: código y comprobante */}
+            {/* Paso 3: banco, código y comprobante */}
             <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
               <PagoStepBadge n={3} />
-              <Typography variant="subtitle2" fontWeight={700}>Sube tu comprobante de pago</Typography>
+              <Typography variant="subtitle2" fontWeight={700}>Registra tu pago y sube el voucher</Typography>
             </Stack>
 
             <TextField
               fullWidth
+              required
+              label="Banco o billetera donde realizaste el pago"
+              placeholder="Ej. BCP, Interbank, Yape, Plin..."
+              value={bancoPago}
+              onChange={e => setBancoPago(e.target.value)}
+              sx={{ mb: 2 }}
+              helperText="Indica desde qué banco o app enviaste el dinero"
+            />
+
+            <TextField
+              fullWidth
+              required
               label="Código o número de operación"
               placeholder="Ej. 000123456"
               value={codigoOperacion}
@@ -695,6 +879,9 @@ export default function TramiteCertificadoFlow({
               sx={{ mb: 2 }}
             />
 
+            <Typography variant="body2" fontWeight={700} sx={{ mb: 0.75 }}>
+              Imagen del voucher / comprobante *
+            </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
               Captura de pantalla o foto de la transferencia (JPG, PNG, WEBP — máx. 5 MB)
             </Typography>
@@ -704,8 +891,17 @@ export default function TramiteCertificadoFlow({
                 <Box
                   component="img"
                   src={voucherPreview}
-                  alt="Comprobante"
-                  sx={{ width: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 2, border: '2px solid', borderColor: 'success.main', display: 'block' }}
+                  alt="Comprobante de pago"
+                  sx={{
+                    width: '100%',
+                    maxHeight: 280,
+                    objectFit: 'contain',
+                    borderRadius: 2,
+                    border: '2px solid',
+                    borderColor: 'success.main',
+                    display: 'block',
+                    bgcolor: 'action.hover',
+                  }}
                 />
                 <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
                   <IconButton
@@ -718,7 +914,9 @@ export default function TramiteCertificadoFlow({
                 </Box>
                 <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.75} sx={{ mt: 1 }}>
                   <i className="tabler-circle-check-filled" style={{ fontSize: 16, color: '#2e7d32' }} />
-                  <Typography variant="caption" color="success.dark" fontWeight={600}>Comprobante listo</Typography>
+                  <Typography variant="caption" color="success.dark" fontWeight={600}>
+                    Voucher cargado — listo para enviar
+                  </Typography>
                 </Stack>
               </Box>
             ) : (
@@ -736,7 +934,7 @@ export default function TramiteCertificadoFlow({
                   borderColor: 'divider',
                   cursor: 'pointer',
                   textAlign: 'center',
-                  minHeight: 140,
+                  minHeight: 160,
                   transition: 'all 0.2s',
                   '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
                 }}
@@ -745,14 +943,24 @@ export default function TramiteCertificadoFlow({
                   hidden
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
-                  onChange={e => handleVoucher(e.target.files?.[0] || null)}
+                  onChange={e => {
+                    const file = e.target.files?.[0] || null
+
+                    if (file && file.size > 5 * 1024 * 1024) {
+                      enqueueSnackbar('El archivo no debe superar 5 MB', { variant: 'warning' })
+
+                      return
+                    }
+
+                    handleVoucher(file)
+                  }}
                 />
-                <i className="tabler-cloud-upload" style={{ fontSize: 28, color: '#94a3b8' }} />
-                <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                  Haz clic para subir tu comprobante
+                <i className="tabler-photo-up" style={{ fontSize: 36, color: '#64748b' }} />
+                <Typography variant="body2" fontWeight={700}>
+                  Haz clic para subir el voucher
                 </Typography>
-                <Typography variant="caption" color="text.disabled">
-                  o arrastra tu imagen aquí
+                <Typography variant="caption" color="text.secondary">
+                  Se mostrará una vista previa de la imagen
                 </Typography>
               </Box>
             )}
@@ -785,13 +993,19 @@ export default function TramiteCertificadoFlow({
           <Button
             variant="contained"
             endIcon={<i className="tabler-chevron-right" />}
-            disabled={
-              (step === 'datos' && !canContinueDatos) ||
-              (step === 'certificacion' && !tipo)
-            }
+            disabled={step === 'certificacion' && !tipo}
             onClick={() => {
-              if (step === 'datos') setStep('certificacion')
-              else if (step === 'certificacion') setStep('resumen')
+              if (step === 'datos') {
+                setDatosTouched(true)
+
+                if (!canContinueDatos) {
+                  enqueueSnackbar('Completa todos los campos obligatorios', { variant: 'warning' })
+
+                  return
+                }
+
+                setStep('certificacion')
+              } else if (step === 'certificacion') setStep('resumen')
               else setStep('pago')
             }}
             sx={{ textTransform: 'none', fontWeight: 700 }}

@@ -29,7 +29,7 @@ export default async function Page() {
   let initialTotal = 0
 
   try {
-    const result = await axiosPedido.getAll({ estado: 'TODOS' })
+    const result = await axiosPedido.getAll({ estado: 'TODOS', limit: '5000', page: '1' })
 
     initialData = result.pedidos ?? []
     initialTotal = result.paginacion?.total ?? 0

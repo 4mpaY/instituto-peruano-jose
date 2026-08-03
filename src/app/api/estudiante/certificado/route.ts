@@ -173,9 +173,12 @@ export async function GET(request: Request) {
       FROM pedidos p
       JOIN detalles_pedido d ON d.pedido_id = p.id
       WHERE p.usuario_id = ${auth.user.id}
-        AND p.tipo = 'CERTIFICADO'::"TipoPedido"
         AND p.estado = 'PENDIENTE'
         AND d.curso_id = ${cursoId}
+        AND (
+          p.tipo = 'CERTIFICADO'::"TipoPedido"
+          OR d.certificado_tipo IS NOT NULL
+        )
       ORDER BY p.creado_en DESC
     `
 
@@ -206,25 +209,30 @@ export async function GET(request: Request) {
 
     const tiposPendientes = new Set(solicitudesPendientes.map(s => s.certificadoTipo))
 
-    // Bloqueados: ya descargables, habilitados, en espera o con pedido pendiente
-    const ipgBloqueadoParaTramite =
-      ipgDescargable || ipgHabilitado || dispIpg.enEspera || tiposPendientes.has('IPG')
-
-    const cipBloqueadoParaTramite =
-      cipDescargable || cipHabilitado || dispCip.enEspera || tiposPendientes.has('CIP')
+    // Solo un tipo de certificado por curso (IPG o CIP).
+    // No bloquear por registros Certificado huérfanos sin habilitación/descarga
+    // (p. ej. tras borrar un pedido CERTIFICADO y deshabilitar en inscripción).
+    const yaTramitoAlgunCertificado =
+      ipgDescargable ||
+      cipDescargable ||
+      ipgHabilitado ||
+      cipHabilitado ||
+      dispIpg.enEspera ||
+      dispCip.enEspera ||
+      tiposPendientes.size > 0
 
     const tiposTramitables = {
-      ipg: precioIpg != null && !ipgBloqueadoParaTramite,
-      cip: precioCip != null && !cipBloqueadoParaTramite,
+      ipg: precioIpg != null && !yaTramitoAlgunCertificado,
+      cip: precioCip != null && !yaTramitoAlgunCertificado,
     }
 
     const tieneAlgunTipoTramitable = tiposTramitables.ipg || tiposTramitables.cip
 
-    // Permite tramitar el faltante aunque ya se tenga el otro certificado
     const tramitarDisponible =
       (!!elegibilidad.puedeTramitar || !!elegibilidad.evaluacionesOk || !!elegibilidad.isEligible) &&
       tienePrecioTramite &&
-      tieneAlgunTipoTramitable
+      tieneAlgunTipoTramitable &&
+      !yaTramitoAlgunCertificado
 
     return ApiResponse.success(request, {
       // Solo exponer como obtenido si está habilitado (o curso sin gate admin)

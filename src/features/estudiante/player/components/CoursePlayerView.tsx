@@ -212,21 +212,32 @@ return
         if (isMobile) setActiveTab(TAB('Sobre el curso'))
     }
 
-    const handleOpenCertificateMobile = () => {
-        setCurrentView('lesson')
-        setActiveTab(TAB('Certificación'))
+    const handleOpenCertificate = () => {
+        if (isMobile) {
+            // Mobile: pestaña Certificación (no reemplaza todo el player)
+            setCurrentView('lesson')
+            setActiveTab(TAB('Certificación'))
+            window.setTimeout(() => {
+                mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+            }, 50)
+
+            return
+        }
+
+        // Desktop: vista principal de certificado (sin video encima)
+        setCurrentView('certificate')
         window.setTimeout(() => {
             mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
         }, 50)
     }
 
-    // En mobile, certificado/resumen nunca deben ocupar toda la pantalla (se pierden tabs/temario)
+    // Solo mobile: certificado/resumen no deben ocupar toda la pantalla
     useEffect(() => {
         if (!mounted || !isMobile) return
         if (currentView !== 'certificate' && currentView !== 'completion') return
 
         setCurrentView('lesson')
-        setActiveTab(['Temario', 'Sobre el curso', 'Evaluaciones', 'Materiales', 'Certificación', 'Comentarios'].indexOf('Certificación'))
+        setActiveTab(TABS.indexOf('Certificación') >= 0 ? TABS.indexOf('Certificación') : 0)
     }, [mounted, isMobile, currentView, setCurrentView])
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -334,6 +345,7 @@ return
 
     const isCertTabActive = isMobile && activeTab === TAB('Certificación')
     const hideLessonChromeOnMobile = isCertTabActive
+    const isCertificateViewActive = currentView === 'certificate' || isCertTabActive
 
     const renderMainContent = () => {
         // Solo desktop: vista a pantalla completa (el sidebar lateral sigue disponible)
@@ -345,9 +357,10 @@ return
             )
         }
 
+        // Desktop: certificado ocupa el área principal (sin lección/video encima)
         if (currentView === 'certificate' && storeCourse && !isMobile) {
             return (
-                <Grid item xs={12} key="certificate-section">
+                <Grid item xs={12} key="certificate-section" sx={{ px: { xs: 2, sm: 4, md: 8, lg: 10, xl: 12 }, py: 3 }}>
                     <CertificateSection
                         cursoId={storeCourse.id}
                         completarAutomatico={(course as any).completar_automatico ?? false}
@@ -625,7 +638,18 @@ return
                 }}>
                     <Tabs
                         value={activeTab}
-                        onChange={(_, v) => setActiveTab(v)}
+                        onChange={(_, v) => {
+                            const label = TABS[v]
+
+                            // Desktop: Certificación abre la vista principal (no debajo del video)
+                            if (!isMobile && label === 'Certificación') {
+                                setCurrentView('certificate')
+
+                                return
+                            }
+
+                            setActiveTab(v)
+                        }}
                         variant="scrollable"
                         scrollButtons="auto"
                         textColor="primary"
@@ -656,8 +680,8 @@ return
                         <Box sx={{ mt: 0 }}>
                             <CourseContentSidebar
                                 onLessonSelect={handleLessonSelect}
-                                onOpenCertificate={handleOpenCertificateMobile}
-                                isCertificateActive={isCertTabActive}
+                                onOpenCertificate={handleOpenCertificate}
+                                isCertificateActive={isCertificateViewActive}
                             />
                         </Box>
                     )}
@@ -937,18 +961,20 @@ return
                         )
                     })()}
 
-                    {/* Certificación */}
-                    {activeTab === TAB('Certificación') && storeCourse && (
-                        <CertificateSection
-                            cursoId={storeCourse.id}
-                            completarAutomatico={(course as any).completar_automatico ?? false}
-                            phoneNumberProfesor={phoneNumberProfesor ?? undefined}
-                            onAllLessonsCompleted={() => {
-                                const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
+                    {/* Certificación — solo mobile (en desktop va a vista principal) */}
+                    {isMobile && storeCourse && (
+                        <Box sx={{ display: activeTab === TAB('Certificación') ? 'block' : 'none' }}>
+                            <CertificateSection
+                                cursoId={storeCourse.id}
+                                completarAutomatico={(course as any).completar_automatico ?? false}
+                                phoneNumberProfesor={phoneNumberProfesor ?? undefined}
+                                onAllLessonsCompleted={() => {
+                                    const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
 
-                                allLessons.forEach((l: any) => updateLessonProgress(l.id, true, 100))
-                            }}
-                        />
+                                    allLessons.forEach((l: any) => updateLessonProgress(l.id, true, 100))
+                                }}
+                            />
+                        </Box>
                     )}
 
                     {/* Comentarios */}
@@ -1150,7 +1176,11 @@ return
                         display: 'flex',
                         flexDirection: 'column',
                     }}>
-                        <CourseContentSidebar onLessonSelect={handleLessonSelect} />
+                        <CourseContentSidebar
+                            onLessonSelect={handleLessonSelect}
+                            onOpenCertificate={handleOpenCertificate}
+                            isCertificateActive={isCertificateViewActive}
+                        />
                     </Box>
                 )}
 

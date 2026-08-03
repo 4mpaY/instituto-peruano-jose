@@ -1,16 +1,18 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { useParams, useRouter } from 'next/navigation'
 
 import {
   Card, CardContent, Grid, Typography,
   Button, MenuItem, Box, Divider, Chip,
-  Avatar, Stack, Paper, Alert
+  Avatar, Stack, Paper, Alert, CircularProgress
 } from '@mui/material'
 import { toast } from 'react-toastify'
 import { useForm, Controller } from 'react-hook-form'
+import { useQueryClient } from '@tanstack/react-query'
+import { getSession } from 'next-auth/react'
 
 import CustomTextField from '@core/components/mui/TextField'
 import HydratedDate from '@/utils/components/HydratedDate'
@@ -46,9 +48,14 @@ export function PedidoEditPage() {
   const params = useParams()
   const router = useRouter()
   const { id } = params
+  const queryClient = useQueryClient()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data, isLoading } = usePedido(id as string)
   const { mutateAsync: updatePedido, isPending } = useUpdatePedido()
+
+  const [voucherPreview, setVoucherPreview] = useState<string | null>(null)
+  const [uploadingVoucher, setUploadingVoucher] = useState(false)
 
   const { control, handleSubmit, reset } = useForm({
     defaultValues: {
@@ -56,7 +63,8 @@ export function PedidoEditPage() {
       metodo_pago: '',
       mensaje: '',
       tipo_comprobante: '',
-      numero_comprobante: ''
+      numero_comprobante: '',
+      referencia_pago: '',
     }
   })
 
@@ -69,8 +77,10 @@ export function PedidoEditPage() {
         metodo_pago: p.metodo_pago || 'TRANSFERENCIA',
         mensaje: p.mensaje || '',
         tipo_comprobante: p.tipo_comprobante || '',
-        numero_comprobante: p.numero_comprobante || ''
+        numero_comprobante: p.numero_comprobante || '',
+        referencia_pago: p.referencia_pago || '',
       })
+      setVoucherPreview(p.comprobante_url || null)
     }
   }, [data, reset])
 
@@ -88,7 +98,8 @@ export function PedidoEditPage() {
           metodo_pago: formData.metodo_pago as Pedido['metodo_pago'],
           mensaje: formData.mensaje || null,
           tipo_comprobante: formData.tipo_comprobante || null,
-          numero_comprobante: formData.numero_comprobante || null
+          numero_comprobante: formData.numero_comprobante || null,
+          referencia_pago: formData.referencia_pago?.trim() || null,
         } as any
       })
 
@@ -96,6 +107,60 @@ export function PedidoEditPage() {
       router.push('/admin/pedidos')
     } catch (error: any) {
       toast.error(error.message || 'Error al actualizar el pedido')
+    }
+  }
+
+  const handleVoucherChange = async (file: File | null) => {
+    if (!file) return
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('El archivo no debe superar 5 MB')
+
+      return
+    }
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Solo se permiten imágenes JPG, PNG o WEBP')
+
+      return
+    }
+
+    setUploadingVoucher(true)
+
+    try {
+      const session = await getSession()
+      const token = session?.user?.accessToken
+      const fd = new FormData()
+
+      fd.append('voucher', file)
+
+      const res = await fetch(`/api/pedidos/${id}/voucher`, {
+        method: 'POST',
+        body: fd,
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
+
+      const body = await res.json().catch(() => ({}))
+
+      if (!res.ok || body?.status === false) {
+        throw new Error(body?.message || 'No se pudo actualizar el voucher')
+      }
+
+      const url = body?.result?.comprobante_url || body?.comprobante_url
+
+      if (url) {
+        setVoucherPreview(`${url}?t=${Date.now()}`)
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+      toast.success('Voucher actualizado')
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al subir el voucher')
+    } finally {
+      setUploadingVoucher(false)
+
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -203,8 +268,8 @@ export function PedidoEditPage() {
               </CardContent>
             </Card>
 
-            {/* Voucher */}
-            {pedido?.comprobante_url && (
+            {/* Voucher / verificación de pago (editable, precargado con datos del estudiante) */}
+            {(pedido?.comprobante_url || pedido?.referencia_pago || pedido?.numero_comprobante) && (
               <Card>
                 <CardContent>
                   <Stack direction='row' alignItems='center' justifyContent='space-between' sx={{ mb: 2 }}>
@@ -213,7 +278,7 @@ export function PedidoEditPage() {
                         <i className='tabler-photo-check' style={{ fontSize: 18, color: '#25927F' }} />
                       </Box>
                       <Box>
-                        <Typography variant='subtitle2' fontWeight={700}>Comprobante de Pago</Typography>
+                        <Typography variant='subtitle2' fontWeight={700}>Verificación de pago</Typography>
                         {pedido.comprobante_subido_en && (
                           <Typography variant='caption' color='text.secondary'>
                             Subido el <HydratedDate date={pedido.comprobante_subido_en} format='locale' />
@@ -221,31 +286,160 @@ export function PedidoEditPage() {
                         )}
                       </Box>
                     </Stack>
-                    <Chip label='Recibido' color='success' size='small' variant='tonal' icon={<i className='tabler-check' style={{ fontSize: 13 }} />} />
+                    {(voucherPreview || pedido.comprobante_url) && (
+                      <Chip label='Voucher recibido' color='success' size='small' variant='tonal' icon={<i className='tabler-check' style={{ fontSize: 13 }} />} />
+                    )}
                   </Stack>
 
-                  <Box
-                    component='img'
-                    src={pedido.comprobante_url}
-                    alt='Comprobante'
-                    onClick={() => window.open(pedido.comprobante_url!, '_blank')}
-                    sx={{
-                      width: '100%', maxHeight: 340, objectFit: 'contain',
-                      borderRadius: 2, border: '1.5px solid', borderColor: 'divider',
-                      bgcolor: '#f8fafc', cursor: 'zoom-in',
-                      transition: 'transform 0.2s',
-                      '&:hover': { transform: 'scale(1.01)' }
-                    }}
-                  />
-                  <Typography variant='caption' color='text.secondary' sx={{ mt: 1, display: 'block' }}>
-                    Click en la imagen para verla en tamaño completo
+                  <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mb: 2 }}>
+                    Datos enviados por el estudiante. Puedes corregirlos antes de aprobar el pedido.
                   </Typography>
+
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <Controller
+                        name='referencia_pago'
+                        control={control}
+                        render={({ field }) => (
+                          <CustomTextField
+                            {...field}
+                            fullWidth
+                            label='Banco / billetera'
+                            placeholder='Ej. BCP, Yape, Plin...'
+                            helperText='Indicado por el estudiante al tramitar'
+                          />
+                        )}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Controller
+                        name='numero_comprobante'
+                        control={control}
+                        render={({ field }) => (
+                          <CustomTextField
+                            {...field}
+                            fullWidth
+                            label='Código de operación'
+                            placeholder='Ej. 000123456'
+                            helperText='Número de operación del voucher'
+                            inputProps={{ style: { fontFamily: 'monospace' } }}
+                          />
+                        )}
+                      />
+                    </Grid>
+                  </Grid>
+
+                  <Box sx={{ mt: 3, mb: 1.5 }}>
+                    <Stack direction='row' alignItems='center' justifyContent='space-between' sx={{ mb: 1.5 }}>
+                      <Typography variant='body2' fontWeight={700}>
+                        Imagen del voucher
+                      </Typography>
+                      <Button
+                        size='small'
+                        variant='outlined'
+                        disabled={uploadingVoucher}
+                        startIcon={
+                          uploadingVoucher
+                            ? <CircularProgress size={14} color='inherit' />
+                            : <i className='tabler-photo-up' style={{ fontSize: 16 }} />
+                        }
+                        onClick={() => fileInputRef.current?.click()}
+                        sx={{ textTransform: 'none', fontWeight: 700 }}
+                      >
+                        {uploadingVoucher ? 'Subiendo...' : voucherPreview ? 'Cambiar imagen' : 'Subir imagen'}
+                      </Button>
+                      <input
+                        ref={fileInputRef}
+                        type='file'
+                        hidden
+                        accept='image/jpeg,image/png,image/webp'
+                        onChange={e => {
+                          const file = e.target.files?.[0] || null
+
+                          void handleVoucherChange(file)
+                        }}
+                      />
+                    </Stack>
+
+                    {voucherPreview ? (
+                      <Box
+                        sx={{
+                          position: 'relative',
+                          py: 2,
+                          px: 2,
+                          borderRadius: 2,
+                          border: '1.5px solid',
+                          borderColor: 'divider',
+                          bgcolor: '#f8fafc',
+                        }}
+                      >
+                        <Box
+                          component='img'
+                          src={voucherPreview}
+                          alt='Voucher'
+                          onClick={() => window.open(voucherPreview.split('?')[0], '_blank')}
+                          sx={{
+                            width: '100%',
+                            maxHeight: 340,
+                            objectFit: 'contain',
+                            borderRadius: 1.5,
+                            display: 'block',
+                            cursor: 'zoom-in',
+                            transition: 'transform 0.2s',
+                            '&:hover': { transform: 'scale(1.01)' },
+                          }}
+                        />
+                        {uploadingVoucher && (
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              inset: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              bgcolor: 'rgba(255,255,255,0.65)',
+                              borderRadius: 2,
+                            }}
+                          >
+                            <CircularProgress size={28} />
+                          </Box>
+                        )}
+                        <Typography variant='caption' color='text.secondary' sx={{ mt: 1.5, display: 'block', textAlign: 'center' }}>
+                          Click en la imagen para verla en tamaño completo
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Box
+                        component='label'
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 1,
+                          py: 4,
+                          px: 2,
+                          borderRadius: 2,
+                          border: '2px dashed',
+                          borderColor: 'divider',
+                          bgcolor: '#f8fafc',
+                          cursor: 'pointer',
+                          '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+                        }}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <i className='tabler-photo-up' style={{ fontSize: 32, color: '#94a3b8' }} />
+                        <Typography variant='body2' fontWeight={700}>Subir voucher</Typography>
+                        <Typography variant='caption' color='text.secondary'>JPG, PNG o WEBP — máx. 5 MB</Typography>
+                      </Box>
+                    )}
+                  </Box>
                 </CardContent>
               </Card>
             )}
 
             {/* Formulario de edición */}
-            <Card component='form' onSubmit={handleSubmit(onSubmit)}>
+            <Card component='form' id='pedido-edit-form' onSubmit={handleSubmit(onSubmit)}>
               <CardContent>
                 <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ letterSpacing: 1, mb: 2, display: 'block' }}>
                   Editar Pedido
@@ -324,25 +518,29 @@ export function PedidoEditPage() {
                           <MenuItem value='TICKET'>Ticket</MenuItem>
                           <MenuItem value='BOLETA'>Boleta</MenuItem>
                           <MenuItem value='FACTURA'>Factura</MenuItem>
+                          <MenuItem value='OPERACION'>Operación / voucher</MenuItem>
                         </CustomTextField>
                       )}
                     />
                   </Grid>
 
-                  <Grid item xs={12} sm={6}>
-                    <Controller
-                      name='numero_comprobante'
-                      control={control}
-                      render={({ field }) => (
-                        <CustomTextField
-                          {...field}
-                          fullWidth
-                          label='Número de Documento (RUC/DNI)'
-                          placeholder='Ej. 20601234567'
-                        />
-                      )}
-                    />
-                  </Grid>
+                  {/* En certificados el código de operación ya se edita arriba */}
+                  {(pedido as any)?.tipo !== 'CERTIFICADO' && (
+                    <Grid item xs={12} sm={6}>
+                      <Controller
+                        name='numero_comprobante'
+                        control={control}
+                        render={({ field }) => (
+                          <CustomTextField
+                            {...field}
+                            fullWidth
+                            label='Número de Documento (RUC/DNI)'
+                            placeholder='Ej. 20601234567'
+                          />
+                        )}
+                      />
+                    </Grid>
+                  )}
 
                   <Grid item xs={12}>
                     <Controller

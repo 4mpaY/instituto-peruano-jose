@@ -33,6 +33,7 @@ import GoogleButton from '@/features/shared/components/GoogleButton'
 // Type Imports
 import type { SystemMode } from '@core/types'
 import { registerSchema, type RegisterDto } from '@/schemas/auth.schema'
+import { getTelFlagElement } from '@/utils/functions/getTelFlagElement'
 
 
 
@@ -338,6 +339,9 @@ const Register = ({ mode }: { mode: SystemMode }) => {
                       fullWidth
                       label='Celular (opcional)'
                       defaultCountry='PE'
+                      forceCallingCode
+                      langOfCountryName='es'
+                      getFlagElement={getTelFlagElement}
                       preferredCountries={['PE', 'CO', 'MX', 'CL', 'AR']}
                       value={field.value}
                       onChange={value => field.onChange(value)}

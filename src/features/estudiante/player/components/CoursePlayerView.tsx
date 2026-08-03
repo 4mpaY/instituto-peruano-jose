@@ -1171,43 +1171,60 @@ return
 
             {/* Modal: curso terminado / evaluaciones completadas */}
             <AppModal open={certPopupOpen} handleClose={continuarRevisandoContenido}>
-                <Box textAlign="center" p={2}>
-                    <Box
-                        sx={{
-                            width: 72,
-                            height: 72,
-                            borderRadius: '50%',
-                            mx: 'auto',
-                            mb: 2,
-                            background: certPopupPago
-                                ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                                : 'linear-gradient(135deg, #025E44 0%, #3AB079 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        <i className="tabler-certificate" style={{ fontSize: 34, color: '#fff' }} />
+                <Box p={1}>
+                    <Box textAlign="center" mb={3}>
+                        <Chip
+                            label="LOGRO ALCANZADO"
+                            size="small"
+                            sx={{
+                                bgcolor: '#FEF3E2',
+                                color: '#B45309',
+                                fontWeight: 700,
+                                fontSize: '0.7rem',
+                                letterSpacing: 0.5,
+                                mb: 2.5,
+                            }}
+                        />
+                        <Typography variant="h5" fontWeight={800} sx={{ lineHeight: 1.3 }}>
+                            ¡Felicitaciones por completar el programa!
+                        </Typography>
                     </Box>
-                    <Typography variant="h6" fontWeight={800} gutterBottom>
-                        ¡Ya completaste este curso!
-                    </Typography>
-                    <Typography color="text.secondary" variant="body2" mb={3.5}>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 1.5 }}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#f59e0b', flexShrink: 0 }} />
+                        <Typography variant="subtitle1" fontWeight={700}>
+                            Solicita tu Certificado
+                        </Typography>
+                    </Box>
+
+                    <Typography color="text.secondary" variant="body2" mb={2}>
                         {certPopupPago
-                            ? 'Terminaste las evaluaciones. Puedes seguir revisando el contenido o ir por tu certificado.'
-                            : 'Terminaste las evaluaciones. ¿Quieres seguir revisando el contenido o obtener tu certificado?'}
+                            ? 'Si deseas obtener tu certificado, realiza el pago correspondiente y continúa con el proceso de emisión.'
+                            : 'Ya puedes solicitar la emisión de tu certificado, sin necesidad de pago adicional.'}
                     </Typography>
+
+                    <Typography color="text.secondary" variant="body2" mb={2}>
+                        {certPopupPago
+                            ? 'Una vez confirmado el pago, tu solicitud será revisada y, de ser aprobada, el certificado estará disponible de acuerdo con el cronograma establecido.'
+                            : 'Tu solicitud será revisada y, de ser aprobada, el certificado estará disponible de acuerdo con el cronograma establecido.'}
+                    </Typography>
+
+                    <Typography color="text.secondary" variant="body2" mb={3.5}>
+                        Haz clic en &quot;Continuar&quot; para {certPopupPago ? 'realizar el pago y solicitar' : 'solicitar'} tu certificado.
+                    </Typography>
+
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
                         <Button
                             variant="contained"
-                            fullWidth
                             onClick={senalarBotonCertificado}
-                            endIcon={<i className="tabler-arrow-right" />}
                             sx={{
-                                borderRadius: '12px',
-                                py: 1.5,
+                                alignSelf: 'flex-start',
+                                borderRadius: '10px',
+                                px: 4,
+                                py: 1.25,
                                 fontWeight: 800,
-                                textTransform: 'none',
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.5,
                                 bgcolor: certPopupPago ? '#f59e0b' : '#025E44',
                                 color: '#fff',
                                 boxShadow: 'none',
@@ -1217,21 +1234,18 @@ return
                                 },
                             }}
                         >
-                            Obtener mi certificado
+                            Continuar
                         </Button>
                         <Button
-                            variant="outlined"
-                            fullWidth
+                            variant="text"
                             onClick={continuarRevisandoContenido}
-                            startIcon={<i className="tabler-book" />}
                             sx={{
-                                borderRadius: '12px',
-                                py: 1.35,
-                                fontWeight: 700,
+                                alignSelf: 'flex-start',
                                 textTransform: 'none',
-                                borderColor: 'divider',
+                                fontWeight: 600,
                                 color: 'text.secondary',
-                                '&:hover': { borderColor: 'text.disabled', bgcolor: 'action.hover' },
+                                px: 0,
+                                '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' },
                             }}
                         >
                             Continuar revisando el contenido

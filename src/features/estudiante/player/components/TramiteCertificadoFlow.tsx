@@ -6,16 +6,20 @@ import axios from 'axios'
 import { useSnackbar } from 'notistack'
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Checkbox,
+  Chip,
   CircularProgress,
   Divider,
   FormControlLabel,
   Grid,
+  IconButton,
   Radio,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 
@@ -35,6 +39,8 @@ interface MetodoPagoManual {
   nombre: string
   nombre_banco?: string | null
   numero_cuenta: string
+  cci?: string | null
+  descripcion?: string | null
   imagen_url?: string | null
 }
 
@@ -135,6 +141,8 @@ export default function TramiteCertificadoFlow({
 
   const precioSeleccionado = tipo === 'CIP' ? precioCip : tipo === 'IPG' ? precioIpg : null
   const stepIndex = STEPS.findIndex(s => s.id === step)
+  const metodoSeleccionado = metodos.find(m => m.id === metodoId)
+  const copyToClipboard = (text: string) => navigator.clipboard.writeText(text).catch(() => {})
 
   useEffect(() => {
     const load = async () => {
@@ -537,42 +545,145 @@ export default function TramiteCertificadoFlow({
 
         {step === 'pago' && precioSeleccionado != null && (
           <>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 1 }}>
               <Typography variant="h6" fontWeight={800}>Método de pago</Typography>
-              <Typography fontWeight={800}>Total a pagar: {formatMoney(precioSeleccionado, moneda)}</Typography>
+              <Chip
+                label={`Total a pagar: ${formatMoney(precioSeleccionado, moneda)}`}
+                color="primary"
+                sx={{ fontWeight: 800 }}
+              />
             </Box>
 
-            <Box
-              sx={{
-                p: 2,
-                mb: 2,
-                borderRadius: 2,
-                border: '2px solid',
-                borderColor: 'primary.main',
-                bgcolor: 'rgba(2,94,68,0.04)',
-              }}
-            >
-              <Typography fontWeight={800}>Pago mediante voucher</Typography>
-              <Typography variant="caption" color="text.secondary">
-                Yape, Plin, transferencia o QR.
-              </Typography>
-            </Box>
+            {/* Paso 1: elegir dónde pagar */}
+            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+              <PagoStepBadge n={1} />
+              <Typography variant="subtitle2" fontWeight={700}>Elige dónde vas a realizar el pago</Typography>
+            </Stack>
 
-            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
-              Entidad o medio de pago
-            </Typography>
-            <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
-              {metodos.map(m => (
-                <Button
-                  key={m.id}
-                  variant={metodoId === m.id ? 'contained' : 'outlined'}
-                  size="small"
-                  onClick={() => setMetodoId(m.id)}
-                  sx={{ textTransform: 'none', fontWeight: 700 }}
-                >
-                  {m.nombre}
-                </Button>
-              ))}
+            {metodos.length === 0 ? (
+              <Alert severity="warning" sx={{ mb: 3 }}>No hay métodos de pago disponibles en este momento.</Alert>
+            ) : (
+              <Stack spacing={1.5} sx={{ mb: 3 }}>
+                {metodos.map(m => {
+                  const isSelected = metodoId === m.id
+
+                  return (
+                    <Box
+                      key={m.id}
+                      onClick={() => setMetodoId(m.id)}
+                      sx={{
+                        border: '2px solid',
+                        borderColor: isSelected ? 'primary.main' : 'divider',
+                        borderRadius: 2.5,
+                        cursor: 'pointer',
+                        overflow: 'hidden',
+                        transition: 'all 0.2s',
+                        bgcolor: isSelected ? 'rgba(2,94,68,0.04)' : 'background.paper',
+                        '&:hover': { borderColor: 'primary.main' },
+                      }}
+                    >
+                      <Stack direction="row" alignItems="center" spacing={2} sx={{ p: 1.75 }}>
+                        {m.imagen_url ? (
+                          <Avatar
+                            src={m.imagen_url}
+                            variant="rounded"
+                            sx={{ width: 44, height: 44, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}
+                          />
+                        ) : (
+                          <Avatar variant="rounded" sx={{ width: 44, height: 44, borderRadius: 1.5, bgcolor: 'primary.100' }}>
+                            <i className="tabler-cash" style={{ fontSize: 20 }} />
+                          </Avatar>
+                        )}
+                        <Box flex={1} minWidth={0}>
+                          <Typography variant="body2" fontWeight={700} noWrap>{m.nombre_banco || m.nombre}</Typography>
+                          <Typography variant="caption" color="text.secondary" noWrap>{m.numero_cuenta}</Typography>
+                        </Box>
+                        <Box
+                          sx={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: '50%',
+                            flexShrink: 0,
+                            border: '2px solid',
+                            borderColor: isSelected ? 'primary.main' : 'divider',
+                            bgcolor: isSelected ? 'primary.main' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {isSelected && <i className="tabler-check" style={{ fontSize: 11, color: '#fff' }} />}
+                        </Box>
+                      </Stack>
+                    </Box>
+                  )
+                })}
+              </Stack>
+            )}
+
+            {/* Paso 2: datos del método seleccionado */}
+            {metodoSeleccionado && (
+              <>
+                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+                  <PagoStepBadge n={2} />
+                  <Typography variant="subtitle2" fontWeight={700}>Realiza el pago con estos datos</Typography>
+                </Stack>
+
+                <Box sx={{ mb: metodoSeleccionado.descripcion ? 2 : 3, borderRadius: 2, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+                  {metodoSeleccionado.imagen_url && (
+                    <Box sx={{ textAlign: 'center', p: 2, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'action.hover' }}>
+                      <Box
+                        component="img"
+                        src={metodoSeleccionado.imagen_url}
+                        alt={metodoSeleccionado.nombre}
+                        sx={{ maxHeight: 180, maxWidth: '100%', objectFit: 'contain', borderRadius: 1 }}
+                      />
+                    </Box>
+                  )}
+
+                  <Box sx={{ px: 2.5, py: 1.5 }}>
+                    {metodoSeleccionado.nombre_banco && (
+                      <PagoCopyRow
+                        label="Banco / Billetera"
+                        value={metodoSeleccionado.nombre_banco}
+                        onCopy={() => copyToClipboard(metodoSeleccionado.nombre_banco!)}
+                      />
+                    )}
+                    <PagoCopyRow
+                      label="N° Cuenta / Yape"
+                      value={metodoSeleccionado.numero_cuenta}
+                      onCopy={() => copyToClipboard(metodoSeleccionado.numero_cuenta)}
+                    />
+                    {metodoSeleccionado.cci && (
+                      <PagoCopyRow
+                        label="CCI"
+                        value={metodoSeleccionado.cci}
+                        onCopy={() => copyToClipboard(metodoSeleccionado.cci!)}
+                      />
+                    )}
+                  </Box>
+
+                  <Box sx={{ px: 2.5, py: 1.5, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'rgba(2,94,68,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Typography variant="caption" fontWeight={600} color="primary.main">Monto exacto a pagar</Typography>
+                    <Chip
+                      label={formatMoney(precioSeleccionado, moneda)}
+                      color="primary"
+                      size="small"
+                      sx={{ fontWeight: 800, fontSize: '0.85rem' }}
+                    />
+                  </Box>
+                </Box>
+
+                {metodoSeleccionado.descripcion && (
+                  <Alert severity="info" sx={{ mb: 3, borderRadius: 2, fontSize: 12 }}>{metodoSeleccionado.descripcion}</Alert>
+                )}
+              </>
+            )}
+
+            {/* Paso 3: código y comprobante */}
+            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+              <PagoStepBadge n={3} />
+              <Typography variant="subtitle2" fontWeight={700}>Sube tu comprobante de pago</Typography>
             </Stack>
 
             <TextField
@@ -584,44 +695,67 @@ export default function TramiteCertificadoFlow({
               sx={{ mb: 2 }}
             />
 
-            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
-              Imagen del voucher (JPG, PNG — máx. 5 MB)
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+              Captura de pantalla o foto de la transferencia (JPG, PNG, WEBP — máx. 5 MB)
             </Typography>
-            <Box
-              component="label"
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 1,
-                p: 3,
-                borderRadius: 2,
-                border: '2px dashed',
-                borderColor: 'divider',
-                cursor: 'pointer',
-                textAlign: 'center',
-                minHeight: 140,
-              }}
-            >
-              <input
-                hidden
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={e => handleVoucher(e.target.files?.[0] || null)}
-              />
-              {voucherPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={voucherPreview} alt="Voucher" style={{ maxHeight: 160, borderRadius: 8 }} />
-              ) : (
-                <>
-                  <i className="tabler-upload" style={{ fontSize: 28, color: '#94a3b8' }} />
-                  <Typography variant="body2" color="text.secondary">
-                    Subir voucher / Haz clic para seleccionar
-                  </Typography>
-                </>
-              )}
-            </Box>
+
+            {voucherPreview ? (
+              <Box sx={{ position: 'relative' }}>
+                <Box
+                  component="img"
+                  src={voucherPreview}
+                  alt="Comprobante"
+                  sx={{ width: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 2, border: '2px solid', borderColor: 'success.main', display: 'block' }}
+                />
+                <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleVoucher(null)}
+                    sx={{ bgcolor: 'error.main', color: 'white', width: 28, height: 28, '&:hover': { bgcolor: 'error.dark' } }}
+                  >
+                    <i className="tabler-x" style={{ fontSize: 14 }} />
+                  </IconButton>
+                </Box>
+                <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.75} sx={{ mt: 1 }}>
+                  <i className="tabler-circle-check-filled" style={{ fontSize: 16, color: '#2e7d32' }} />
+                  <Typography variant="caption" color="success.dark" fontWeight={600}>Comprobante listo</Typography>
+                </Stack>
+              </Box>
+            ) : (
+              <Box
+                component="label"
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1,
+                  p: 3,
+                  borderRadius: 2.5,
+                  border: '2px dashed',
+                  borderColor: 'divider',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  minHeight: 140,
+                  transition: 'all 0.2s',
+                  '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+                }}
+              >
+                <input
+                  hidden
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={e => handleVoucher(e.target.files?.[0] || null)}
+                />
+                <i className="tabler-cloud-upload" style={{ fontSize: 28, color: '#94a3b8' }} />
+                <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                  Haz clic para subir tu comprobante
+                </Typography>
+                <Typography variant="caption" color="text.disabled">
+                  o arrastra tu imagen aquí
+                </Typography>
+              </Box>
+            )}
           </>
         )}
 
@@ -676,6 +810,41 @@ export default function TramiteCertificadoFlow({
           </Button>
         )}
       </Box>
+    </Box>
+  )
+}
+
+function PagoStepBadge({ n }: { n: number }) {
+  return (
+    <Box
+      sx={{
+        width: 24,
+        height: 24,
+        borderRadius: '50%',
+        bgcolor: 'primary.main',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}
+    >
+      <Typography variant="caption" color="white" fontWeight={800} lineHeight={1}>{n}</Typography>
+    </Box>
+  )
+}
+
+function PagoCopyRow({ label, value, onCopy }: { label: string; value: string; onCopy: () => void }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 0.75 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ minWidth: 110 }}>{label}</Typography>
+      <Stack direction="row" alignItems="center" spacing={0.25}>
+        <Typography variant="body2" fontWeight={700} fontFamily="monospace">{value}</Typography>
+        <Tooltip title="Copiar">
+          <IconButton size="small" onClick={onCopy} sx={{ p: 0.5, color: 'text.disabled', '&:hover': { color: 'primary.main' } }}>
+            <i className="tabler-copy" style={{ fontSize: 14 }} />
+          </IconButton>
+        </Tooltip>
+      </Stack>
     </Box>
   )
 }

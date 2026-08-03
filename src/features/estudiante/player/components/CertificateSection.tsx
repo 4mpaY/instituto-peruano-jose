@@ -29,6 +29,7 @@ interface Elegibilidad {
     puedeTramitar?: boolean
     evaluacionesOk?: boolean
     totalExamenes: number
+    examenesRealizados?: number
 }
 
 interface PlantillaPreview {
@@ -124,83 +125,83 @@ const CertificadoPreviewGrid = ({
             )}
 
             {habilitadas.length > 0 && (
-            <>
-            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 1.5 }}>
-                Certificados habilitados
-            </Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: habilitadas.length > 1 ? '1fr 1fr' : '1fr' }, gap: 2 }}>
-                {habilitadas.map((p) => (
-                    <Box
-                        key={p.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => onCardClick?.(p)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') onCardClick?.(p)
-                        }}
-                        sx={{
-                            position: 'relative',
-                            aspectRatio: '297 / 210',
-                            borderRadius: 2,
-                            overflow: 'hidden',
-                            border: '2px solid',
-                            borderColor: p.id === 'colegio_ingenieros' ? 'error.light' : 'success.light',
-                            boxShadow: 1,
-                            cursor: onCardClick ? 'pointer' : 'default',
-                            backgroundImage: `url(${p.thumbnail})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            backgroundRepeat: 'no-repeat',
-                            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                            '&:hover': onCardClick ? { transform: 'translateY(-2px)', boxShadow: 4 } : undefined,
-                        }}
-                    >
-                        <Box
-                            sx={{
-                                position: 'absolute',
-                                inset: 0,
-                                background: p.id === 'colegio_ingenieros'
-                                    ? 'linear-gradient(to top, rgba(220,38,38,0.82) 0%, rgba(220,38,38,0.28) 42%, rgba(0,0,0,0.04) 100%)'
-                                    : 'linear-gradient(to top, rgba(22,163,74,0.82) 0%, rgba(22,163,74,0.28) 42%, rgba(0,0,0,0.04) 100%)',
-                            }}
-                        />
-                        <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: 1.5, zIndex: 1 }}>
-                            <Typography variant="caption" fontWeight={700} sx={{ color: '#fff', display: 'block', mb: onDownload ? 1 : 0 }}>
-                                {p.nombre}
-                            </Typography>
-                            {onDownload && (
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        onDownload(p.id)
-                                    }}
-                                    disabled={downloadingPlantilla === p.id}
-                                    startIcon={downloadingPlantilla === p.id
-                                        ? <CircularProgress size={12} color="inherit" />
-                                        : <i className="tabler-download" />
-                                    }
+                <>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 1.5 }}>
+                        Certificados habilitados
+                    </Typography>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: habilitadas.length > 1 ? '1fr 1fr' : '1fr' }, gap: 2 }}>
+                        {habilitadas.map((p) => (
+                            <Box
+                                key={p.id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => onCardClick?.(p)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') onCardClick?.(p)
+                                }}
+                                sx={{
+                                    position: 'relative',
+                                    aspectRatio: '297 / 210',
+                                    borderRadius: 2,
+                                    overflow: 'hidden',
+                                    border: '2px solid',
+                                    borderColor: p.id === 'colegio_ingenieros' ? 'error.light' : 'success.light',
+                                    boxShadow: 1,
+                                    cursor: onCardClick ? 'pointer' : 'default',
+                                    backgroundImage: `url(${p.thumbnail})`,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                    backgroundRepeat: 'no-repeat',
+                                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                    '&:hover': onCardClick ? { transform: 'translateY(-2px)', boxShadow: 4 } : undefined,
+                                }}
+                            >
+                                <Box
                                     sx={{
-                                        bgcolor: '#fff',
-                                        color: p.id === 'colegio_ingenieros' ? 'error.main' : 'success.dark',
-                                        borderRadius: '8px',
-                                        textTransform: 'none',
-                                        fontWeight: 700,
-                                        fontSize: '0.68rem',
-                                        py: 0.25,
-                                        boxShadow: 'none',
-                                        '&:hover': { bgcolor: 'rgba(255,255,255,0.9)', boxShadow: 'none' },
+                                        position: 'absolute',
+                                        inset: 0,
+                                        background: p.id === 'colegio_ingenieros'
+                                            ? 'linear-gradient(to top, rgba(220,38,38,0.82) 0%, rgba(220,38,38,0.28) 42%, rgba(0,0,0,0.04) 100%)'
+                                            : 'linear-gradient(to top, rgba(22,163,74,0.82) 0%, rgba(22,163,74,0.28) 42%, rgba(0,0,0,0.04) 100%)',
                                     }}
-                                >
-                                    {downloadingPlantilla === p.id ? 'Descargando...' : 'Descargar PDF'}
-                                </Button>
-                            )}
-                        </Box>
+                                />
+                                <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: 1.5, zIndex: 1 }}>
+                                    <Typography variant="caption" fontWeight={700} sx={{ color: '#fff', display: 'block', mb: onDownload ? 1 : 0 }}>
+                                        {p.nombre}
+                                    </Typography>
+                                    {onDownload && (
+                                        <Button
+                                            variant="contained"
+                                            size="small"
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                onDownload(p.id)
+                                            }}
+                                            disabled={downloadingPlantilla === p.id}
+                                            startIcon={downloadingPlantilla === p.id
+                                                ? <CircularProgress size={12} color="inherit" />
+                                                : <i className="tabler-download" />
+                                            }
+                                            sx={{
+                                                bgcolor: '#fff',
+                                                color: p.id === 'colegio_ingenieros' ? 'error.main' : 'success.dark',
+                                                borderRadius: '8px',
+                                                textTransform: 'none',
+                                                fontWeight: 700,
+                                                fontSize: '0.68rem',
+                                                py: 0.25,
+                                                boxShadow: 'none',
+                                                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)', boxShadow: 'none' },
+                                            }}
+                                        >
+                                            {downloadingPlantilla === p.id ? 'Descargando...' : 'Descargar PDF'}
+                                        </Button>
+                                    )}
+                                </Box>
+                            </Box>
+                        ))}
                     </Box>
-                ))}
-            </Box>
-            </>
+                </>
             )}
         </Box>
     )
@@ -508,7 +509,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         if (!force && !documentoCompleto) {
             setPendingAction({ type: 'generar' })
             setShowProfileModal(true)
-            
+
             return
         }
 
@@ -626,11 +627,11 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
             ? 'success.light'
             : hasSolicitudEnviada
                 ? 'success.light'
-            : enEspera || hasPago || enTramite
-                ? '#f59e0b'
-                : elegibilidad?.isEligible
-                    ? 'primary.light'
-                    : 'divider'
+                : enEspera || hasPago || enTramite
+                    ? '#f59e0b'
+                    : elegibilidad?.isEligible
+                        ? 'primary.light'
+                        : 'divider'
 
         const headerBg = certificadoListoParaMostrar || hasSolicitudEnviada
             ? 'rgba(22,163,74,0.06)'
@@ -658,15 +659,15 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                 ? 'Completa el trámite de tu certificado'
                 : solicitudesPendientes.length > 0
                     ? 'Solicitud enviada — pendiente de validación'
-                : enEspera
-                    ? (plantillasEnEspera[0]?.disponibleDesde
-                        ? 'En proceso de emisión'
-                        : (plantillasEnEspera[0]?.mensajeEspera || 'Tu certificado está en proceso de emisión'))
-                    : hasPago
-                        ? 'Requiere pago para obtenerlo'
-                        : elegibilidad?.isEligible
-                            ? '¡Puedes obtener tu certificado!'
-                            : 'Completa el curso para obtenerlo'
+                    : enEspera
+                        ? (plantillasEnEspera[0]?.disponibleDesde
+                            ? 'En proceso de emisión'
+                            : (plantillasEnEspera[0]?.mensajeEspera || 'Tu certificado está en proceso de emisión'))
+                        : hasPago
+                            ? 'Requiere pago para obtenerlo'
+                            : elegibilidad?.isEligible
+                                ? '¡Puedes obtener tu certificado!'
+                                : 'Completa el curso para obtenerlo'
 
         return (
             <Box
@@ -781,7 +782,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
             cursoCertificacion.precio_certificado_ipg,
             cursoCertificacion.precio_certificado_cip,
             cursoCertificacion.precio_certificado,
-          ].some(p => p != null && Number(p) > 0)
+        ].some(p => p != null && Number(p) > 0)
         : false
 
     const evaluacionesAprobadas =
@@ -939,9 +940,6 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
 
     // ── Tiene precios pero faltan evaluaciones para tramitar ─────────
     if (pagoPendiente && !certificadoListoParaMostrar && !hayEsperaActiva && preciosCurso && !evaluacionesAprobadas) {
-        const score = elegibilidad?.promedioScore ?? 0
-        const minimo = elegibilidad?.promedioMinimo ?? 60
-
         return (
             <Wrapper>
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 3 }}>
@@ -957,9 +955,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                             Completa las evaluaciones
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-                            Para tramitar el certificado debes aprobar las evaluaciones del curso
-                            (promedio actual: <strong>{score}%</strong>, mínimo: <strong>{minimo}%</strong>).
-                            No es necesario completar todas las lecciones.
+                            Para tramitar el certificado debes rendir tus evaluaciones y tu promedio ponderado aprobatorio.
                         </Typography>
                     </Box>
                 </Box>
@@ -1253,6 +1249,8 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     }
 
     const progresoColor = el.progreso >= 100 ? '#16a34a' : '#d97706'
+    const examenesRealizados = el.examenesRealizados ?? 0
+    const examenesFaltantes = Math.max(0, el.totalExamenes - examenesRealizados)
 
     return (
         <>
@@ -1278,8 +1276,8 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                             {generating
                                 ? 'Estamos generando tu certificado automáticamente.'
                                 : el.totalExamenes > 0
-                                  ? 'Has aprobado las evaluaciones. Si el certificado tiene costo, tramita el pago correspondiente para descargarlo.'
-                                  : 'Ya puedes obtener tu certificado. Si tiene costo, tramita el pago correspondiente.'
+                                    ? 'Has aprobado las evaluaciones. Si el certificado tiene costo, tramita el pago correspondiente para descargarlo.'
+                                    : 'Ya puedes obtener tu certificado. Si tiene costo, tramita el pago correspondiente.'
                             }
                         </Typography>
                         {el.totalExamenes > 0 && (
@@ -1300,91 +1298,99 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                     </Box>
                 ) : (
 
-                /* No elegible → mostrar progreso de evaluaciones */
-                <Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-                        {el.totalExamenes > 0
-                          ? 'Para descargar el certificado debes aprobar las evaluaciones del curso y haber comprado el certificado (IPG o Colegio de Ingenieros).'
-                          : 'Para descargar el certificado debes haber comprado el certificado correspondiente (IPG o Colegio de Ingenieros).'}
-                    </Typography>
+                    /* No elegible → mostrar progreso de evaluaciones */
+                    <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+                            {el.totalExamenes > 0
+                                ? 'Para descargar el certificado debes aprobar las evaluaciones del curso y haber comprado el certificado (IPG o Colegio de Ingenieros).'
+                                : 'Para descargar el certificado debes haber comprado el certificado correspondiente (IPG o Colegio de Ingenieros).'}
+                        </Typography>
 
-                    {/* Progreso de lecciones (informativo) */}
-                    <Box sx={{ mb: el.totalExamenes > 0 ? 2 : 0 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                                <i className="tabler-book" style={{ fontSize: '1rem', color: '#94a3b8' }} />
-                                <Typography variant="caption" sx={{ fontWeight: 600 }}>Progreso de lecciones (opcional)</Typography>
+                        {/* Progreso de lecciones (informativo) */}
+                        <Box sx={{ mb: el.totalExamenes > 0 ? 2 : 0 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                    <i className="tabler-book" style={{ fontSize: '1rem', color: '#94a3b8' }} />
+                                    <Typography variant="caption" sx={{ fontWeight: 600 }}>Progreso de lecciones (opcional)</Typography>
+                                </Box>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: progresoColor }}>
+                                    {el.progreso}%
+                                </Typography>
                             </Box>
-                            <Typography variant="caption" sx={{ fontWeight: 700, color: progresoColor }}>
-                                {el.progreso}%
-                            </Typography>
+                            <LinearProgress
+                                variant="determinate"
+                                value={el.progreso}
+                                sx={{
+                                    height: 7, borderRadius: 4,
+                                    bgcolor: 'action.hover',
+                                    '& .MuiLinearProgress-bar': { bgcolor: progresoColor, borderRadius: 4 }
+                                }}
+                            />
                         </Box>
-                        <LinearProgress
-                            variant="determinate"
-                            value={el.progreso}
-                            sx={{
-                                height: 7, borderRadius: 4,
-                                bgcolor: 'action.hover',
-                                '& .MuiLinearProgress-bar': { bgcolor: progresoColor, borderRadius: 4 }
-                            }}
-                        />
-                    </Box>
 
-                    {/* Evaluaciones */}
-                    {el.totalExamenes > 0 && (
-                        <>
-                            <Divider sx={{ my: 2 }} />
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
-                                <Box sx={{ flex: 1, minWidth: 0 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
-                                        {el.promedioScore >= el.promedioMinimo
-                                            ? <i className="tabler-circle-check-filled" style={{ fontSize: '1rem', color: '#16a34a' }} />
-                                            : <i className="tabler-circle" style={{ fontSize: '1rem', color: '#94a3b8' }} />
-                                        }
-                                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                                            Promedio de evaluaciones
+                        {/* Evaluaciones */}
+                        {el.totalExamenes > 0 && (
+                            <>
+                                <Divider sx={{ my: 2 }} />
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
+                                            {el.promedioScore >= el.promedioMinimo
+                                                ? <i className="tabler-circle-check-filled" style={{ fontSize: '1rem', color: '#16a34a' }} />
+                                                : <i className="tabler-circle" style={{ fontSize: '1rem', color: '#94a3b8' }} />
+                                            }
+                                            <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                                                Promedio de evaluaciones
+                                            </Typography>
+                                        </Box>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Has rendido{' '}
+                                            <span style={{ fontWeight: 700 }}>
+                                                {examenesRealizados} de {el.totalExamenes} evaluaci{el.totalExamenes !== 1 ? 'ones' : 'ón'}
+                                            </span>
+                                            {examenesFaltantes > 0 && (
+                                                <>
+                                                    . Te falta{examenesFaltantes !== 1 ? 'n' : ''}{' '}
+                                                    <span style={{ fontWeight: 700 }}>{examenesFaltantes}</span>{' '}
+                                                    por rendir
+                                                </>
+                                            )}
+                                            . Las no realizadas cuentan como 0.
                                         </Typography>
                                     </Box>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Las evaluaciones no realizadas cuentan como 0.{' '} Usted tiene {' '}
-                                        <span style={{ fontWeight: 700 }}>
-                                            {el.totalExamenes} evaluaci{el.totalExamenes !== 1 ? 'ones' : 'ón'}
-                                        </span> registradas en total.
-                                    </Typography>
+                                    <ScoreRing
+                                        value={el.promedioScore}
+                                        min={el.promedioMinimo}
+                                        label="Tu promedio"
+                                    />
                                 </Box>
-                                <ScoreRing
-                                    value={el.promedioScore}
-                                    min={el.promedioMinimo}
-                                    label="Tu promedio"
-                                />
-                            </Box>
-                        </>
-                    )}
+                            </>
+                        )}
 
-                    {/* Botón de completado automático */}
-                    {completarAutomatico && el.progreso < 100 && (
-                        <Box sx={{ mt: 2.5 }}>
-                            <Button
-                                variant="contained"
-                                fullWidth
-                                onClick={handleCompletarTodo}
-                                disabled={completandoTodo}
-                                startIcon={completandoTodo
-                                    ? <CircularProgress size={18} color="inherit" />
-                                    : <i className="tabler-checks" />
-                                }
-                                sx={{
-                                    bgcolor: '#025E44', borderRadius: '12px', textTransform: 'none',
-                                    fontWeight: 700, boxShadow: 'none',
-                                    '&:hover': { bgcolor: '#014d36', boxShadow: 'none' }
-                                }}
-                            >
-                                {completandoTodo ? 'Completando...' : 'Completar todas las lecciones'}
-                            </Button>
-                        </Box>
-                    )}
-                </Box>
-            )}
+                        {/* Botón de completado automático */}
+                        {completarAutomatico && el.progreso < 100 && (
+                            <Box sx={{ mt: 2.5 }}>
+                                <Button
+                                    variant="contained"
+                                    fullWidth
+                                    onClick={handleCompletarTodo}
+                                    disabled={completandoTodo}
+                                    startIcon={completandoTodo
+                                        ? <CircularProgress size={18} color="inherit" />
+                                        : <i className="tabler-checks" />
+                                    }
+                                    sx={{
+                                        bgcolor: '#025E44', borderRadius: '12px', textTransform: 'none',
+                                        fontWeight: 700, boxShadow: 'none',
+                                        '&:hover': { bgcolor: '#014d36', boxShadow: 'none' }
+                                    }}
+                                >
+                                    {completandoTodo ? 'Completando...' : 'Completar todas las lecciones'}
+                                </Button>
+                            </Box>
+                        )}
+                    </Box>
+                )}
             </Wrapper>
             {el.isEligible && tienePreviewsHabilitados && (
                 <CertificadoPreviewGrid

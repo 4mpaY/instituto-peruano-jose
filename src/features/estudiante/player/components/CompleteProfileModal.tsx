@@ -22,6 +22,7 @@ import { useSnackbar } from 'notistack'
 import { MuiTelInput } from 'mui-tel-input'
 
 import CustomTextField from '@core/components/mui/TextField'
+import { isValidCelular } from '@/utils/functions/validatePhone'
 
 interface CompleteProfileModalProps {
   open: boolean
@@ -37,8 +38,8 @@ const createProfileSchema = (requireDocument: boolean, requireCelular: boolean) 
     ? z.string().trim().min(1, 'El número de documento es obligatorio')
     : z.string().trim().optional().or(z.literal('')),
   celular: requireCelular
-    ? z.string().trim().min(1, 'El celular es obligatorio').regex(/^\+?[\d\s-]{9,20}$/, 'Formato de celular inválido (puede incluir +)')
-    : z.string().trim().optional().or(z.literal(''))
+    ? z.string().trim().min(1, 'El celular es obligatorio').refine(isValidCelular, 'Número de celular inválido para el país seleccionado')
+    : z.string().trim().optional().or(z.literal('')).refine(isValidCelular, 'Número de celular inválido para el país seleccionado')
 }).superRefine((data, ctx) => {
   if (data.tipo_documento === 'DNI' && data.numero_documento) {
     if (!/^\d{8}$/.test(data.numero_documento)) {
@@ -166,6 +167,7 @@ export default function CompleteProfileModal({
                       label='Celular'
                       name='celular'
                       defaultCountry="PE"
+                      forceCallingCode
                       preferredCountries={['PE', 'CO', 'MX', 'CL', 'AR']}
                       value={values.celular}
                       onChange={(value) => {

@@ -354,7 +354,7 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
   // Definir área útil para el bloque de texto con holgura segura para evitar colisión con firmas y sellos
   const topLimit = 37
   const baseSigLineY = H - BAR_H - 32
-  const minGap = 5.0
+  const minGap = 6.5
 
   const fechaInicioTxt = formatDateLong(fechaInicioVal)
   const fechaFinTxt = formatDateLong(fechaFinVal)
@@ -552,7 +552,7 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
   const infoRows: Array<{ label: string; value: string }> = [
     { label: 'Curso de especialización:', value: cursoTitulo },
     { label: 'Duración:',                 value: duracionFormat },
-    { label: 'Promedio Final:',           value: notaFinalCalc !== null ? Math.round(notaFinalCalc).toString() : '---' },
+    { label: 'Promedio Final:',           value: notaFinalCalc !== null ? `${Math.round(notaFinalCalc)}/20` : '---' },
     { label: 'Estudiante:',               value: nombreCompleto },
     {
       label: 'Docente:',

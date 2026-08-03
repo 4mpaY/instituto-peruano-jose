@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { isValidCelular } from '@/utils/functions/validatePhone'
+
 /**
  * Schema para crear usuario (Admin)
  */
@@ -35,9 +37,9 @@ export const crearUsuarioSchema = z.object({
   celular: z
     .string()
     .trim()
-    .regex(/^\+?[\d\s-]{9,20}$/, 'Formato de celular inválido (puede incluir +)')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .refine(isValidCelular, 'Número de celular inválido para el país seleccionado'),
   rol: z
     .enum(['ADMIN', 'PROFESOR', 'ESTUDIANTE', 'ASESOR'])
     .optional()
@@ -113,9 +115,9 @@ export const actualizarUsuarioSchema = z.object({
   celular: z
     .string()
     .trim()
-    .regex(/^\+?[\d\s-]{9,20}$/, 'Formato de celular inválido (puede incluir +)')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .refine(isValidCelular, 'Número de celular inválido para el país seleccionado'),
   rol: z
     .enum(['ADMIN', 'PROFESOR', 'ESTUDIANTE', 'ASESOR'])
     .optional(),
@@ -189,9 +191,9 @@ export const actualizarPerfilSchema = z.object({
   celular: z
     .string()
     .trim()
-    .regex(/^\+?[\d\s-]{9,20}$/, 'Formato de celular inválido (puede incluir +)')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .refine(isValidCelular, 'Número de celular inválido para el país seleccionado'),
   biografia: z
     .string()
     .trim()

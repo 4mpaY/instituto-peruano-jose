@@ -16,8 +16,7 @@ import {
   Stack,
   Grid,
   Divider,
-  InputAdornment,
-  MenuItem
+  InputAdornment
 } from '@mui/material'
 import { signIn } from 'next-auth/react'
 import { useForm, Controller } from 'react-hook-form'
@@ -27,6 +26,7 @@ import { MuiTelInput } from 'mui-tel-input'
 import { loginSchema, type LoginDto, registerSchema, type RegisterDto, forgotPasswordSchema, type ForgotPasswordDto, resetPasswordSchema, type ResetPasswordDto } from '@/schemas/auth.schema'
 import CustomTextField from '@core/components/mui/TextField'
 import Logo from '@components/layout/shared/Logo'
+import { getTelFlagElement } from '@/utils/functions/getTelFlagElement'
 import GoogleButton from './GoogleButton'
 
 export type Mode = 'login' | 'register' | 'forgot-password' | 'reset-password'
@@ -431,7 +431,7 @@ const AuthModal = ({ open, mode, callbackUrl, onClose, onSwitchMode }: AuthModal
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={3}>
+              {/* <Grid item xs={12} sm={3}>
                 <Controller
                   name="tipo_documento"
                   control={registerForm.control}
@@ -474,7 +474,7 @@ const AuthModal = ({ open, mode, callbackUrl, onClose, onSwitchMode }: AuthModal
                     />
                   )}
                 />
-              </Grid>
+              </Grid> */}
               <Grid item xs={12} sm={6}>
                 <Controller
                   name="celular"
@@ -484,6 +484,9 @@ const AuthModal = ({ open, mode, callbackUrl, onClose, onSwitchMode }: AuthModal
                       fullWidth
                       label="Celular (opcional)"
                       defaultCountry="PE"
+                      forceCallingCode
+                      langOfCountryName="es"
+                      getFlagElement={getTelFlagElement}
                       preferredCountries={['PE', 'CO', 'MX', 'CL', 'AR']}
                       value={field.value}
                       onChange={value => field.onChange(value)}
@@ -495,7 +498,7 @@ const AuthModal = ({ open, mode, callbackUrl, onClose, onSwitchMode }: AuthModal
                   )}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid item xs={12} sm={6}>
                 <Controller
                   name="correo"
                   control={registerForm.control}

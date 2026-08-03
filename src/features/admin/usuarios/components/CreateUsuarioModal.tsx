@@ -273,21 +273,22 @@ const CreateUsuarioModal = ({ open, handleClose, onSuccess }: CreateUsuarioModal
                   />
                 </Grid>
 
-                  <Grid item xs={12} sm={4}>
-                    <MuiTelInput
-                      fullWidth
-                      label='Celular'
-                      name='celular'
-                      defaultCountry="PE"
-                      preferredCountries={['PE', 'CO', 'MX', 'CL', 'AR']}
-                      value={values.celular}
-                      onChange={(value) => setFieldValue('celular', value)}
-                      onBlur={handleBlur}
-                      error={touched.celular && Boolean(errors.celular)}
-                      helperText={touched.celular && errors.celular}
-                      disabled={isSubmitting}
-                    />
-                  </Grid>
+                <Grid item xs={12} sm={4}>
+                  <MuiTelInput
+                    fullWidth
+                    label='Celular'
+                    name='celular'
+                    defaultCountry="PE"
+                    forceCallingCode
+                    preferredCountries={['PE', 'CO', 'MX', 'CL', 'AR']}
+                    value={values.celular}
+                    onChange={(value) => setFieldValue('celular', value)}
+                    onBlur={handleBlur}
+                    error={touched.celular && Boolean(errors.celular)}
+                    helperText={touched.celular && errors.celular}
+                    disabled={isSubmitting}
+                  />
+                </Grid>
 
                 <Grid item xs={12} sm={6}>
                   <CustomTextField

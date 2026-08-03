@@ -310,6 +310,7 @@ const EditUsuarioModal = ({ open, handleClose, usuarioId, onSuccess }: EditUsuar
                         label='Celular (Opcional)'
                         name='celular'
                         defaultCountry='PE'
+                        forceCallingCode
                         value={values.celular}
                         onChange={(newValue) => setFieldValue('celular', newValue)}
                         onBlur={() => setFieldTouched('celular', true)}

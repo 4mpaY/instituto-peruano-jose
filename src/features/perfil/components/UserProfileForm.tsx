@@ -244,6 +244,7 @@ export default function UserProfileForm({ user }: Props) {
                   label="Celular"
                   name="celular"
                   defaultCountry="PE"
+                  forceCallingCode
                   value={formData.celular}
                   onChange={(newValue) => setFormData(prev => ({ ...prev, celular: newValue }))}
                 />

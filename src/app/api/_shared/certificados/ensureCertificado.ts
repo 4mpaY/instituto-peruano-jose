@@ -53,6 +53,7 @@ export async function calcularElegibilidad(usuarioId: string, cursoId: string) {
 
   const progreso = progresoCurso?.porcentaje_progreso ?? 0
   const totalExamenes = examenes.length
+  const examenesRealizados = examenes.filter(ex => ex.intentos.length > 0).length
 
   let promedioScore = 0
   let promedioMinimo = 60 // umbral por defecto si no hay exámenes
@@ -81,6 +82,7 @@ export async function calcularElegibilidad(usuarioId: string, cursoId: string) {
     puedeTramitar,
     evaluacionesOk,
     totalExamenes,
+    examenesRealizados,
   }
 }
 

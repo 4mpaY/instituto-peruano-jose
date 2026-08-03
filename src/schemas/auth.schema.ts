@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { isValidCelular } from '@/utils/functions/validatePhone'
+
 /**
  * Schema para login
  */
@@ -59,9 +61,9 @@ export const registerSchema = z
     celular: z
       .string()
       .trim()
-      .regex(/^\+?[\d\s-]{9,20}$/, 'Formato de celular inválido (puede incluir +)')
       .optional()
       .or(z.literal(''))
+      .refine(isValidCelular, 'Número de celular inválido para el país seleccionado')
   })
   .refine((data) => data.contrasena === data.confirmarContrasena, {
     message: 'Las contraseñas no coinciden',

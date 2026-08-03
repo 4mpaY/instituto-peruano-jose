@@ -220,6 +220,13 @@ return
         }, 50)
     }
 
+    const handleBackFromCertificateMobile = () => {
+        setActiveTab(TAB('Temario'))
+        window.setTimeout(() => {
+            mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+        }, 50)
+    }
+
     // En mobile, certificado/resumen nunca deben ocupar toda la pantalla (se pierden tabs/temario)
     useEffect(() => {
         if (!mounted || !isMobile) return
@@ -939,16 +946,36 @@ return
 
                     {/* Certificación */}
                     {activeTab === TAB('Certificación') && storeCourse && (
-                        <CertificateSection
-                            cursoId={storeCourse.id}
-                            completarAutomatico={(course as any).completar_automatico ?? false}
-                            phoneNumberProfesor={phoneNumberProfesor ?? undefined}
-                            onAllLessonsCompleted={() => {
-                                const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
+                        <>
+                            {isMobile && (
+                                <Button
+                                    variant="text"
+                                    size="small"
+                                    startIcon={<i className="tabler-arrow-left" />}
+                                    onClick={handleBackFromCertificateMobile}
+                                    sx={{
+                                        mb: 1.5,
+                                        px: 0,
+                                        textTransform: 'none',
+                                        fontWeight: 700,
+                                        color: '#025E44',
+                                        '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' },
+                                    }}
+                                >
+                                    Volver
+                                </Button>
+                            )}
+                            <CertificateSection
+                                cursoId={storeCourse.id}
+                                completarAutomatico={(course as any).completar_automatico ?? false}
+                                phoneNumberProfesor={phoneNumberProfesor ?? undefined}
+                                onAllLessonsCompleted={() => {
+                                    const allLessons = storeCourse.modulos?.flatMap((m: any) => m.lecciones) ?? []
 
-                                allLessons.forEach((l: any) => updateLessonProgress(l.id, true, 100))
-                            }}
-                        />
+                                    allLessons.forEach((l: any) => updateLessonProgress(l.id, true, 100))
+                                }}
+                            />
+                        </>
                     )}
 
                     {/* Comentarios */}

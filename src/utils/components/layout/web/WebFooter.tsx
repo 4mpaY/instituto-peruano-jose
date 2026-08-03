@@ -193,22 +193,7 @@ const WebFooter = async ({ platformName = 'Aula Virtual', rutasHabilitado = true
             </p>
           </div>
           <p style={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
-            Desarrollado por
-            <Link
-              href="https://flyup.pe"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="no-underline hover:opacity-80 inline-flex items-center align-middle"
-              style={{ color: 'var(--web-light, #BDD962)', fontWeight: 600 }}
-            >
-              <Image
-                src="/images/logo.svg"
-                alt="Fly Logo"
-                width={80}
-                height={25}
-                style={{ objectFit: 'contain' }}
-              />
-            </Link>
+            Desarrollado por IPG Ingenieros
           </p>
         </div>
       </div>

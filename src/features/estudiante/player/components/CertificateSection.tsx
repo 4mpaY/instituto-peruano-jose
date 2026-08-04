@@ -396,14 +396,74 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
 
     const [cursoCertificacion, setCursoCertificacion] = useState<TramiteCertificadoCursoInfo | null>(null)
     const [showTramite, setShowTramite] = useState(false)
-    const [solicitudesPendientes, setSolicitudesPendientes] = useState<SolicitudCertPendiente[]>([])
+    const showTramiteRef = useRef(false)
+
+    useEffect(() => {
+        showTramiteRef.current = showTramite
+    }, [showTramite])
+
+    const [solicitudesPendientes, setSolicitudesPendientes] = useState<SolicitudCertPendiente[]>(() => {
+        try {
+            const raw = sessionStorage.getItem(`cert-solicitud-pendiente:${cursoId}`)
+
+            if (!raw) return []
+
+            const parsed = JSON.parse(raw)
+
+            return Array.isArray(parsed) ? parsed : []
+        } catch {
+            return []
+        }
+    })
+
     const autoGeneradoRef = useRef(false)
+    const solicitudStorageKey = `cert-solicitud-pendiente:${cursoId}`
+
+    const persistSolicitudes = (items: SolicitudCertPendiente[]) => {
+        setSolicitudesPendientes(items)
+
+        try {
+            if (items.length > 0) {
+                sessionStorage.setItem(solicitudStorageKey, JSON.stringify(items))
+            } else {
+                sessionStorage.removeItem(solicitudStorageKey)
+            }
+        } catch {
+            /* ignore */
+        }
+    }
+
+    const readSolicitudesCache = (): SolicitudCertPendiente[] => {
+        try {
+            const raw = sessionStorage.getItem(solicitudStorageKey)
+
+            if (!raw) return []
+
+            const parsed = JSON.parse(raw)
+
+            return Array.isArray(parsed) ? parsed : []
+        } catch {
+            return []
+        }
+    }
+
+    const applySolicitudesFromApi = (fromApi: SolicitudCertPendiente[]) => {
+        // La API es la fuente de verdad (p. ej. admin borró el pedido → lista vacía)
+        persistSolicitudes(fromApi)
+    }
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true)
                 setFetchError(false)
+
+                // Optimistic solo mientras carga; luego manda la API
+                const cached = readSolicitudesCache()
+
+                if (cached.length > 0) {
+                    setSolicitudesPendientes(cached)
+                }
 
                 const [res, resPago] = await Promise.all([
                     axios.get(`/api/estudiante/certificado?cursoId=${cursoId}`),
@@ -424,7 +484,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                         cip: !!res.data.result.tiposTramitables?.cip,
                     })
                     setCursoCertificacion(res.data.result.cursoCertificacion ?? null)
-                    setSolicitudesPendientes(res.data.result.solicitudesPendientes ?? [])
+                    applySolicitudesFromApi(res.data.result.solicitudesPendientes ?? [])
                 } else {
                     setFetchError(true)
                 }
@@ -458,11 +518,30 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                 cip: !!res.data.result.tiposTramitables?.cip,
             })
             setCursoCertificacion(res.data.result.cursoCertificacion ?? null)
-            setSolicitudesPendientes(res.data.result.solicitudesPendientes ?? [])
+            applySolicitudesFromApi(res.data.result.solicitudesPendientes ?? [])
         }
 
         return res
     }
+
+    // Revalidar al volver a la pestaña del navegador (admin pudo borrar/aprobar).
+    // No usar window "focus": el selector de archivos también lo dispara y remonta el formulario.
+    useEffect(() => {
+        const onVisibility = () => {
+            if (document.visibilityState !== 'visible') return
+
+            // No interrumpir el trámite (p. ej. al subir el voucher)
+            if (showTramiteRef.current) return
+
+            void refreshCertificadoState().catch(() => {})
+        }
+
+        document.addEventListener('visibilitychange', onVisibility)
+
+        return () => {
+            document.removeEventListener('visibilitychange', onVisibility)
+        }
+    }, [cursoId])
 
     // Auto-generar si no hay evaluaciones, está al 100% y no hay pago/espera pendiente
     useEffect(() => {
@@ -749,7 +828,8 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     }
 
     // ── Loading ─────────────────────────────────────────────────────
-    if (loading) {
+    // Si ya hay solicitud en caché, no tapar la pantalla de espera
+    if (loading && solicitudesPendientes.length === 0) {
         return (
             <Box sx={{ mt: 3, borderRadius: '16px', border: '1.5px solid', borderColor: 'divider', p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <CircularProgress size={20} />
@@ -795,14 +875,25 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
 
     const puedeTramitarCert =
         tramitarDisponible ||
-        (evaluacionesAprobadas && (tiposTramitables.ipg || tiposTramitables.cip))
+        (evaluacionesAprobadas && (tiposTramitables.ipg || tiposTramitables.cip)) ||
+        (evaluacionesAprobadas && !!pagoPendiente && !!preciosCurso)
 
-    const etiquetaAdquirirOtro = (() => {
-        if (tiposTramitables.cip && !tiposTramitables.ipg) return 'Adquirir Certificado CIP'
-        if (tiposTramitables.ipg && !tiposTramitables.cip) return 'Adquirir Certificado IPG'
+    const precioIpgCurso =
+        cursoCertificacion?.precio_certificado_ipg != null && Number(cursoCertificacion.precio_certificado_ipg) > 0
+            ? Number(cursoCertificacion.precio_certificado_ipg)
+            : cursoCertificacion?.precio_certificado != null && Number(cursoCertificacion.precio_certificado) > 0
+                ? Number(cursoCertificacion.precio_certificado)
+                : null
 
-        return 'Adquirir otro certificado'
-    })()
+    const precioCipCurso =
+        cursoCertificacion?.precio_certificado_cip != null && Number(cursoCertificacion.precio_certificado_cip) > 0
+            ? Number(cursoCertificacion.precio_certificado_cip)
+            : null
+
+    const tiposDisponiblesTramite = {
+        ipg: tiposTramitables.ipg || (!!precioIpgCurso && puedeTramitarCert && !certificadoListoParaMostrar),
+        cip: tiposTramitables.cip || (!!precioCipCurso && puedeTramitarCert && !certificadoListoParaMostrar),
+    }
 
     const mostrarTramiteCta =
         !certificadoListoParaMostrar &&
@@ -810,42 +901,37 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         !!cursoCertificacion &&
         preciosCurso &&
         puedeTramitarCert &&
-        solicitudesPendientes.length === 0
+        solicitudesPendientes.length === 0 &&
+        (tiposDisponiblesTramite.ipg || tiposDisponiblesTramite.cip)
 
-    if (showTramite && cursoCertificacion) {
-        return (
-            <Wrapper>
-                <TramiteCertificadoFlow
-                    curso={cursoCertificacion}
-                    tiposDisponibles={tiposTramitables}
-                    onClose={() => setShowTramite(false)}
-                    onSuccess={async () => {
-                        setShowTramite(false)
-                        await refreshCertificadoState()
-                    }}
-                />
-            </Wrapper>
-        )
+    const abrirTramiteOGenerar = () => {
+        if (cursoCertificacion && preciosCurso && !certificadoListoParaMostrar) {
+            setShowTramite(true)
+
+            return
+        }
+
+        handleGenerar()
     }
 
-    // ── Solicitud ya enviada (pedido pendiente de validación) ─────────
+    // Prioridad: solicitud ya enviada (evita volver al formulario tras el pago)
     if (solicitudesPendientes.length > 0 && !certificadoListoParaMostrar) {
         return (
             <Wrapper>
                 <Box sx={{ textAlign: 'center', py: 1 }}>
                     <Box sx={{
                         width: 72, height: 72, borderRadius: '50%', mx: 'auto', mb: 2,
-                        background: 'linear-gradient(135deg, #025E44 0%, #3AB079 100%)',
+                        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
-                        <i className="tabler-send" style={{ fontSize: '2rem', color: '#fff' }} />
+                        <i className="tabler-hourglass" style={{ fontSize: '2rem', color: '#fff' }} />
                     </Box>
                     <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>
-                        ¡Formulario enviado!
+                        ¡Solicitud enviada!
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 520, mx: 'auto' }}>
-                        Tu solicitud de certificado fue registrada. El administrador validará el pago.
-                        Cuando se apruebe, el certificado se habilitará según los tiempos de entrega configurados.
+                        Estamos esperando la aprobación del pago. Cuando el administrador lo valide,
+                        tu certificado se habilitará según los tiempos de entrega del curso.
                     </Typography>
 
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, textAlign: 'left', maxWidth: 520, mx: 'auto' }}>
@@ -857,7 +943,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                                     borderRadius: 2,
                                     border: '1px solid',
                                     borderColor: 'divider',
-                                    bgcolor: 'rgba(2,94,68,0.04)',
+                                    bgcolor: 'rgba(245,158,11,0.06)',
                                 }}
                             >
                                 <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 0.5 }}>
@@ -888,20 +974,55 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                             </Box>
                         ))}
                     </Box>
-
-                    {tramitarDisponible && (tiposTramitables.ipg || tiposTramitables.cip) && (
-                        <Button
-                            variant="outlined"
-                            onClick={() => setShowTramite(true)}
-                            sx={{ mt: 3, textTransform: 'none', fontWeight: 700 }}
-                        >
-                            {etiquetaAdquirirOtro}
-                        </Button>
-                    )}
                 </Box>
             </Wrapper>
         )
     }
+
+    if (showTramite && cursoCertificacion) {
+        return (
+            <Wrapper>
+                <TramiteCertificadoFlow
+                    curso={cursoCertificacion}
+                    tiposDisponibles={tiposDisponiblesTramite}
+                    onClose={() => setShowTramite(false)}
+                    onSuccess={async info => {
+                        if (info) {
+                            const next: SolicitudCertPendiente[] = [
+                                {
+                                    pedidoId: info.pedidoId,
+                                    numeroPedido: info.numeroPedido,
+                                    certificadoTipo: info.certificadoTipo,
+                                    nombreTipo:
+                                        info.certificadoTipo === 'CIP'
+                                            ? 'Colegio de Ingenieros'
+                                            : 'IPG Ingenieros',
+                                    total: 0,
+                                    creadoEn: new Date().toISOString(),
+                                    tieneComprobante: true,
+                                    etiquetaEntrega: info.etiquetaEntrega,
+                                    disponibleDesde: info.disponibleDesde || null,
+                                },
+                            ]
+
+                            persistSolicitudes(next)
+                        }
+
+                        // Cerrar formulario → se muestra la pantalla de espera
+                        setShowTramite(false)
+
+                        try {
+                            await refreshCertificadoState()
+                        } catch {
+                            /* ignore */
+                        }
+                    }}
+                />
+            </Wrapper>
+        )
+    }
+
+    // (bloque duplicado de solicitud enviada eliminado — ya se maneja arriba)
 
     // ── Certificado pendiente: tramitar aquí (no WhatsApp) ───────────
     if (mostrarTramiteCta) {
@@ -1200,31 +1321,6 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                             ))}
                         </Box>
                     )}
-
-                    {(tiposTramitables.ipg || tiposTramitables.cip) && cursoCertificacion && (
-                        <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                {plantillasHabilitadas.length === 1
-                                    ? 'También puedes adquirir el otro tipo de certificado para este curso.'
-                                    : 'Puedes adquirir un certificado adicional para este curso.'}
-                            </Typography>
-                            <Button
-                                variant="contained"
-                                onClick={() => setShowTramite(true)}
-                                startIcon={<i className="tabler-certificate" />}
-                                sx={{
-                                    bgcolor: '#025E44',
-                                    borderRadius: '12px',
-                                    textTransform: 'none',
-                                    fontWeight: 700,
-                                    boxShadow: 'none',
-                                    '&:hover': { bgcolor: '#014d36', boxShadow: 'none' },
-                                }}
-                            >
-                                {etiquetaAdquirirOtro}
-                            </Button>
-                        </Box>
-                    )}
                 </Wrapper>
                 {previewModal}
             </>
@@ -1283,7 +1379,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                         {el.totalExamenes > 0 && (
                             <Button
                                 variant="contained"
-                                onClick={() => handleGenerar()}
+                                onClick={abrirTramiteOGenerar}
                                 disabled={generating}
                                 startIcon={generating ? <CircularProgress size={18} color="inherit" /> : <i className="tabler-certificate" />}
                                 sx={{
@@ -1292,7 +1388,11 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                                     boxShadow: 'none', '&:hover': { bgcolor: '#014d36', boxShadow: 'none' }
                                 }}
                             >
-                                {generating ? 'Generando certificado...' : 'Obtener mi Certificado'}
+                                {generating
+                                    ? 'Generando certificado...'
+                                    : preciosCurso
+                                        ? 'Tramitar mi certificado'
+                                        : 'Obtener mi Certificado'}
                             </Button>
                         )}
                     </Box>

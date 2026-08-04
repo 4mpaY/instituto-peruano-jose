@@ -1,7 +1,8 @@
-import { join } from 'path'
 import { readFile } from 'fs/promises'
 
 import { NextResponse } from 'next/server'
+
+import { resolveUploadPath } from '@/utils/libs/uploads'
 
 /**
  * Mapeo de extensiones a Content-Type para servir archivos correctamente
@@ -15,16 +16,28 @@ const CONTENT_TYPES: Record<string, string> = {
   svg: 'image/svg+xml',
   pdf: 'application/pdf',
   mp4: 'video/mp4',
-  webm: 'video/webm'
+  webm: 'video/webm',
 }
 
-export async function GET(request: Request, { params }: { params: { path: string[] } }) {
+/**
+ * GET /uploads/*
+ * Sirve archivos subidos desde disco (necesario en standalone/Docker;
+ * los archivos nuevos no siempre los sirve el static de Next).
+ */
+export async function GET(_request: Request, { params }: { params: { path: string[] } }) {
   try {
-    const pathSegments = params.path
+    const pathSegments = params.path || []
 
-    const filePath = join(process.cwd(), 'public', 'uploads', ...pathSegments)
+    if (pathSegments.length === 0) {
+      return new NextResponse('No encontrado', { status: 404 })
+    }
 
-    // Obtener la extensión para el Content-Type
+    // Bloquear segmentos peligrosos
+    if (pathSegments.some(s => s === '..' || s.includes('\\') || s === '')) {
+      return new NextResponse('Ruta inválida', { status: 400 })
+    }
+
+    const filePath = resolveUploadPath(...pathSegments)
     const ext = pathSegments[pathSegments.length - 1]?.split('.').pop()?.toLowerCase() || ''
     const contentType = CONTENT_TYPES[ext] || 'application/octet-stream'
 
@@ -34,8 +47,8 @@ export async function GET(request: Request, { params }: { params: { path: string
       return new NextResponse(fileBuffer, {
         headers: {
           'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=31536000, immutable'
-        }
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        },
       })
     } catch (error: any) {
       if (error.code === 'ENOENT') {

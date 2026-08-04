@@ -18,10 +18,7 @@ import {
     Tooltip,
 } from '@mui/material'
 
-import { useSession } from 'next-auth/react'
-
 import { useCourseStore } from '../store/useCourseStore'
-import CompleteProfileModal from './CompleteProfileModal'
 
 interface CourseContentSidebarProps {
     onLessonSelect: (lessonId: string) => void
@@ -46,18 +43,9 @@ const CourseContentSidebar = ({ onLessonSelect, onOpenCertificate, isCertificate
         openExam
     } = useCourseStore()
 
-    const { data: session } = useSession()
-    const [showProfileModal, setShowProfileModal] = useState(false)
-
     const [searchQuery] = useState('')
 
     const handleOpenCertificate = () => {
-        if (!session?.user?.numero_documento) {
-            setShowProfileModal(true)
-
-            return
-        }
-
         if (onOpenCertificate) {
             onOpenCertificate()
 
@@ -378,17 +366,6 @@ const CourseContentSidebar = ({ onLessonSelect, onOpenCertificate, isCertificate
             )}
         </Box>
         </Box>
-        <CompleteProfileModal
-            open={showProfileModal}
-            onClose={() => setShowProfileModal(false)}
-            requireDocument={true}
-            requireCelular={false}
-            onSuccess={() => {
-                setShowProfileModal(false)
-                if (onOpenCertificate) onOpenCertificate()
-                else setCurrentView('certificate')
-            }}
-        />
         </>
     )
 }

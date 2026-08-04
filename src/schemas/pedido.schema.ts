@@ -23,7 +23,9 @@ export type CrearPedidoManualDto = z.infer<typeof crearPedidoManualSchema>
 export const listarPedidosQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(5000).default(10),
-  estado: z.string().default('COMPLETADO'),
+
+  // TODOS por defecto: los pedidos de certificado quedan PENDIENTES hasta validar pago
+  estado: z.string().default('TODOS'),
   buscar: z.string().trim().optional(),
   nro_pedido: z.string().trim().optional(),
   nombre: z.string().trim().optional()
@@ -39,7 +41,8 @@ export const updatePedidoSchema = z.object({
   metodo_pago: z.nativeEnum(MetodoPago).optional(),
   mensaje: z.string().trim().max(1000).optional().nullable(),
   tipo_comprobante: z.string().optional().nullable(),
-  numero_comprobante: z.string().optional().nullable()
+  numero_comprobante: z.string().optional().nullable(),
+  referencia_pago: z.string().trim().max(200).optional().nullable(),
 })
 
 export type UpdatePedidoDto = z.infer<typeof updatePedidoSchema>

@@ -130,8 +130,8 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
 
                 if (!res.data.status) {
                     if (tieneExamenes) openCertGuidePopup(false)
-                    
-return
+
+                    return
                 }
 
                 const { elegibilidad, pagoPendiente } = res.data.result
@@ -233,7 +233,7 @@ return
         if (currentView !== 'certificate' && currentView !== 'completion') return
 
         setCurrentView('lesson')
-        setActiveTab(['Temario', 'Sobre el curso', 'Evaluaciones', 'Materiales', 'Certificación', 'Comentarios'].indexOf('Certificación'))
+        setActiveTab(TABS.indexOf('Certificación') >= 0 ? TABS.indexOf('Certificación') : 0)
     }, [mounted, isMobile, currentView, setCurrentView])
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -341,6 +341,7 @@ return
 
     const isCertTabActive = isMobile && activeTab === TAB('Certificación')
     const hideLessonChromeOnMobile = isCertTabActive
+    const isCertificateViewActive = currentView === 'certificate' || isCertTabActive
 
     const renderMainContent = () => {
         // Solo desktop: vista a pantalla completa (el sidebar lateral sigue disponible)
@@ -352,9 +353,10 @@ return
             )
         }
 
+        // Desktop: certificado ocupa el área principal (sin lección/video encima)
         if (currentView === 'certificate' && storeCourse && !isMobile) {
             return (
-                <Grid item xs={12} key="certificate-section">
+                <Grid item xs={12} key="certificate-section" sx={{ px: { xs: 2, sm: 4, md: 8, lg: 10, xl: 12 }, py: 3 }}>
                     <CertificateSection
                         cursoId={storeCourse.id}
                         completarAutomatico={(course as any).completar_automatico ?? false}
@@ -467,153 +469,153 @@ return
 
                 {/* ── Video player / Exam area ── */}
                 {!hideLessonChromeOnMobile && (
-                <Grid item xs={12} key={currentView === 'exam' ? `exam-${currentExamenId}` : `video-${currentLesson?.id || 'none'}`}>
-                    {currentView === 'exam' && currentExamenId ? (
-                        isMobile ? (
-                            <ExamSection
-                                examenId={currentExamenId}
-                                onExamPassed={handleExamPassed}
-                                isFinalExam={currentExamenId === examenId}
-                                onContinue={handleContinueAfterExam}
-                                contactoUrl={phoneNumberProfesor && storeCourse
-                                    ? `https://wa.me/${phoneNumberProfesor.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`
-                                    : undefined}
-                            />
-                        ) : (
-                            <Box sx={{
-                                position: 'relative',
-                                paddingTop: '56.25%',
-                                borderRadius: '16px',
-                                border: '1.5px solid',
-                                borderColor: 'divider',
-                                overflow: 'hidden',
-                            }}>
-                                <Box sx={{ position: 'absolute', inset: 0, overflowY: 'auto' }}>
-                                    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', '& > *': { flex: '1 0 auto' } }}>
-                                        <ExamSection
-                                            examenId={currentExamenId}
-                                            onExamPassed={handleExamPassed}
-                                            isFinalExam={currentExamenId === examenId}
-                                            onContinue={handleContinueAfterExam}
-                                            contactoUrl={phoneNumberProfesor && storeCourse
-                                                ? `https://wa.me/${phoneNumberProfesor.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`
-                                                : undefined}
-                                        />
+                    <Grid item xs={12} key={currentView === 'exam' ? `exam-${currentExamenId}` : `video-${currentLesson?.id || 'none'}`}>
+                        {currentView === 'exam' && currentExamenId ? (
+                            isMobile ? (
+                                <ExamSection
+                                    examenId={currentExamenId}
+                                    onExamPassed={handleExamPassed}
+                                    isFinalExam={currentExamenId === examenId}
+                                    onContinue={handleContinueAfterExam}
+                                    contactoUrl={phoneNumberProfesor && storeCourse
+                                        ? `https://wa.me/${phoneNumberProfesor.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`
+                                        : undefined}
+                                />
+                            ) : (
+                                <Box sx={{
+                                    position: 'relative',
+                                    paddingTop: '56.25%',
+                                    borderRadius: '16px',
+                                    border: '1.5px solid',
+                                    borderColor: 'divider',
+                                    overflow: 'hidden',
+                                }}>
+                                    <Box sx={{ position: 'absolute', inset: 0, overflowY: 'auto' }}>
+                                        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', '& > *': { flex: '1 0 auto' } }}>
+                                            <ExamSection
+                                                examenId={currentExamenId}
+                                                onExamPassed={handleExamPassed}
+                                                isFinalExam={currentExamenId === examenId}
+                                                onContinue={handleContinueAfterExam}
+                                                contactoUrl={phoneNumberProfesor && storeCourse
+                                                    ? `https://wa.me/${phoneNumberProfesor.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, necesito ayuda académica con el curso: ' + storeCourse.titulo)}`
+                                                    : undefined}
+                                            />
+                                        </Box>
                                     </Box>
                                 </Box>
+                            )
+                        ) : (
+                            <Box sx={{
+                                borderRadius: '16px',
+                                overflow: 'hidden',
+                                bgcolor: '#0A0A0A',
+                                boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                                maxHeight: {
+                                    xs: currentLesson?.es_en_vivo ? '70vh' : 'unset',
+                                    md: 'unset',
+                                },
+                                overflowY: {
+                                    xs: currentLesson?.es_en_vivo ? 'auto' : 'hidden',
+                                    md: 'hidden',
+                                },
+                                WebkitOverflowScrolling: 'touch',
+                                position: {
+                                    xs: currentLesson?.es_en_vivo ? 'relative' : 'sticky',
+                                    md: 'relative',
+                                },
+                                top: 0,
+                                zIndex: 6,
+                            }}>
+                                {currentLesson?.es_en_vivo ? (
+                                    <LiveLessonPlaceholder
+                                        titulo={currentLesson.titulo}
+                                        esEnVivo={true}
+                                        fechaProgramada={currentLesson.fecha_programada}
+                                        fechaFin={currentLesson.fecha_fin}
+                                        enlaceReunion={currentLesson.enlace_reunion}
+                                    />
+                                ) : currentLesson?.video_url ? (
+                                    <VideoPlayer url={currentLesson.video_url} tipo="VIDEO" onEnded={handleVideoEnded} />
+                                ) : currentLesson?.contenido ? (
+                                    <Box sx={{ p: { xs: 3, md: 5 }, bgcolor: 'background.paper', height: '100%', overflowY: 'auto' }}>
+                                        <LessonContent titulo="" descripcion={currentLesson.contenido} recursos={currentLesson.recursos || []} />
+                                    </Box>
+                                ) : (
+                                    <VideoPlayer url={undefined} tipo="VIDEO" onEnded={handleVideoEnded} />
+                                )}
                             </Box>
-                        )
-                    ) : (
-                        <Box sx={{
-                            borderRadius: '16px',
-                            overflow: 'hidden',
-                            bgcolor: '#0A0A0A',
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-                            maxHeight: {
-                                xs: currentLesson?.es_en_vivo ? '70vh' : 'unset',
-                                md: 'unset',
-                            },
-                            overflowY: {
-                                xs: currentLesson?.es_en_vivo ? 'auto' : 'hidden',
-                                md: 'hidden',
-                            },
-                            WebkitOverflowScrolling: 'touch',
-                            position: {
-                                xs: currentLesson?.es_en_vivo ? 'relative' : 'sticky',
-                                md: 'relative',
-                            },
-                            top: 0,
-                            zIndex: 6,
-                        }}>
-                            {currentLesson?.es_en_vivo ? (
-                                <LiveLessonPlaceholder
-                                    titulo={currentLesson.titulo}
-                                    esEnVivo={true}
-                                    fechaProgramada={currentLesson.fecha_programada}
-                                    fechaFin={currentLesson.fecha_fin}
-                                    enlaceReunion={currentLesson.enlace_reunion}
-                                />
-                            ) : currentLesson?.video_url ? (
-                                <VideoPlayer url={currentLesson.video_url} tipo="VIDEO" onEnded={handleVideoEnded} />
-                            ) : currentLesson?.contenido ? (
-                                <Box sx={{ p: { xs: 3, md: 5 }, bgcolor: 'background.paper', height: '100%', overflowY: 'auto' }}>
-                                    <LessonContent titulo="" descripcion={currentLesson.contenido} recursos={currentLesson.recursos || []} />
-                                </Box>
-                            ) : (
-                                <VideoPlayer url={undefined} tipo="VIDEO" onEnded={handleVideoEnded} />
-                            )}
-                        </Box>
-                    )}
-                </Grid>
+                        )}
+                    </Grid>
                 )}
 
                 {/* ── Navigation bar ── */}
                 {!hideLessonChromeOnMobile && currentView === 'lesson' && (
                     <Grid item xs={12}>
-                    <Box sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: { xs: 1.5, md: 2 },
-                        py: { xs: 1.5, md: 2 },
-                        mt: 1,
-                        borderTop: '1px solid',
-                        borderBottom: '1px solid',
-                        borderColor: 'divider',
-                    }}>
-                        <Tooltip title={prevLesson ? prevLesson.titulo : ''}>
-                            <span>
-                                <Button
-                                    variant="outlined"
-                                    size={isMobile ? 'small' : 'large'}
-                                    disabled={!prevLesson}
-                                    onClick={() => prevLesson && handleLessonSelect(prevLesson.id)}
-                                    startIcon={<i className="tabler-chevron-left text-base" />}
-                                    sx={{
-                                        borderRadius: '12px',
-                                        textTransform: 'none',
-                                        fontWeight: 600,
-                                        fontSize: { xs: '0.82rem', md: '0.95rem' },
-                                        px: { xs: 1.5, md: 3 },
-                                        py: { xs: 0.5, md: 1.25 },
-                                        flexShrink: 0,
-                                        borderColor: 'divider',
-                                        color: 'text.secondary',
-                                        '&:hover': { borderColor: 'primary.main', color: 'primary.main' }
-                                    }}
-                                >
-                                    <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Anterior</Box>
-                                </Button>
-                            </span>
-                        </Tooltip>
+                        <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: { xs: 1.5, md: 2 },
+                            py: { xs: 1.5, md: 2 },
+                            mt: 1,
+                            borderTop: '1px solid',
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
+                        }}>
+                            <Tooltip title={prevLesson ? prevLesson.titulo : ''}>
+                                <span>
+                                    <Button
+                                        variant="outlined"
+                                        size={isMobile ? 'small' : 'large'}
+                                        disabled={!prevLesson}
+                                        onClick={() => prevLesson && handleLessonSelect(prevLesson.id)}
+                                        startIcon={<i className="tabler-chevron-left text-base" />}
+                                        sx={{
+                                            borderRadius: '12px',
+                                            textTransform: 'none',
+                                            fontWeight: 600,
+                                            fontSize: { xs: '0.82rem', md: '0.95rem' },
+                                            px: { xs: 1.5, md: 3 },
+                                            py: { xs: 0.5, md: 1.25 },
+                                            flexShrink: 0,
+                                            borderColor: 'divider',
+                                            color: 'text.secondary',
+                                            '&:hover': { borderColor: 'primary.main', color: 'primary.main' }
+                                        }}
+                                    >
+                                        <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Anterior</Box>
+                                    </Button>
+                                </span>
+                            </Tooltip>
 
 
 
-                        <Tooltip title={nextLesson ? nextLesson.titulo : ''}>
-                            <span>
-                                <Button
-                                    variant="outlined"
-                                    size={isMobile ? 'small' : 'large'}
-                                    disabled={!nextLesson}
-                                    onClick={() => nextLesson && handleLessonSelect(nextLesson.id)}
-                                    endIcon={<i className="tabler-chevron-right text-base" />}
-                                    sx={{
-                                        borderRadius: '12px',
-                                        textTransform: 'none',
-                                        fontWeight: 600,
-                                        fontSize: { xs: '0.82rem', md: '0.95rem' },
-                                        px: { xs: 1.5, md: 3 },
-                                        py: { xs: 0.5, md: 1.25 },
-                                        flexShrink: 0,
-                                        borderColor: 'divider',
-                                        color: 'text.secondary',
-                                        '&:hover': { borderColor: 'primary.main', color: 'primary.main' }
-                                    }}
-                                >
-                                    <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Siguiente</Box>
-                                </Button>
-                            </span>
-                        </Tooltip>
-                    </Box>
+                            <Tooltip title={nextLesson ? nextLesson.titulo : ''}>
+                                <span>
+                                    <Button
+                                        variant="outlined"
+                                        size={isMobile ? 'small' : 'large'}
+                                        disabled={!nextLesson}
+                                        onClick={() => nextLesson && handleLessonSelect(nextLesson.id)}
+                                        endIcon={<i className="tabler-chevron-right text-base" />}
+                                        sx={{
+                                            borderRadius: '12px',
+                                            textTransform: 'none',
+                                            fontWeight: 600,
+                                            fontSize: { xs: '0.82rem', md: '0.95rem' },
+                                            px: { xs: 1.5, md: 3 },
+                                            py: { xs: 0.5, md: 1.25 },
+                                            flexShrink: 0,
+                                            borderColor: 'divider',
+                                            color: 'text.secondary',
+                                            '&:hover': { borderColor: 'primary.main', color: 'primary.main' }
+                                        }}
+                                    >
+                                        <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Siguiente</Box>
+                                    </Button>
+                                </span>
+                            </Tooltip>
+                        </Box>
                     </Grid>
                 )}
 
@@ -632,7 +634,18 @@ return
                 }}>
                     <Tabs
                         value={activeTab}
-                        onChange={(_, v) => setActiveTab(v)}
+                        onChange={(_, v) => {
+                            const label = TABS[v]
+
+                            // Desktop: Certificación abre la vista principal (no debajo del video)
+                            if (!isMobile && label === 'Certificación') {
+                                setCurrentView('certificate')
+
+                                return
+                            }
+
+                            setActiveTab(v)
+                        }}
                         variant="scrollable"
                         scrollButtons="auto"
                         textColor="primary"
@@ -663,8 +676,8 @@ return
                         <Box sx={{ mt: 0 }}>
                             <CourseContentSidebar
                                 onLessonSelect={handleLessonSelect}
-                                onOpenCertificate={handleOpenCertificateMobile}
-                                isCertificateActive={isCertTabActive}
+                                onOpenCertificate={handleOpenCertificate}
+                                isCertificateActive={isCertificateViewActive}
                             />
                         </Box>
                     )}
@@ -1177,7 +1190,11 @@ return
                         display: 'flex',
                         flexDirection: 'column',
                     }}>
-                        <CourseContentSidebar onLessonSelect={handleLessonSelect} />
+                        <CourseContentSidebar
+                            onLessonSelect={handleLessonSelect}
+                            onOpenCertificate={handleOpenCertificate}
+                            isCertificateActive={isCertificateViewActive}
+                        />
                     </Box>
                 )}
 

@@ -170,7 +170,7 @@ export async function POST(request: Request) {
       if (fsError.code === 'EACCES') {
         return ApiResponse.error(
           request,
-          `Error de permisos en el servidor (EACCES). No se pudo crear/escribir en ${fsError.path}. Ejecute 'sudo chown -R $USER:$USER public/uploads' en su servidor para solucionar este problema.`,
+          `Error de permisos en el servidor (EACCES). No se pudo crear/escribir en ${fsError.path}. Monte un volumen persistente en /app/public/uploads (compose/Coolify) y redespliegue; el entrypoint asigna permisos al usuario nextjs.`,
           500
         )
       }

@@ -30,6 +30,7 @@ services:
     networks:
       - aula-network
     volumes:
+      # Persistencia de vouchers, portadas y firmas entre redespliegues
       - ./public/uploads:/app/public/uploads
     depends_on:
       - database

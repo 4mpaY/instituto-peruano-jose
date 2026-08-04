@@ -95,6 +95,7 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.mp4|.*\\.webm|.*\\.gif).*)'
+    // Excluir api, estáticos, uploads (vouchers/media) e imágenes
+    '/((?!api|_next/static|_next/image|uploads|favicon.ico|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.webp|.*\\.svg|.*\\.mp4|.*\\.webm|.*\\.gif).*)'
   ]
 }

@@ -1,25 +1,26 @@
 export const dynamic = 'force-dynamic'
 
-import { join } from 'path'
-import { writeFile, mkdir } from 'fs/promises'
 import { randomUUID } from 'crypto'
 
 import prisma from '@/utils/libs/prisma'
 import { ApiResponse } from '@/utils/libs/apiResponse'
 import { requireAuth } from '@/utils/libs/auth-helpers'
 import { handleApiError } from '@/utils/libs/validation'
+import { normalizeUploadFsError, saveUploadFile } from '@/utils/libs/uploads'
 
 const ALLOWED_IMAGE_MIMES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
-  'image/webp': 'webp'
+  'image/webp': 'webp',
 }
 
 const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
 
 /**
  * POST /api/pedidos/[id]/voucher
- * Sube la imagen del comprobante de pago para un pedido PENDIENTE (solo el dueño del pedido)
+ * Sube/reemplaza la imagen del comprobante.
+ * - Dueño del pedido: solo si está PENDIENTE
+ * - Admin: puede reemplazar en cualquier estado
  */
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -29,18 +30,21 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     const pedido = await prisma.pedido.findUnique({
       where: { id: params.id },
-      select: { id: true, usuario_id: true, estado: true }
+      select: { id: true, usuario_id: true, estado: true },
     })
 
     if (!pedido) {
       return ApiResponse.error(request, 'Pedido no encontrado', 404)
     }
 
-    if (pedido.usuario_id !== auth.user.id) {
+    const esAdmin = auth.user.rol === 'ADMIN'
+    const esDueno = pedido.usuario_id === auth.user.id
+
+    if (!esAdmin && !esDueno) {
       return ApiResponse.error(request, 'No tienes permiso para modificar este pedido', 403)
     }
 
-    if (pedido.estado !== 'PENDIENTE') {
+    if (!esAdmin && pedido.estado !== 'PENDIENTE') {
       return ApiResponse.error(request, 'Solo se puede subir comprobante a pedidos pendientes', 400)
     }
 
@@ -70,19 +74,31 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     const ext = ALLOWED_IMAGE_MIMES[file.type]
     const fileName = `${randomUUID()}.${ext}`
-    const uploadDir = join(process.cwd(), 'public', 'uploads', 'vouchers')
-    const absolutePath = join(uploadDir, fileName)
-    const relativePath = `/uploads/vouchers/${fileName}`
 
-    await mkdir(uploadDir, { recursive: true })
-    await writeFile(absolutePath, buffer)
+    let relativePath: string
+
+    try {
+      const saved = await saveUploadFile({
+        folder: 'vouchers',
+        fileName,
+        buffer,
+      })
+
+      relativePath = saved.relativeUrl
+    } catch (fsError) {
+      const normalized = normalizeUploadFsError(fsError)
+
+      console.error('[voucher upload] FS error:', normalized)
+
+      return ApiResponse.error(request, normalized.message, 500)
+    }
 
     await prisma.pedido.update({
       where: { id: params.id },
       data: {
         comprobante_url: relativePath,
-        comprobante_subido_en: new Date()
-      }
+        comprobante_subido_en: new Date(),
+      },
     })
 
     return ApiResponse.success(request, { comprobante_url: relativePath })

@@ -256,6 +256,15 @@ export function PedidosPage({ initialData, initialTotal = 0 }: PedidosPageProps)
                 sx={{ fontSize: 10, height: 20 }}
               />
             )}
+            {(row.original.numero_comprobante || (row.original as any).referencia_pago) && (
+              <Typography variant='caption' color='text.secondary' sx={{ maxWidth: 140, display: 'block' }} noWrap>
+                {(row.original as any).referencia_pago
+                  ? `${(row.original as any).referencia_pago}`
+                  : ''}
+                {(row.original as any).referencia_pago && row.original.numero_comprobante ? ' · ' : ''}
+                {row.original.numero_comprobante || ''}
+              </Typography>
+            )}
           </Stack>
         )
       }),
@@ -462,7 +471,7 @@ export function PedidosPage({ initialData, initialTotal = 0 }: PedidosPageProps)
       <CustomAlertDialog
         open={deleteInfo.open}
         title="Eliminar Pedido"
-        description="¿Estás seguro de que deseas eliminar este pedido permanentemente y revocar sus inscripciones asociadas?"
+        description="¿Estás seguro de que deseas eliminar este pedido permanentemente? Si es un pedido de certificado, se deshabilitará ese certificado y el estudiante podrá tramitarlo de nuevo."
         confirmText="Eliminar"
         onConfirm={handleDelete}
         onClose={() => setDeleteInfo({ open: false, id: null })}

@@ -26,6 +26,7 @@ services:
     env_file:
       - .env
     volumes:
+      # Persistencia de vouchers, portadas y firmas entre redespliegues
       - ./public/uploads:/app/public/uploads
     depends_on:
       - database

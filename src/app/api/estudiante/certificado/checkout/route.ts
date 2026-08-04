@@ -30,6 +30,7 @@ export async function POST(request: Request) {
     const certificadoTipo = String(body.certificadoTipo || '').toUpperCase() === 'CIP' ? 'CIP' : 'IPG'
     const metodoPagoManualId = body.metodoPagoManualId as string | undefined
     const numeroComprobante = (body.numeroComprobante as string | undefined)?.trim() || null
+    const bancoPago = (body.bancoPago as string | undefined)?.trim() || null
 
     const datosPerfil = body.datosPerfil as
       | {
@@ -43,6 +44,37 @@ export async function POST(request: Request) {
 
     if (!cursoId) {
       return ApiResponse.error(request, 'El ID del curso es requerido', 400)
+    }
+
+    if (!bancoPago) {
+      return ApiResponse.error(request, 'Debes indicar el banco o billetera donde realizaste el pago', 400)
+    }
+
+    if (!numeroComprobante) {
+      return ApiResponse.error(request, 'Debes indicar el código o número de operación', 400)
+    }
+
+    const nombre = datosPerfil?.nombre?.trim() || ''
+    const apellido = datosPerfil?.apellido?.trim() || ''
+    const numeroDocumento = datosPerfil?.numero_documento?.trim() || ''
+    const celular = datosPerfil?.celular?.trim() || ''
+
+    if (!nombre || !apellido || !numeroDocumento || !celular) {
+      return ApiResponse.error(
+        request,
+        'Debes completar todos los datos personales (nombres, apellidos, documento y celular) para tramitar el certificado.',
+        400
+      )
+    }
+
+    if (!/^\d{8}$/.test(numeroDocumento)) {
+      return ApiResponse.error(request, 'El DNI debe tener exactamente 8 dígitos', 400)
+    }
+
+    const { isValidCelular } = await import('@/utils/functions/validatePhone')
+
+    if (!isValidCelular(celular)) {
+      return ApiResponse.error(request, 'El número de celular no es válido', 400)
     }
 
     const [inscripcion, curso, elegibilidad, pedidoPendiente] = await Promise.all([
@@ -66,10 +98,12 @@ export async function POST(request: Request) {
         FROM pedidos p
         JOIN detalles_pedido d ON d.pedido_id = p.id
         WHERE p.usuario_id = ${auth.user.id}
-          AND p.tipo = 'CERTIFICADO'::"TipoPedido"
           AND p.estado = 'PENDIENTE'
           AND d.curso_id = ${cursoId}
-          AND d.certificado_tipo = ${certificadoTipo}::"CertificadoTipo"
+          AND (
+            p.tipo = 'CERTIFICADO'::"TipoPedido"
+            OR d.certificado_tipo IS NOT NULL
+          )
         LIMIT 1
       `,
     ])
@@ -112,62 +146,59 @@ export async function POST(request: Request) {
     if (pedidoPendiente.length > 0) {
       return ApiResponse.error(
         request,
-        'Ya tienes un pedido pendiente de certificado para este curso. Espera la validación o cancélalo.',
+        'Ya tienes un pedido pendiente de certificado para este curso. Solo puedes obtener un tipo (IPG o CIP).',
         400
       )
     }
 
     const hab = await getInscripcionCertificadoHabilitacion(auth.user.id, cursoId)
 
-    const yaHabilitado =
-      certificadoTipo === 'CIP'
-        ? !!hab?.certificado_cip_habilitado
-        : !!hab?.certificado_ipg_habilitado
-
-    if (yaHabilitado) {
+    if (hab?.certificado_ipg_habilitado || hab?.certificado_cip_habilitado) {
       return ApiResponse.error(
         request,
-        `Ya tienes habilitado el certificado ${certificadoTipo === 'CIP' ? 'CIP' : 'IPG'} para este curso.`,
+        'Ya tienes un certificado habilitado para este curso. Solo puedes obtener un tipo (IPG o CIP).',
         400
       )
     }
 
-    const certExistente = await prisma.certificado.findFirst({
-      where: { usuario_id: auth.user.id, curso_id: cursoId, tipo: certificadoTipo },
-      select: { id: true },
+    // Limpiar certificados huérfanos (sin habilitación) que bloqueaban un nuevo trámite
+    await prisma.certificado.deleteMany({
+      where: { usuario_id: auth.user.id, curso_id: cursoId },
     })
 
-    if (certExistente) {
+    // Pedido COMPLETADO de certificado ya existente
+    const pedidoCertCompletado = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT p.id
+      FROM pedidos p
+      JOIN detalles_pedido d ON d.pedido_id = p.id
+      WHERE p.usuario_id = ${auth.user.id}
+        AND p.tipo = 'CERTIFICADO'::"TipoPedido"
+        AND p.estado = 'COMPLETADO'
+        AND d.curso_id = ${cursoId}
+      LIMIT 1
+    `
+
+    if (pedidoCertCompletado.length > 0) {
       return ApiResponse.error(
         request,
-        `Ya tienes el certificado ${certificadoTipo === 'CIP' ? 'CIP' : 'IPG'} emitido para este curso.`,
+        'Ya registraste el pago de un certificado para este curso. Solo puedes obtener un tipo (IPG o CIP).',
         400
       )
     }
 
-    // Actualizar perfil si enviaron datos (no bloquear el pedido si falla)
-    if (datosPerfil) {
-      try {
-        await prisma.usuario.update({
-          where: { id: auth.user.id },
-          data: {
-            ...(datosPerfil.nombre != null && datosPerfil.nombre.trim()
-              ? { nombre: datosPerfil.nombre.trim() }
-              : {}),
-            ...(datosPerfil.apellido != null && datosPerfil.apellido.trim()
-              ? { apellido: datosPerfil.apellido.trim() }
-              : {}),
-            ...(datosPerfil.numero_documento != null && datosPerfil.numero_documento.trim()
-              ? { numero_documento: datosPerfil.numero_documento.trim() }
-              : {}),
-            ...(datosPerfil.celular != null && datosPerfil.celular.trim()
-              ? { celular: datosPerfil.celular.trim() }
-              : {}),
-          },
-        })
-      } catch (perfilErr) {
-        console.warn('[certificado/checkout] No se pudo actualizar el perfil:', perfilErr)
-      }
+    // Actualizar perfil (datos obligatorios)
+    try {
+      await prisma.usuario.update({
+        where: { id: auth.user.id },
+        data: {
+          nombre,
+          apellido,
+          numero_documento: numeroDocumento,
+          celular,
+        },
+      })
+    } catch (perfilErr) {
+      console.warn('[certificado/checkout] No se pudo actualizar el perfil:', perfilErr)
     }
 
     const moneda = curso.moneda || 'PEN'
@@ -176,70 +207,91 @@ export async function POST(request: Request) {
     let pedido: { id: string; numero_pedido: number; total: unknown; moneda: string }
 
     try {
-      pedido = await prisma.pedido.create({
-        data: {
-          usuario_id: auth.user.id,
-          total: precio,
-          moneda,
-          estado: 'PENDIENTE',
-          tipo: 'CERTIFICADO',
-          metodo_pago: 'TRANSFERENCIA',
-          mensaje: `Trámite de certificado: ${tituloLinea}`,
-          numero_comprobante: numeroComprobante,
-          tipo_comprobante: numeroComprobante ? 'OPERACION' : null,
-          ...(metodoPagoManualId ? { metodo_pago_manual_id: metodoPagoManualId } : {}),
-          detalles: {
-            create: [
-              {
-                curso_id: cursoId,
-                cantidad: 1,
-                precio_unitario: precio,
-                subtotal: precio,
-                total: precio,
-                descuento: 0,
-                certificado_tipo: certificadoTipo,
-              },
-            ],
+      pedido = await prisma.$transaction(async tx => {
+        const created = await tx.pedido.create({
+          data: {
+            usuario_id: auth.user.id,
+            total: precio,
+            moneda,
+            estado: 'PENDIENTE',
+            tipo: 'CERTIFICADO',
+            metodo_pago: 'TRANSFERENCIA',
+            mensaje: `Trámite de certificado: ${tituloLinea}`,
+            numero_comprobante: numeroComprobante,
+            tipo_comprobante: 'OPERACION',
+            referencia_pago: bancoPago,
+            ...(metodoPagoManualId ? { metodo_pago_manual_id: metodoPagoManualId } : {}),
+            detalles: {
+              create: [
+                {
+                  curso_id: cursoId,
+                  cantidad: 1,
+                  precio_unitario: precio,
+                  subtotal: precio,
+                  total: precio,
+                  descuento: 0,
+                  certificado_tipo: certificadoTipo,
+                },
+              ],
+            },
           },
-        },
+        })
+
+        // Asegurar tipo/detalle aunque el client Prisma esté desfasado
+        await tx.$executeRaw`
+          UPDATE pedidos SET tipo = 'CERTIFICADO'::"TipoPedido" WHERE id = ${created.id}
+        `
+        await tx.$executeRaw`
+          UPDATE detalles_pedido
+          SET certificado_tipo = ${certificadoTipo}::"CertificadoTipo"
+          WHERE pedido_id = ${created.id}
+        `
+
+        return created
       })
     } catch (createErr) {
       console.warn('[certificado/checkout] create con tipo falló, reintento básico:', createErr)
-      pedido = await prisma.pedido.create({
-        data: {
-          usuario_id: auth.user.id,
-          total: precio,
-          moneda,
-          estado: 'PENDIENTE',
-          metodo_pago: 'TRANSFERENCIA',
-          mensaje: `Trámite de certificado: ${tituloLinea}`,
-          numero_comprobante: numeroComprobante,
-          tipo_comprobante: numeroComprobante ? 'OPERACION' : null,
-          ...(metodoPagoManualId ? { metodo_pago_manual_id: metodoPagoManualId } : {}),
-          detalles: {
-            create: [
-              {
-                curso_id: cursoId,
-                cantidad: 1,
-                precio_unitario: precio,
-                subtotal: precio,
-                total: precio,
-                descuento: 0,
-              },
-            ],
+
+      pedido = await prisma.$transaction(async tx => {
+        const created = await tx.pedido.create({
+          data: {
+            usuario_id: auth.user.id,
+            total: precio,
+            moneda,
+            estado: 'PENDIENTE',
+            metodo_pago: 'TRANSFERENCIA',
+            mensaje: `Trámite de certificado: ${tituloLinea}`,
+            numero_comprobante: numeroComprobante,
+            tipo_comprobante: 'OPERACION',
+            referencia_pago: bancoPago,
+            ...(metodoPagoManualId ? { metodo_pago_manual_id: metodoPagoManualId } : {}),
+            detalles: {
+              create: [
+                {
+                  curso_id: cursoId,
+                  cantidad: 1,
+                  precio_unitario: precio,
+                  subtotal: precio,
+                  total: precio,
+                  descuento: 0,
+                },
+              ],
+            },
           },
-        },
+        })
+
+        await tx.$executeRaw`
+          UPDATE pedidos SET tipo = 'CERTIFICADO'::"TipoPedido" WHERE id = ${created.id}
+        `
+        await tx.$executeRaw`
+          UPDATE detalles_pedido
+          SET certificado_tipo = ${certificadoTipo}::"CertificadoTipo"
+          WHERE pedido_id = ${created.id}
+        `
+
+        return created
       })
     }
-
-    await prisma.$executeRaw`
-      UPDATE pedidos SET tipo = 'CERTIFICADO'::"TipoPedido" WHERE id = ${pedido.id}
-    `
-    await prisma.$executeRaw`
-      UPDATE detalles_pedido
-      SET certificado_tipo = ${certificadoTipo}::"CertificadoTipo"
-      WHERE pedido_id = ${pedido.id}
-    `
 
     return ApiResponse.success(
       request,

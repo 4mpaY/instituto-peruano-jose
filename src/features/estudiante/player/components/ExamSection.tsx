@@ -24,8 +24,6 @@ import {
     Divider
 } from '@mui/material'
 
-import CompleteProfileModal from './CompleteProfileModal'
-
 interface Opcion {
     id: string
     texto: string
@@ -156,7 +154,6 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
     const [intentosRestantes, setIntentosRestantes] = useState(0)
     const [tiempoRestante, setTiempoRestante] = useState<number | null>(null)
     const [examenIniciado, setExamenIniciado] = useState(false)
-    const [showProfileModal, setShowProfileModal] = useState(false)
 
     // Refs para evitar stale closure en efectos
     const resultadoRef = useRef<any>(null)
@@ -167,7 +164,6 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
         yaAprobado: boolean
         intentosRestantes: number
         resultadoAnterior?: any
-        celularCompleto: boolean
     }>({
         queryKey: ['examen', 'estudiante', examenId],
         queryFn: async () => {
@@ -258,12 +254,6 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
     const handleStartExam = () => {
         if (isExamenExpirado(examen?.fecha_fin)) {
             toast.error('El período de evaluación ha finalizado')
-
-            return
-        }
-
-        if (!queryData?.celularCompleto) {
-            setShowProfileModal(true)
 
             return
         }
@@ -762,17 +752,6 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
                     </>
                 )}
             </Card>
-            <CompleteProfileModal
-                open={showProfileModal}
-                onClose={() => setShowProfileModal(false)}
-                requireDocument={false}
-                requireCelular={true}
-                onSuccess={() => {
-                    setShowProfileModal(false)
-                    queryClient.invalidateQueries({ queryKey: ['examen', 'estudiante', examenId] })
-                    startExamTimer()
-                }}
-            />
             </>
         )
     }
@@ -866,17 +845,6 @@ const ExamSection = ({ examenId, onExamPassed, isFinalExam = true, onContinue, c
                     </Stack>
                 </CardContent>
             </Card>
-            <CompleteProfileModal
-                open={showProfileModal}
-                onClose={() => setShowProfileModal(false)}
-                requireDocument={false}
-                requireCelular={true}
-                onSuccess={() => {
-                    setShowProfileModal(false)
-                    queryClient.invalidateQueries({ queryKey: ['examen', 'estudiante', examenId] })
-                    startExamTimer()
-                }}
-            />
             </>
         )
     }

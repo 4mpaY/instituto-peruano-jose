@@ -41,7 +41,8 @@ export function usePedidos(query?: Record<string, any>, initialData?: Pedido[], 
       paginacion: { total: initialTotal || initialData.length, page: 1, limit: 10 }
     } : undefined,
     placeholderData: keepPreviousData,
-    staleTime: 60_000,
+    staleTime: 15_000,
+    refetchOnMount: 'always',
     retry: 1
   })
 }

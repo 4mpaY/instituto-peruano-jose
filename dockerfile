@@ -7,6 +7,7 @@ RUN apk add --no-cache libc6-compat openssl
 # Habilitar pnpm
 RUN corepack enable pnpm
 
+
 # Fase 2: Dependencias
 FROM base AS deps
 WORKDIR /app
@@ -85,38 +86,43 @@ ENV INTERNAL_API_URL="http://web:3000"
 ARG APP_URL
 ENV APP_URL=$APP_URL
 
+# su-exec: bajar de root a nextjs tras preparar el volumen de uploads
+RUN apk add --no-cache su-exec
+
 # Crear un usuario y grupo sin privilegios de root por seguridad
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Copiar carpeta public entera (para que Coolify la mantenga a salvo)
-COPY --from=builder /app/public ./public
-
-# Crear el directorio uploads y asignar permisos para subir imgs y pdfs
-RUN mkdir -p /app/public/uploads && chown nextjs:nodejs /app/public/uploads
-
-# Configurar permisos para la caché de pre-renderizado de Next.js
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 nextjs
 
 # -- COPIAR EL STANDALONE DE NEXT.JS --
-# standalone contiene el propio motor de Node.js minimizado y solo los paquetes estrictamente necesarios.
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# public DESPUÉS de standalone (evita que standalone pise la carpeta y los permisos)
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Carpetas de upload (también se recrean/chown en entrypoint por si hay volumen montado)
+RUN mkdir -p \
+      /app/public/uploads/vouchers \
+      /app/public/uploads/cursos \
+      /app/public/uploads/firmas \
+  && chown -R nextjs:nodejs /app/public/uploads
+
+# Configurar permisos para la caché de pre-renderizado de Next.js
+RUN mkdir -p .next && chown nextjs:nodejs .next
+
 # -- COPIAR SHARP (pnpm: los .so de libvips están en .pnpm, no en symlinks) --
-# Next.js standalone traza el .node binario pero omite los .so bundled (libvips-cpp.so.8.x).
-# Con pnpm los archivos reales están en node_modules/.pnpm/, no en los symlinks de node_modules/.
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.pnpm/sharp@0.34.5 ./node_modules/.pnpm/sharp@0.34.5
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.pnpm/@img+sharp-linuxmusl-x64@0.34.5 ./node_modules/.pnpm/@img+sharp-linuxmusl-x64@0.34.5
 
-# Copiar la carpeta Prisma por si se necesitan ejecutar comandos como migeraciones desde bash en el VPS
+# Copiar la carpeta Prisma por si se necesitan ejecutar comandos como migraciones desde bash en el VPS
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
-# Utilizar el nuevo usuario por seguridad
-USER nextjs
+# Entrypoint: prepara volumen de uploads y ejecuta como nextjs
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 3000
 
-# El build standalone genera un servidor propio con nombre server.js
-CMD ["node", "server.js"]
+# Root solo para entrypoint (chown del volumen); luego su-exec a nextjs
+USER root
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

@@ -496,6 +496,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         }
 
         fetchData()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cursoId])
 
     const plantillasEnEspera = plantillasPreview.filter(p => p.enEspera && !p.habilitado)
@@ -541,6 +542,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         return () => {
             document.removeEventListener('visibilitychange', onVisibility)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cursoId])
 
     // Auto-generar si no hay evaluaciones, está al 100% y no hay pago/espera pendiente
@@ -563,6 +565,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                 .catch(() => { })
                 .finally(() => setGenerating(false))
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loading, certificado, pagoPendiente, hayEsperaActiva, elegibilidad, cursoId])
 
     const handleCompletarTodo = async () => {

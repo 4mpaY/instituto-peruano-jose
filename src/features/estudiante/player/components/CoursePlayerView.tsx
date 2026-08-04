@@ -146,6 +146,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
         }
 
         void checkCursoCompletado()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mounted, storeCourse])
 
     const continuarRevisandoContenido = () => {
@@ -234,6 +235,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
 
         setCurrentView('lesson')
         setActiveTab(TABS.indexOf('Certificación') >= 0 ? TABS.indexOf('Certificación') : 0)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mounted, isMobile, currentView, setCurrentView])
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -676,7 +678,7 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                         <Box sx={{ mt: 0 }}>
                             <CourseContentSidebar
                                 onLessonSelect={handleLessonSelect}
-                                onOpenCertificate={handleOpenCertificate}
+                                onOpenCertificate={handleOpenCertificateMobile}
                                 isCertificateActive={isCertificateViewActive}
                             />
                         </Box>
@@ -1192,7 +1194,6 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                     }}>
                         <CourseContentSidebar
                             onLessonSelect={handleLessonSelect}
-                            onOpenCertificate={handleOpenCertificate}
                             isCertificateActive={isCertificateViewActive}
                         />
                     </Box>

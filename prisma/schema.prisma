@@ -210,10 +210,11 @@ model Pedido {
   comprobante_subido_en DateTime?
   tipo_comprobante      String?
   numero_comprobante    String?
-  creado_en             DateTime          @default(now())
-  pagado_en             DateTime?
-  cancelado_en          DateTime?
-  actualizado_en        DateTime          @updatedAt
+  creado_en               DateTime          @default(now())
+  pagado_en               DateTime?
+  cancelado_en            DateTime?
+  actualizado_en          DateTime          @updatedAt
+  fecha_entrega_estimada  DateTime?
   usuario_id            String
   cupon_id              String?
   metodo_pago_manual_id String?

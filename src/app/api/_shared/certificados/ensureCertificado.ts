@@ -100,6 +100,7 @@ async function assertDisponibilidadCertificado(
     certificado_ipg_espera_valor?: number | null
     certificado_ipg_espera_unidad?: string | null
     certificado_cip_entregas?: unknown
+    tipo_emision?: string | null
   }
 ) {
   const { resolvePrecioCertificadoCip, resolvePrecioCertificadoIpg } = await import(
@@ -125,16 +126,22 @@ async function assertDisponibilidadCertificado(
 
   const habilitacion = await getInscripcionCertificadoHabilitacion(usuarioId, cursoId)
 
+  const esAsincrono = curso.tipo_emision === 'ASINCRONO'
+
+  const requiereHabilitacionExplicita = esAsincrono
+    ? precioTipo != null || Number(curso.certificado_ipg_espera_valor ?? 0) > 0 || (Array.isArray(curso.certificado_cip_entregas) && curso.certificado_cip_entregas.length > 0)
+    : true
+
   const { ipgHabilitado, cipHabilitado } = resolveCertificadoPagoEstado(habilitacion, precioCert, {
-    requiereHabilitacion: precioTipo != null || Number(curso.certificado_ipg_espera_valor ?? 0) > 0 || (Array.isArray(curso.certificado_cip_entregas) && curso.certificado_cip_entregas.length > 0),
+    requiereHabilitacion: requiereHabilitacionExplicita,
   })
 
   const habilitadoParaTipo = tipo === 'CIP' ? cipHabilitado : ipgHabilitado
 
-  if (precioTipo != null && precioTipo > 0 && !habilitadoParaTipo) {
+  if (requiereHabilitacionExplicita && !habilitadoParaTipo) {
     throw new EnsureCertificadoError(
       'PAGO_PENDIENTE',
-      `Debes comprar y tener habilitado el certificado ${tipo === 'CIP' ? 'del Colegio de Ingenieros' : 'IPG'} para descargarlo.`
+      `Debes tener registrado el pago y habilitado el certificado ${tipo === 'CIP' ? 'del Colegio de Ingenieros' : 'IPG'} para poder descargarlo.`
     )
   }
 
@@ -168,8 +175,24 @@ async function assertDisponibilidadCertificado(
     },
   })
 
+  const pedidosCert = await prisma.$queryRaw<
+    Array<{ fecha_entrega_estimada: Date | null, certificado_tipo: string | null }>
+  >`
+    SELECT p.fecha_entrega_estimada, d.certificado_tipo::text AS certificado_tipo
+    FROM pedidos p
+    JOIN detalles_pedido d ON d.pedido_id = p.id
+    WHERE p.usuario_id = ${usuarioId}
+      AND p.estado = 'COMPLETADO'
+      AND d.curso_id = ${cursoId}
+      AND (p.tipo = 'CERTIFICADO'::"TipoPedido" OR d.certificado_tipo IS NOT NULL)
+  `
+
   const fechaPago =
     inscPedido?.pedido?.pagado_en || inscPedido?.pedido?.creado_en || inscPedido?.inscrito_en || null
+
+  const fechaEstimada = pedidosCert.find(p => 
+    tipo === 'CIP' ? p.certificado_tipo === 'CIP' : (p.certificado_tipo === 'IPG' || !p.certificado_tipo)
+  )?.fecha_entrega_estimada ?? null
 
   const disponibilidad = resolveCertificadoDisponibilidad({
     tipo: tipo === 'CIP' ? 'cip' : 'ipg',
@@ -182,6 +205,7 @@ async function assertDisponibilidadCertificado(
     ipgEsperaUnidad: curso.certificado_ipg_espera_unidad,
     cipEntregas: cipEntregas as any,
     fechaPago,
+    fechaEntregaEstimada: fechaEstimada,
   })
 
   if (!disponibilidad.disponible) {
@@ -203,6 +227,7 @@ export async function ensureCertificado(usuarioId: string, cursoId: string, tipo
           certificado_ipg_espera_valor: true,
           certificado_ipg_espera_unidad: true,
           certificado_cip_entregas: true,
+          tipo_emision: true,
         },
       },
       usuario: { select: { nombre: true, apellido: true } }

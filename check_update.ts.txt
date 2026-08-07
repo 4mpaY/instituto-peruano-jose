@@ -1,0 +1,32 @@
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
+async function run() {
+  const id = 'e1eaceb0-6f8e-4cfb-a280-befee34d1798';
+  try {
+    await prisma.$transaction(async tx => {
+      await tx.pedido.update({
+        where: { id },
+        data: {
+          estado: 'COMPLETADO',
+          metodo_pago: 'TRANSFERENCIA',
+          mensaje: null,
+          tipo_comprobante: 'OPERACION',
+          numero_comprobante: null,
+          fecha_entrega_estimada: null,
+          pagado_en: new Date()
+        }
+      });
+      console.log('Update was successful!');
+      throw new Error('ROLLBACK'); // Rollback so we don't change the DB
+    });
+  } catch (error) {
+    if (error.message !== 'ROLLBACK') {
+      console.error('Prisma Error:', error);
+    } else {
+      console.log('Rolled back transaction');
+    }
+  }
+}
+
+run().finally(() => prisma.$disconnect());

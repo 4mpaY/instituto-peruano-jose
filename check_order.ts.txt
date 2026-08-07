@@ -1,0 +1,21 @@
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
+async function run() {
+  const p = await prisma.pedido.findFirst({
+    where: { numero_pedido: 7 },
+    include: { detalles: { include: { curso: true } } }
+  });
+  console.log('Pedido:', JSON.stringify(p, null, 2));
+
+  if (p) {
+    const insc = await prisma.inscripcion.findMany({
+      where: { usuario_id: p.usuario_id }
+    });
+    console.log('Inscripciones:', JSON.stringify(insc, null, 2));
+  }
+}
+
+run()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());

@@ -12,6 +12,7 @@ import HydratedDate from '@/utils/components/HydratedDate'
 import AppModal from '@/utils/components/AppModal'
 import CompleteProfileModal from './CompleteProfileModal'
 import TramiteCertificadoFlow, { type TramiteCertificadoCursoInfo } from './TramiteCertificadoFlow'
+import { ResumenSolicitudModal } from './ResumenSolicitudModal'
 
 interface CertificateData {
     id: string
@@ -55,6 +56,10 @@ interface SolicitudCertPendiente {
     etiquetaEntrega?: string
     disponibleDesde?: string | Date | null
     nombreTipo?: string
+    comprobanteUrl?: string | null
+    numeroComprobante?: string | null
+    referenciaPago?: string | null
+    estado?: string
 }
 
 const CertificadoPreviewGrid = ({
@@ -107,8 +112,6 @@ const CertificadoPreviewGrid = ({
                                                     day: '2-digit',
                                                     month: 'long',
                                                     year: 'numeric',
-                                                    hour: '2-digit',
-                                                    minute: '2-digit',
                                                 }}
                                             />
                                         </Typography>
@@ -388,11 +391,17 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     const [whatsappNumero, setWhatsappNumero] = useState<string | null>(null)
     const [documentoCompleto, setDocumentoCompleto] = useState(false)
     const [tramitarDisponible, setTramitarDisponible] = useState(false)
+    const [usuarioDatosEnvio, setUsuarioDatosEnvio] = useState<any>(null)
+    
+    const [showDetalleSolicitud, setShowDetalleSolicitud] = useState(false)
+    const [detalleSolicitudActiva, setDetalleSolicitudActiva] = useState<SolicitudCertPendiente | null>(null)
 
     const [tiposTramitables, setTiposTramitables] = useState<{ ipg: boolean; cip: boolean }>({
         ipg: false,
         cip: false,
     })
+
+    const [historialSolicitudes, setHistorialSolicitudes] = useState<SolicitudCertPendiente[]>([])
 
     const [cursoCertificacion, setCursoCertificacion] = useState<TramiteCertificadoCursoInfo | null>(null)
     const [showTramite, setShowTramite] = useState(false)
@@ -483,6 +492,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                         ipg: !!res.data.result.tiposTramitables?.ipg,
                         cip: !!res.data.result.tiposTramitables?.cip,
                     })
+                    setUsuarioDatosEnvio(res.data.result.usuarioDatosEnvio ?? null)
                     setCursoCertificacion(res.data.result.cursoCertificacion ?? null)
                     applySolicitudesFromApi(res.data.result.solicitudesPendientes ?? [])
                 } else {
@@ -518,8 +528,10 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                 ipg: !!res.data.result.tiposTramitables?.ipg,
                 cip: !!res.data.result.tiposTramitables?.cip,
             })
+            setUsuarioDatosEnvio(res.data.result.usuarioDatosEnvio ?? null)
             setCursoCertificacion(res.data.result.cursoCertificacion ?? null)
             applySolicitudesFromApi(res.data.result.solicitudesPendientes ?? [])
+            setHistorialSolicitudes(res.data.result.historialSolicitudes ?? [])
         }
 
         return res
@@ -950,7 +962,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                                 }}
                             >
                                 <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 0.5 }}>
-                                    Pedido #{s.numeroPedido} · {s.nombreTipo || s.certificadoTipo}
+                                    {s.nombreTipo || s.certificadoTipo}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
                                     Estado: <strong>Pendiente de validación de pago</strong>
@@ -968,15 +980,34 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                                                 day: 'numeric',
                                                 month: 'long',
                                                 year: 'numeric',
-                                                hour: 'numeric',
-                                                minute: '2-digit',
                                             }}
                                         />
                                     </Typography>
                                 )}
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    onClick={() => {
+                                        setDetalleSolicitudActiva(s)
+                                        setShowDetalleSolicitud(true)
+                                    }}
+                                    sx={{ mt: 1.5, borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
+                                >
+                                    Ver detalles de la solicitud
+                                </Button>
                             </Box>
                         ))}
                     </Box>
+
+                    <ResumenSolicitudModal
+                        open={showDetalleSolicitud}
+                        onClose={() => setShowDetalleSolicitud(false)}
+                        solicitud={detalleSolicitudActiva as any}
+                        cursoTitulo={cursoTitulo}
+                        notaFinal={elegibilidad?.promedioScore ? Number(elegibilidad.promedioScore) : null}
+                        usuarioDatosEnvio={usuarioDatosEnvio}
+                    />
+
                 </Box>
             </Wrapper>
         )
@@ -1079,7 +1110,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                             Completa las evaluaciones
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-                            Para tramitar el certificado debes rendir tus evaluaciones y tu promedio ponderado aprobatorio.
+                            Para tramitar tu certificado, es obligatorio rendir todas las evaluaciones correspondientes al curso y obtener un promedio ponderado mínimo de doce (12).
                         </Typography>
                     </Box>
                 </Box>
@@ -1195,8 +1226,6 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                                                         day: '2-digit',
                                                         month: 'long',
                                                         year: 'numeric',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit',
                                                     }}
                                                 />
                                             </Typography>
@@ -1205,6 +1234,23 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                                                 {p.mensajeEspera || 'Aún no disponible.'}
                                             </Typography>
                                         )}
+                                        {historialSolicitudes.some(s => s.certificadoTipo === (p.id === 'colegio_ingenieros' ? 'CIP' : 'IPG') && s.estado === 'COMPLETADO') && (
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                onClick={() => {
+                                                    const sol = historialSolicitudes.find(s => s.certificadoTipo === (p.id === 'colegio_ingenieros' ? 'CIP' : 'IPG') && s.estado === 'COMPLETADO')
+
+                                                    if (sol) {
+                                                        setDetalleSolicitudActiva(sol)
+                                                        setShowDetalleSolicitud(true)
+                                                    }
+                                                }}
+                                                sx={{ mt: 1.5, borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
+                                            >
+                                                Ver resumen de solicitud
+                                            </Button>
+                                        )}
                                     </Box>
                                 ))}
                             </Box>
@@ -1212,6 +1258,15 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                     </Box>
                 </Wrapper>
                 {previewModal}
+                
+                <ResumenSolicitudModal
+                    open={showDetalleSolicitud}
+                    onClose={() => setShowDetalleSolicitud(false)}
+                    solicitud={detalleSolicitudActiva as any}
+                    cursoTitulo={cursoTitulo}
+                    notaFinal={elegibilidad?.promedioScore ? Number(elegibilidad.promedioScore) : null}
+                    usuarioDatosEnvio={usuarioDatosEnvio}
+                />
             </>
         )
     }
@@ -1309,7 +1364,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                                     }}
                                 >
                                     <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 0.5 }}>
-                                        Pedido #{s.numeroPedido} · {s.nombreTipo || s.certificadoTipo}
+                                        {s.nombreTipo || s.certificadoTipo}
                                     </Typography>
                                     <Typography variant="body2" color="text.secondary">
                                         Estado: <strong>Pendiente de validación de pago</strong>

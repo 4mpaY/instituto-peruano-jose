@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { Prisma } from '@prisma/client'
+import { Prisma, type TipoDocumento } from '@prisma/client'
 
 import { ApiResponse } from '@/utils/libs/apiResponse'
 import { requireAuth } from '@/utils/libs/auth-helpers'
@@ -37,6 +37,7 @@ export async function POST(request: Request) {
           nombre?: string
           apellido?: string
           correo?: string
+          tipo_documento?: string
           numero_documento?: string
           celular?: string
         }
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
 
     const nombre = datosPerfil?.nombre?.trim() || ''
     const apellido = datosPerfil?.apellido?.trim() || ''
+    const tipoDocumento = datosPerfil?.tipo_documento?.trim() || 'DNI'
     const numeroDocumento = datosPerfil?.numero_documento?.trim() || ''
     const celular = datosPerfil?.celular?.trim() || ''
 
@@ -67,7 +69,7 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!/^\d{8}$/.test(numeroDocumento)) {
+    if (tipoDocumento === 'DNI' && !/^\d{8}$/.test(numeroDocumento)) {
       return ApiResponse.error(request, 'El DNI debe tener exactamente 8 dígitos', 400)
     }
 
@@ -193,6 +195,7 @@ export async function POST(request: Request) {
         data: {
           nombre,
           apellido,
+          tipo_documento: tipoDocumento as TipoDocumento,
           numero_documento: numeroDocumento,
           celular,
         },

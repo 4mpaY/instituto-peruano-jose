@@ -12,7 +12,10 @@ export const crearPedidoManualSchema = z.object({
   metodo_pago: z.nativeEnum(MetodoPago).default(MetodoPago.TRANSFERENCIA),
   mensaje: z.string().trim().max(500, 'El mensaje no puede exceder 500 caracteres').optional(),
   tipo_comprobante: z.string().optional().nullable(),
-  numero_comprobante: z.string().optional().nullable()
+  numero_comprobante: z.string().optional().nullable(),
+  tipo_pedido: z.enum(['CURSO', 'CERTIFICADO']).default('CURSO'),
+  tipo_certificado: z.enum(['IPG', 'CIP']).optional().nullable(),
+  fecha_entrega_estimada: z.union([z.string(), z.date()]).optional().nullable(),
 })
 
 export type CrearPedidoManualDto = z.infer<typeof crearPedidoManualSchema>
@@ -28,7 +31,8 @@ export const listarPedidosQuerySchema = z.object({
   estado: z.string().default('TODOS'),
   buscar: z.string().trim().optional(),
   nro_pedido: z.string().trim().optional(),
-  nombre: z.string().trim().optional()
+  nombre: z.string().trim().optional(),
+  cursoId: z.string().trim().optional()
 })
 
 export type ListarPedidosQuery = z.infer<typeof listarPedidosQuerySchema>
@@ -43,6 +47,7 @@ export const updatePedidoSchema = z.object({
   tipo_comprobante: z.string().optional().nullable(),
   numero_comprobante: z.string().optional().nullable(),
   referencia_pago: z.string().trim().max(200).optional().nullable(),
+  fecha_entrega_estimada: z.union([z.string(), z.date()]).optional().nullable(),
 })
 
 export type UpdatePedidoDto = z.infer<typeof updatePedidoSchema>

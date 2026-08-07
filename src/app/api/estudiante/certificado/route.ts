@@ -32,7 +32,7 @@ export async function GET(request: Request) {
       return ApiResponse.error(request, 'El ID del curso es requerido', 400)
     }
 
-    const [certificados, elegibilidad, inscripcionHab, curso, usuarioActual, inscripcionPedido] = await Promise.all([
+    const [certificados, elegibilidad, inscripcionHab, curso, usuarioActual, inscripcionPedido, pedidosCertCompletados] = await Promise.all([
       prisma.certificado.findMany({
         where: { usuario_id: auth.user.id, curso_id: cursoId },
         include: {
@@ -51,9 +51,13 @@ export async function GET(request: Request) {
           certificado_ipg_espera_valor: true,
           certificado_ipg_espera_unidad: true,
           certificado_cip_entregas: true,
+          tipo_emision: true,
         },
       }),
-      prisma.usuario.findUnique({ where: { id: auth.user.id }, select: { numero_documento: true } }),
+      prisma.usuario.findUnique({ 
+        where: { id: auth.user.id }, 
+        select: { nombre: true, apellido: true, tipo_documento: true, numero_documento: true, celular: true } 
+      }),
       prisma.inscripcion.findUnique({
         where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } },
         select: {
@@ -61,6 +65,18 @@ export async function GET(request: Request) {
           pedido: { select: { pagado_en: true, creado_en: true } },
         },
       }),
+      prisma.$queryRaw<
+        Array<{ fecha_entrega_estimada: Date | null, certificado_tipo: string | null }>
+      >`
+        SELECT p.fecha_entrega_estimada, d.certificado_tipo::text AS certificado_tipo
+        FROM pedidos p
+        JOIN detalles_pedido d ON d.pedido_id = p.id
+        WHERE p.usuario_id = ${auth.user.id}
+          AND p.estado = 'COMPLETADO'
+          AND d.curso_id = ${cursoId}
+          AND (p.tipo = 'CERTIFICADO'::"TipoPedido" OR d.certificado_tipo IS NOT NULL)
+        ORDER BY p.creado_en DESC
+      `,
     ])
 
     // Verificar documento directamente en BD (evita depender del JWT, que puede quedar desactualizado)
@@ -95,13 +111,16 @@ export async function GET(request: Request) {
 
     const esperaIpg = Number(curso?.certificado_ipg_espera_valor ?? 0) > 0
 
-    const requiereHabilitacion =
-      !!(precioCert && precioCert > 0) || esperaIpg || cipEntregas.length > 0 || tienePrecioTramite
+    const esAsincrono = (curso as any)?.tipo_emision === 'ASINCRONO'
+
+    const requiereHabilitacionExplicita = esAsincrono
+      ? tienePrecioTramite || esperaIpg || cipEntregas.length > 0
+      : true
 
     const { ipgHabilitado, cipHabilitado, pagoPendiente } = resolveCertificadoPagoEstado(
       inscripcionHab,
       precioCert,
-      { requiereHabilitacion }
+      { requiereHabilitacion: requiereHabilitacionExplicita }
     )
 
     const fechaPago =
@@ -114,12 +133,17 @@ export async function GET(request: Request) {
     const requiereHabilitacionIpg = precioIpg != null || esperaIpg
     const requiereHabilitacionCip = precioCip != null || cipEntregas.length > 0
 
+    // Extraer fecha estimada de pedidos completados
+    const fechaEstimadaIpg = pedidosCertCompletados.find(p => p.certificado_tipo === 'IPG' || !p.certificado_tipo)?.fecha_entrega_estimada ?? null
+    const fechaEstimadaCip = pedidosCertCompletados.find(p => p.certificado_tipo === 'CIP')?.fecha_entrega_estimada ?? null
+
     const dispIpg = resolveCertificadoDisponibilidad({
       tipo: 'ipg',
       habilitado: ipgHabilitado,
       habilitadoEn: inscripcionHab?.certificado_ipg_habilitado_en ?? null,
       ipgEsperaValor: curso?.certificado_ipg_espera_valor,
       ipgEsperaUnidad: curso?.certificado_ipg_espera_unidad,
+      fechaEntregaEstimada: fechaEstimadaIpg,
     })
 
     const dispCip = resolveCertificadoDisponibilidad({
@@ -128,6 +152,7 @@ export async function GET(request: Request) {
       habilitadoEn: inscripcionHab?.certificado_cip_habilitado_en ?? null,
       cipEntregas,
       fechaPago,
+      fechaEntregaEstimada: fechaEstimadaCip,
     })
 
     const ipgDescargable =
@@ -153,7 +178,7 @@ export async function GET(request: Request) {
           }
         : null
 
-    const pedidosCertPendientes = await prisma.$queryRaw<
+    const pedidosCert = await prisma.$queryRaw<
       Array<{
         id: string
         numero_pedido: number
@@ -161,19 +186,27 @@ export async function GET(request: Request) {
         certificado_tipo: string | null
         total: unknown
         comprobante_url: string | null
+        fecha_entrega_estimada: Date | null
+        numero_comprobante: string | null
+        referencia_pago: string | null
+        estado: string
       }>
     >`
       SELECT
         p.id,
         p.numero_pedido,
         p.creado_en,
+        p.fecha_entrega_estimada,
         d.certificado_tipo::text AS certificado_tipo,
         p.total,
-        p.comprobante_url
+        p.comprobante_url,
+        p.numero_comprobante,
+        p.referencia_pago,
+        p.estado::text AS estado
       FROM pedidos p
       JOIN detalles_pedido d ON d.pedido_id = p.id
       WHERE p.usuario_id = ${auth.user.id}
-        AND p.estado = 'PENDIENTE'
+        AND p.estado IN ('PENDIENTE', 'COMPLETADO')
         AND d.curso_id = ${cursoId}
         AND (
           p.tipo = 'CERTIFICADO'::"TipoPedido"
@@ -184,7 +217,7 @@ export async function GET(request: Request) {
 
     const { estimarDisponibilidadAlTramitar } = await import('@/utils/functions/certificadoPrecios')
 
-    const solicitudesPendientes = pedidosCertPendientes.map(p => {
+    const historialSolicitudes = pedidosCert.map(p => {
       const tipo = String(p.certificado_tipo || 'IPG').toUpperCase() === 'CIP' ? 'CIP' : 'IPG'
 
       const disp = estimarDisponibilidadAlTramitar({
@@ -194,6 +227,12 @@ export async function GET(request: Request) {
         cipEntregas,
       })
 
+      const fechaEstimadaPeru = p.fecha_entrega_estimada ? new Date(p.fecha_entrega_estimada) : null
+
+      if (fechaEstimadaPeru && fechaEstimadaPeru.getUTCHours() === 0) {
+        fechaEstimadaPeru.setUTCHours(5)
+      }
+
       return {
         pedidoId: p.id,
         numeroPedido: p.numero_pedido,
@@ -202,10 +241,16 @@ export async function GET(request: Request) {
         creadoEn: p.creado_en,
         tieneComprobante: !!p.comprobante_url,
         etiquetaEntrega: disp.etiqueta,
-        disponibleDesde: disp.disponibleDesde,
+        disponibleDesde: fechaEstimadaPeru ?? disp.disponibleDesde,
         nombreTipo: tipo === 'CIP' ? 'Colegio de Ingenieros' : 'IPG Ingenieros',
+        comprobanteUrl: p.comprobante_url,
+        numeroComprobante: p.numero_comprobante,
+        referenciaPago: p.referencia_pago,
+        estado: p.estado,
       }
     })
+
+    const solicitudesPendientes = historialSolicitudes.filter(s => s.estado === 'PENDIENTE')
 
     const tiposPendientes = new Set(solicitudesPendientes.map(s => s.certificadoTipo))
 
@@ -241,6 +286,7 @@ export async function GET(request: Request) {
         : cipDescargable
           ? toResumen(certCip)
           : null,
+      historialSolicitudes,
       cursoTitulo: curso?.titulo ?? null,
       elegibilidad,
       pagoPendiente,
@@ -273,6 +319,13 @@ export async function GET(request: Request) {
         ipg: ipgHabilitado,
         cip: cipHabilitado,
       },
+      usuarioDatosEnvio: usuarioActual ? {
+        nombre: usuarioActual.nombre,
+        apellido: usuarioActual.apellido,
+        tipo_documento: usuarioActual.tipo_documento,
+        numero_documento: usuarioActual.numero_documento,
+        celular: usuarioActual.celular
+      } : null,
       plantillasPreview: [
         {
           id: 'minimalista',

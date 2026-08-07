@@ -93,7 +93,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return validation.error
     }
 
-    const { estado, metodo_pago, mensaje, tipo_comprobante, numero_comprobante, referencia_pago } =
+    const { estado, metodo_pago, mensaje, tipo_comprobante, numero_comprobante, referencia_pago, fecha_entrega_estimada } =
       validation.data
 
     const pedidoAnterior = await prisma.pedido.findUnique({
@@ -138,6 +138,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           tipo_comprobante,
           numero_comprobante,
           ...(referencia_pago !== undefined ? { referencia_pago } : {}),
+          ...(fecha_entrega_estimada !== undefined ? { fecha_entrega_estimada: fecha_entrega_estimada ? new Date(fecha_entrega_estimada) : null } : {}),
           pagado_en: estado === 'COMPLETADO' ? pagado_en : null
         }
       })

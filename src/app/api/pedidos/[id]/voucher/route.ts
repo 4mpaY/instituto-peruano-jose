@@ -12,6 +12,7 @@ const ALLOWED_IMAGE_MIMES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
+  'application/pdf': 'pdf',
 }
 
 const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
@@ -50,58 +51,66 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     const contentLength = parseInt(request.headers.get('content-length') || '0', 10)
 
-    if (contentLength > MAX_SIZE) {
-      return ApiResponse.error(request, 'La imagen supera el tamaño máximo permitido (5MB)', 413)
+    if (contentLength > MAX_SIZE * 5) {
+      return ApiResponse.error(request, 'El tamaño total supera el máximo permitido (25MB)', 413)
     }
 
     const formData = await request.formData()
-    const file = formData.get('voucher') as File | null
+    const files = formData.getAll('voucher') as File[]
 
-    if (!file) {
-      return ApiResponse.error(request, 'No se proporcionó ninguna imagen', 400)
+    if (!files || files.length === 0) {
+      return ApiResponse.error(request, 'No se proporcionó ningún archivo', 400)
     }
 
-    if (file.size > MAX_SIZE) {
-      return ApiResponse.error(request, 'La imagen supera el tamaño máximo permitido (5MB)', 413)
+    if (files.length > 5) {
+      return ApiResponse.error(request, 'Solo se permiten hasta 5 comprobantes', 400)
     }
 
-    if (!ALLOWED_IMAGE_MIMES[file.type]) {
-      return ApiResponse.error(request, 'Solo se permiten imágenes JPG, PNG o WEBP', 400)
+    const savedUrls: string[] = []
+
+    for (const file of files) {
+      if (file.size > MAX_SIZE) {
+        return ApiResponse.error(request, `El archivo ${file.name} supera el tamaño máximo (5MB)`, 413)
+      }
+
+      if (!ALLOWED_IMAGE_MIMES[file.type]) {
+        return ApiResponse.error(request, `Formato no permitido en ${file.name}. Usa JPG, PNG, WEBP o PDF`, 400)
+      }
+
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+
+      const ext = ALLOWED_IMAGE_MIMES[file.type]
+      const fileName = `${randomUUID()}.${ext}`
+
+      try {
+        const saved = await saveUploadFile({
+          folder: 'vouchers',
+          fileName,
+          buffer,
+        })
+
+        savedUrls.push(saved.relativeUrl)
+      } catch (fsError) {
+        const normalized = normalizeUploadFsError(fsError)
+
+        console.error('[voucher upload] FS error:', normalized)
+        
+return ApiResponse.error(request, normalized.message, 500)
+      }
     }
 
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
-    const ext = ALLOWED_IMAGE_MIMES[file.type]
-    const fileName = `${randomUUID()}.${ext}`
-
-    let relativePath: string
-
-    try {
-      const saved = await saveUploadFile({
-        folder: 'vouchers',
-        fileName,
-        buffer,
-      })
-
-      relativePath = saved.relativeUrl
-    } catch (fsError) {
-      const normalized = normalizeUploadFsError(fsError)
-
-      console.error('[voucher upload] FS error:', normalized)
-
-      return ApiResponse.error(request, normalized.message, 500)
-    }
+    const finalUrl = savedUrls.join(',')
 
     await prisma.pedido.update({
       where: { id: params.id },
       data: {
-        comprobante_url: relativePath,
+        comprobante_url: finalUrl,
         comprobante_subido_en: new Date(),
       },
     })
 
-    return ApiResponse.success(request, { comprobante_url: relativePath })
+    return ApiResponse.success(request, { comprobante_url: finalUrl })
   } catch (error) {
     return handleApiError(error, request)
   }

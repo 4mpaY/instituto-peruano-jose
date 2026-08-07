@@ -134,7 +134,17 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
                     return
                 }
 
-                const { elegibilidad, pagoPendiente } = res.data.result
+                const { elegibilidad, pagoPendiente, certificado, solicitudesPendientes, certificadosHabilitados } = res.data.result
+                
+                // Si ya tiene el certificado generado/disponible, no mostramos el popup repetitivo
+                if (certificado) return
+
+                // Si el pedido está en proceso (solicitudes pendientes), no mostrar popup
+                if (solicitudesPendientes && solicitudesPendientes.length > 0) return
+
+                // Si el pedido ya fue aceptado (habilitado por admin), no mostrar popup
+                if (certificadosHabilitados?.ipg || certificadosHabilitados?.cip) return
+
                 const cursoTerminado = !!elegibilidad?.isEligible || (tieneExamenes && todasEvaluacionesOk && (elegibilidad?.progreso ?? 0) >= 100)
 
                 if (cursoTerminado || (tieneExamenes && todasEvaluacionesOk)) {
@@ -292,11 +302,13 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
 
                     try {
                         const res = await axios.get(`/api/estudiante/certificado?cursoId=${storeCourse.id}`)
-                        const pagoPendiente = !!res.data?.result?.pagoPendiente
-                        const certificado = res.data?.result?.certificado
+                        const { pagoPendiente, certificado, solicitudesPendientes, certificadosHabilitados } = res.data?.result || {}
 
                         if (certificado) return
-                        openCertGuidePopup(pagoPendiente)
+                        if (solicitudesPendientes && solicitudesPendientes.length > 0) return
+                        if (certificadosHabilitados?.ipg || certificadosHabilitados?.cip) return
+
+                        openCertGuidePopup(!!pagoPendiente)
                     } catch {
                         openCertGuidePopup(false)
                     }

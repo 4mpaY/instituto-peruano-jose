@@ -18,7 +18,8 @@ import {
   IconButton,
   Tooltip,
   Stack,
-  CircularProgress
+  CircularProgress,
+  Autocomplete
 } from '@mui/material'
 import { toast } from 'react-toastify'
 import {
@@ -42,9 +43,9 @@ import CustomTextField from '@core/components/mui/TextField'
 import type { ThemeColor } from '@/@core/types'
 import type { Pedido } from '../entity/Pedido'
 import { usePedidos, useDeletePedido } from '../hooks/usePedidos'
+import { useCursosLista } from '../../cursos/hooks/useCursos'
 import { AxiosPedido } from '../http/axiosPedido'
 import TablePaginationComponent from '@/utils/components/others/TablePaginationComponent'
-import HydratedDate from '@/utils/components/HydratedDate'
 import { DebouncedInput } from '@/utils/components/others/DebouncedInput'
 import CustomAlertDialog from '@/components/CustomAlertDialog'
 
@@ -72,6 +73,18 @@ export function PedidosPage({ initialData, initialTotal = 0 }: PedidosPageProps)
   const [estadoFiltro, setEstadoFiltro] = useState('TODOS')
   const [nroPedido, setNroPedido] = useState('')
   const [nombre, setNombre] = useState('')
+  const [cursoFiltro, setCursoFiltro] = useState<{ id: string, label: string } | null>(null)
+
+  const { data: cursosLista } = useCursosLista()
+  
+  const cursosOpciones = useMemo(() => {
+    if (!cursosLista) return []
+    
+return cursosLista.map(c => ({
+      id: c.id,
+      label: `${c.titulo} (${c.es_asincrono ? 'Asíncrono' : 'Síncrono'} - ${new Date(c.creado_en).toLocaleDateString('es-PE')})`
+    }))
+  }, [cursosLista])
 
   const { mutateAsync: deletePedido, isPending: isDeleting } = useDeletePedido()
   const [deleteInfo, setDeleteInfo] = useState<{ open: boolean, id: string | null }>({ open: false, id: null })
@@ -134,6 +147,7 @@ export function PedidosPage({ initialData, initialTotal = 0 }: PedidosPageProps)
       estado: estadoFiltro,
       nro_pedido: nroPedido,
       nombre: nombre,
+      cursoId: cursoFiltro?.id,
       page: String(pagination.pageIndex + 1),
       limit: String(pagination.pageSize)
     },
@@ -167,72 +181,27 @@ export function PedidosPage({ initialData, initialTotal = 0 }: PedidosPageProps)
           </Typography>
         )
       }),
-      columnHelper.accessor('usuario', {
-        header: 'Estudiante',
+      columnHelper.display({
+        id: 'acciones',
+        header: 'Acciones',
         cell: ({ row }) => (
-          <div className='flex flex-col'>
-            <Typography color='text.primary' className='font-medium'>
-              {row.original.usuario?.nombre} {row.original.usuario?.apellido}
-            </Typography>
-            <Typography variant='caption' color='text.secondary'>
-              {row.original.usuario?.correo}
-            </Typography>
+          <div className='flex items-center gap-1'>
+            <Tooltip title='Ver Detalle'>
+              <IconButton onClick={() => router.push(`/admin/pedidos/detalle/${row.original.id}`)} size='small'>
+                <i className='tabler-eye text-[20px] text-primary' />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title='Editar'>
+              <IconButton onClick={() => router.push(`/admin/pedidos/editar/${row.original.id}`)} size='small'>
+                <i className='tabler-edit text-[20px] text-textSecondary' />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title='Eliminar'>
+              <IconButton onClick={() => setDeleteInfo({ open: true, id: row.original.id })} size='small'>
+                <i className='tabler-trash text-[20px] text-error' />
+              </IconButton>
+            </Tooltip>
           </div>
-        )
-      }),
-      columnHelper.accessor('detalles', {
-        header: 'Curso(s)',
-        cell: ({ row }) => (
-          <div className='flex flex-col'>
-            {row.original.detalles?.map((detalle, index) => {
-              const certTipo = (detalle as any).certificado_tipo
-              const titulo = detalle.curso?.titulo || ''
-
-              const label = certTipo
-                ? `${titulo} (Certificado ${String(certTipo).toUpperCase() === 'CIP' ? 'Colegio de Ingenieros' : 'IPG'})`
-                : titulo
-
-              return (
-                <Typography key={index} variant='body2' color='text.primary'>
-                  {label}
-                </Typography>
-              )
-            })}
-          </div>
-        )
-      }),
-      columnHelper.accessor('total', {
-        header: 'Total',
-        cell: ({ row }) => (
-          <Typography color='text.primary' className='font-medium'>
-            {row.original.moneda} {Number(row.original.total).toFixed(2)}
-          </Typography>
-        )
-      }),
-      columnHelper.accessor('cupon', {
-        header: 'Descuento / Cupón',
-        cell: ({ row }) => (
-          <Typography variant='body2' color='text.secondary'>
-            {row.original.cupon?.codigo ? (
-              <Chip
-                label={row.original.cupon.codigo}
-                size='small'
-                variant='outlined'
-                color='primary'
-                sx={{ fontWeight: 600 }}
-              />
-            ) : (
-              '-'
-            )}
-          </Typography>
-        )
-      }),
-      columnHelper.accessor('metodo_pago', {
-        header: 'Método',
-        cell: ({ row }) => (
-          <Typography variant='body2' className='capitalize'>
-            {row.original.metodo_pago?.toLowerCase().replace('_', ' ') || '-'}
-          </Typography>
         )
       }),
       columnHelper.accessor('estado', {
@@ -268,43 +237,72 @@ export function PedidosPage({ initialData, initialTotal = 0 }: PedidosPageProps)
           </Stack>
         )
       }),
-      columnHelper.accessor('creado_en', {
-        header: 'Fecha',
+      columnHelper.accessor('total', {
+        header: 'Total',
         cell: ({ row }) => (
-          <Typography variant='body2'>
-            <HydratedDate
-              date={row.original.creado_en}
-              format="date"
-              options={{
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-              }}
-            />
+          <Typography color='text.primary' className='font-medium whitespace-nowrap'>
+            {row.original.moneda} {Number(row.original.total).toFixed(2)}
           </Typography>
         )
       }),
-      columnHelper.display({
-        id: 'acciones',
-        header: () => <div className='w-full text-right'>Acciones</div>,
+      columnHelper.accessor('detalles', {
+        header: 'Curso',
         cell: ({ row }) => (
-          <div className='flex items-center justify-end w-full gap-1'>
-            <Tooltip title='Ver Detalle'>
-              <IconButton onClick={() => router.push(`/admin/pedidos/detalle/${row.original.id}`)}>
-                <i className='tabler-eye text-[22px] text-primary' />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title='Editar'>
-              <IconButton onClick={() => router.push(`/admin/pedidos/editar/${row.original.id}`)}>
-                <i className='tabler-edit text-[22px] text-textSecondary' />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title='Eliminar'>
-              <IconButton onClick={() => setDeleteInfo({ open: true, id: row.original.id })}>
-                <i className='tabler-trash text-[22px] text-error' />
-              </IconButton>
-            </Tooltip>
+          <div className='flex flex-col max-w-[180px]'>
+            {row.original.detalles?.map((detalle, index) => {
+              const certTipo = (detalle as any).certificado_tipo
+              const titulo = detalle.curso?.titulo || ''
+
+              const label = certTipo
+                ? `${titulo} (Certificado ${String(certTipo).toUpperCase() === 'CIP' ? 'Colegio de Ingenieros' : 'IPG'})`
+                : titulo
+
+              return (
+                <Typography key={index} variant='body2' color='text.primary' className='whitespace-normal break-words line-clamp-3'>
+                  {label}
+                </Typography>
+              )
+            })}
           </div>
+        )
+      }),
+      columnHelper.accessor('usuario', {
+        header: 'Alumno',
+        cell: ({ row }) => (
+          <div className='flex flex-col max-w-[150px]'>
+            <Typography color='text.primary' className='font-medium whitespace-normal break-words line-clamp-2'>
+              {row.original.usuario?.nombre} {row.original.usuario?.apellido}
+            </Typography>
+            <Typography variant='caption' color='text.secondary' className='truncate'>
+              {row.original.usuario?.correo}
+            </Typography>
+          </div>
+        )
+      }),
+      columnHelper.accessor('cupon', {
+        header: 'Descuento / Cupón',
+        cell: ({ row }) => (
+          <Typography variant='body2' color='text.secondary'>
+            {row.original.cupon?.codigo ? (
+              <Chip
+                label={row.original.cupon.codigo}
+                size='small'
+                variant='outlined'
+                color='primary'
+                sx={{ fontWeight: 600 }}
+              />
+            ) : (
+              '-'
+            )}
+          </Typography>
+        )
+      }),
+      columnHelper.accessor('metodo_pago', {
+        header: 'Método de pago',
+        cell: ({ row }) => (
+          <Typography variant='body2' className='capitalize whitespace-nowrap'>
+            {row.original.metodo_pago?.toLowerCase().replace('_', ' ') || '-'}
+          </Typography>
         )
       })
     ],
@@ -329,18 +327,20 @@ export function PedidosPage({ initialData, initialTotal = 0 }: PedidosPageProps)
   return (
     <Card>
       <CardHeader title='Gestión de Pedidos' className='pbe-4' />
-      <div className='flex justify-between flex-col items-start md:flex-row md:items-center p-6 border-bs gap-4'>
-        <CustomTextField
-          select
-          value={table.getState().pagination.pageSize}
-          onChange={e => table.setPageSize(Number(e.target.value))}
-          className='is-[70px]'
-        >
-          <MenuItem value='10'>10</MenuItem>
-          <MenuItem value='25'>25</MenuItem>
-          <MenuItem value='50'>50</MenuItem>
-        </CustomTextField>
-        <div className='flex flex-wrap items-center gap-4 is-full sm:is-auto'>
+      <div className='flex justify-between flex-col items-start xl:flex-row xl:items-start p-6 border-bs gap-4'>
+        <div className='flex items-start gap-4 pt-1'>
+          <CustomTextField
+            select
+            value={table.getState().pagination.pageSize}
+            onChange={e => table.setPageSize(Number(e.target.value))}
+            className='is-[70px]'
+          >
+            <MenuItem value='10'>10</MenuItem>
+            <MenuItem value='25'>25</MenuItem>
+            <MenuItem value='50'>50</MenuItem>
+          </CustomTextField>
+        </div>
+        <div className='flex flex-wrap items-center justify-start xl:justify-center gap-4 flex-1 w-full xl:w-auto'>
           <CustomTextField
             select
             value={estadoFiltro}
@@ -376,13 +376,28 @@ export function PedidosPage({ initialData, initialTotal = 0 }: PedidosPageProps)
             className='is-full sm:is-[200px]'
           />
 
+          <Autocomplete
+            options={cursosOpciones}
+            getOptionLabel={option => option.label}
+            value={cursoFiltro}
+            onChange={(_, newValue) => {
+              setCursoFiltro(newValue)
+              table.setPageIndex(0)
+            }}
+            renderInput={params => <CustomTextField {...params} placeholder='Filtrar por Curso...' />}
+            className='is-full sm:is-[250px]'
+            isOptionEqualToValue={(option, value) => option.id === value?.id}
+          />
+        </div>
+
+        <div className='flex flex-col gap-2 w-full sm:w-auto shrink-0'>
           <Button
             variant='contained'
             color='success'
             startIcon={isExporting ? <CircularProgress size={16} color='inherit' /> : <i className='tabler-file-spreadsheet' />}
             onClick={handleExportarExcel}
             disabled={isExporting}
-            className='is-full sm:is-auto'
+            className='is-full sm:w-full'
           >
             {isExporting ? 'Exportando...' : 'Exportar Excel'}
           </Button>
@@ -390,13 +405,13 @@ export function PedidosPage({ initialData, initialTotal = 0 }: PedidosPageProps)
             variant='contained'
             startIcon={<i className='tabler-plus' />}
             onClick={() => router.push('/admin/pedidos/nuevo')}
-            className='is-full sm:is-auto'
+            className='is-full sm:w-full'
           >
             Nuevo Pedido
           </Button>
         </div>
       </div>
-
+      
       <div className='overflow-x-auto relative'>
         {(isFetching && !isPlaceholderData) && (
           <Box

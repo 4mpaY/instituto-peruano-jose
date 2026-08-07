@@ -30,7 +30,8 @@ export function usePedidos(query?: Record<string, any>, initialData?: Pedido[], 
     (query.limit === '10' || !query.limit) &&
     (!query.estado || query.estado === 'TODOS') &&
     (!query.nro_pedido) &&
-    (!query.nombre)
+    (!query.nombre) &&
+    (!query.cursoId)
   )
 
   return useQuery<{ pedidos: Pedido[]; paginacion: any }, any>({

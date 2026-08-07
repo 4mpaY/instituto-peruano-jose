@@ -65,6 +65,7 @@ export function PedidoEditPage() {
       tipo_comprobante: '',
       numero_comprobante: '',
       referencia_pago: '',
+      fecha_entrega_estimada: '',
     }
   })
 
@@ -79,6 +80,7 @@ export function PedidoEditPage() {
         tipo_comprobante: p.tipo_comprobante || '',
         numero_comprobante: p.numero_comprobante || '',
         referencia_pago: p.referencia_pago || '',
+        fecha_entrega_estimada: p.fecha_entrega_estimada ? new Date(p.fecha_entrega_estimada).toISOString().slice(0, 10) : '',
       })
       setVoucherPreview(p.comprobante_url || null)
     }
@@ -100,6 +102,7 @@ export function PedidoEditPage() {
           tipo_comprobante: formData.tipo_comprobante || null,
           numero_comprobante: formData.numero_comprobante || null,
           referencia_pago: formData.referencia_pago?.trim() || null,
+          fecha_entrega_estimada: formData.fecha_entrega_estimada || null,
         } as any
       })
 
@@ -287,7 +290,7 @@ export function PedidoEditPage() {
                       </Box>
                     </Stack>
                     {(voucherPreview || pedido.comprobante_url) && (
-                      <Chip label='Voucher recibido' color='success' size='small' variant='tonal' icon={<i className='tabler-check' style={{ fontSize: 13 }} />} />
+                      <Chip label='Voucher(s) recibido(s)' color='success' size='small' variant='tonal' icon={<i className='tabler-check' style={{ fontSize: 13 }} />} />
                     )}
                   </Stack>
 
@@ -503,6 +506,27 @@ export function PedidoEditPage() {
                     />
                   </Grid>
 
+                  {/* Fecha de Entrega Estimada (Opcional) */}
+                  {pedido?.tipo === 'CERTIFICADO' && (
+                    <Grid item xs={12} sm={6}>
+                      <Controller
+                        name='fecha_entrega_estimada'
+                        control={control}
+                        render={({ field }) => (
+                          <CustomTextField
+                            {...field}
+                            type='date'
+                            fullWidth
+                            label='Fecha de Envío Estimada (Opcional)'
+                            helperText='Sobrescribe la fecha calculada por el curso'
+                            InputLabelProps={{ shrink: true }}
+                          />
+                        )}
+                      />
+                    </Grid>
+                  )}
+
+
                   <Grid item xs={12} sm={6}>
                     <Controller
                       name='tipo_comprobante'
@@ -622,9 +646,39 @@ export function PedidoEditPage() {
               </Stack>
 
               {pedido?.comprobante_url ? (
-                <Alert severity='success' icon={<i className='tabler-photo-check' style={{ fontSize: 16 }} />} sx={{ borderRadius: 2, fontSize: '0.75rem' }}>
-                  Comprobante recibido
-                </Alert>
+                <Box>
+                  <Alert severity='success' icon={<i className='tabler-photo-check' style={{ fontSize: 16 }} />} sx={{ borderRadius: 2, fontSize: '0.75rem', mb: 1 }}>
+                    Comprobante(s) recibido(s)
+                  </Alert>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {pedido.comprobante_url.split(',').map((url, idx) => (
+                      <Box
+                        key={idx}
+                        component='a'
+                        href={url}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: 1,
+                          overflow: 'hidden',
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          display: 'block'
+                        }}
+                      >
+                        {url.toLowerCase().endsWith('.pdf') ? (
+                          <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover' }}>
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 700 }}>PDF</Typography>
+                          </Box>
+                        ) : (
+                          <img src={url} alt={`Voucher ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
               ) : (
                 <Alert severity='warning' icon={<i className='tabler-photo-off' style={{ fontSize: 16 }} />} sx={{ borderRadius: 2, fontSize: '0.75rem' }}>
                   Sin comprobante

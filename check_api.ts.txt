@@ -1,0 +1,22 @@
+async function run() {
+  const res = await fetch('http://localhost:3000/api/pedidos/e1eaceb0-6f8e-4cfb-a280-befee34d1798', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      // I need to be authenticated as admin, this will return 401.
+    },
+    body: JSON.stringify({
+      estado: 'COMPLETADO',
+      metodo_pago: 'TRANSFERENCIA',
+      mensaje: 'Trámite de certificado: Estudio de suelos (Certificado Colegio de Ingenieros)',
+      tipo_comprobante: 'OPERACION',
+      numero_comprobante: null,
+      referencia_pago: null,
+      fecha_entrega_estimada: null
+    })
+  });
+  console.log(res.status);
+  const text = await res.text();
+  console.log(text);
+}
+run();

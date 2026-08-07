@@ -14,6 +14,8 @@ export interface Pedido {
   comprobante_url: string | null
   comprobante_subido_en: string | null
   transaccion_id: string | null
+  tipo?: string
+  fecha_entrega_estimada?: string | null
   creado_en: string
   pagado_en: string | null
   usuario_id: string
@@ -22,6 +24,8 @@ export interface Pedido {
     nombre: string
     apellido: string
     correo: string
+    numero_documento?: string | null
+    celular?: string | null
     avatar: string | null
   }
   cupon?: {

@@ -2,6 +2,10 @@ export interface CursoListaItem {
   id: string
   titulo: string
   estado: string
+  tipo_emision?: string | null
+  fecha_inicio?: string | Date | null
+  es_asincrono: boolean
+  creado_en: string
 }
 
 export interface CursoProfesor {

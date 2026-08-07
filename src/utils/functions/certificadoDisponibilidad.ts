@@ -18,6 +18,7 @@ export type CertificadoDisponibilidad = {
 
 function parseDateOnly(value: string): Date | null {
   if (!value) return null
+  if (value.includes('T')) return new Date(value)
   const [y, m, d] = value.split('-').map(Number)
 
   if (!y || !m || !d) return null
@@ -62,9 +63,17 @@ export function resolveCertificadoDisponibilidad(opts: {
   ipgEsperaUnidad?: string | null
   cipEntregas?: CipEntregaRango[] | null
   fechaPago?: Date | null
+  fechaEntregaEstimada?: Date | null
   now?: Date
 }): CertificadoDisponibilidad {
   const now = opts.now ?? new Date()
+
+  // Ajustar fechaEntregaEstimada a la medianoche de Perú (UTC-5)
+  const fechaEstimadaPeru = opts.fechaEntregaEstimada ? new Date(opts.fechaEntregaEstimada) : null
+
+  if (fechaEstimadaPeru && fechaEstimadaPeru.getUTCHours() === 0) {
+    fechaEstimadaPeru.setUTCHours(5)
+  }
 
   if (!opts.habilitado) {
     return {
@@ -80,7 +89,7 @@ export function resolveCertificadoDisponibilidad(opts: {
     const inicio = opts.habilitadoEn ?? now
     const unidad = (opts.ipgEsperaUnidad || 'DIAS').toUpperCase() as UnidadEsperaIpg
     const valor = opts.ipgEsperaValor ?? 0
-    const disponibleDesde = addEspera(inicio, valor, unidad)
+    const disponibleDesde = fechaEstimadaPeru ?? addEspera(inicio, valor, unidad)
     const disponible = now >= disponibleDesde
 
     return {
@@ -139,7 +148,7 @@ return refDay >= desde && refDay <= hasta
     }
   }
 
-  const disponibleDesde = parseDateTime(match.fecha_entrega, match.hora) ?? opts.habilitadoEn ?? now
+  const disponibleDesde = fechaEstimadaPeru ?? parseDateTime(match.fecha_entrega, match.hora) ?? opts.habilitadoEn ?? now
   const disponible = now >= disponibleDesde
 
   return {

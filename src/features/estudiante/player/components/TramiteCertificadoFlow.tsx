@@ -21,6 +21,11 @@ import {
   TextField,
   Tooltip,
   Typography,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material'
 import { MuiTelInput } from 'mui-tel-input'
 
@@ -97,6 +102,7 @@ export default function TramiteCertificadoFlow({
 }: Props) {
   const { enqueueSnackbar } = useSnackbar()
   const [step, setStep] = useState<Step>('datos')
+  const [showResumenDatos, setShowResumenDatos] = useState(false)
   const [loadingPerfil, setLoadingPerfil] = useState(true)
   const [confirmDatos, setConfirmDatos] = useState(false)
   const [tipo, setTipo] = useState<CertTipo | null>(null)
@@ -115,13 +121,14 @@ export default function TramiteCertificadoFlow({
   const [metodoId, setMetodoId] = useState<string | null>(null)
   const [bancoPago, setBancoPago] = useState('')
   const [codigoOperacion, setCodigoOperacion] = useState('')
-  const [voucher, setVoucher] = useState<File | null>(null)
-  const [voucherPreview, setVoucherPreview] = useState<string | null>(null)
+  const [vouchers, setVouchers] = useState<File[]>([])
+  const [voucherPreviews, setVoucherPreviews] = useState<string[]>([])
 
   const [form, setForm] = useState({
     nombre: '',
     apellido: '',
     correo: '',
+    tipo_documento: 'DNI',
     numero_documento: '',
     celular: '',
   })
@@ -182,6 +189,7 @@ export default function TramiteCertificadoFlow({
           nombre: u.nombre || '',
           apellido: u.apellido || '',
           correo: u.correo || '',
+          tipo_documento: u.tipo_documento || 'DNI',
           numero_documento: u.numero_documento || '',
 
           // E.164: evita falso "inválido" cuando BD guarda el número sin +51
@@ -209,8 +217,8 @@ export default function TramiteCertificadoFlow({
     apellido: !form.apellido.trim() ? 'El apellido es obligatorio' : null,
     correo: !form.correo.trim() ? 'El correo es obligatorio' : null,
     numero_documento: !form.numero_documento.trim()
-      ? 'El DNI es obligatorio'
-      : !/^\d{8}$/.test(form.numero_documento.trim())
+      ? 'El documento es obligatorio'
+      : form.tipo_documento === 'DNI' && !/^\d{8}$/.test(form.numero_documento.trim())
         ? 'El DNI debe tener exactamente 8 dígitos'
         : null,
     celular: !form.celular.trim()
@@ -223,10 +231,21 @@ export default function TramiteCertificadoFlow({
 
   const canContinueDatos = Object.values(erroresDatos).every(e => e == null)
 
-  const handleVoucher = (file: File | null) => {
-    setVoucher(file)
-    if (voucherPreview) URL.revokeObjectURL(voucherPreview)
-    setVoucherPreview(file ? URL.createObjectURL(file) : null)
+  const handleVouchers = (files: File[]) => {
+    // Liberar memoria
+    voucherPreviews.forEach(p => URL.revokeObjectURL(p))
+
+    if (!files || files.length === 0) {
+      setVouchers([])
+      setVoucherPreviews([])
+      
+return
+    }
+
+    const limitedFiles = files.slice(0, 5)
+
+    setVouchers(limitedFiles)
+    setVoucherPreviews(limitedFiles.map(f => URL.createObjectURL(f)))
   }
 
   const handleSubmitPago = async () => {
@@ -260,8 +279,8 @@ export default function TramiteCertificadoFlow({
       return
     }
 
-    if (!voucher) {
-      const msg = 'Sube la imagen de tu voucher'
+    if (vouchers.length === 0) {
+      const msg = 'Sube al menos la imagen de tu voucher'
 
       setSubmitError(msg)
       enqueueSnackbar(msg, { variant: 'warning' })
@@ -281,6 +300,7 @@ export default function TramiteCertificadoFlow({
         datosPerfil: {
           nombre: form.nombre,
           apellido: form.apellido,
+          tipo_documento: form.tipo_documento,
           numero_documento: form.numero_documento,
           celular: form.celular,
         },
@@ -293,7 +313,7 @@ export default function TramiteCertificadoFlow({
       const { pedidoId, numeroPedido, certificadoTipo } = checkoutRes.data.result
       const fd = new FormData()
 
-      fd.append('voucher', voucher)
+      vouchers.forEach(v => fd.append('voucher', v))
 
       // fetch sin Content-Type forzado (igual que el checkout de cursos)
       const voucherRes = await fetch(`/api/pedidos/${pedidoId}/voucher`, {
@@ -397,7 +417,7 @@ export default function TramiteCertificadoFlow({
           ¡Solicitud enviada!
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5, maxWidth: 460, mx: 'auto' }}>
-          Tu pedido #{pedidoCreado.numeroPedido} ({nombreTipo}) fue registrado. Estamos esperando la
+          Tu solicitud para el certificado ({nombreTipo}) fue registrada. Estamos esperando la
           aprobación del pago por parte del administrador.
         </Typography>
 
@@ -435,28 +455,73 @@ export default function TramiteCertificadoFlow({
                   day: 'numeric',
                   month: 'long',
                   year: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
                 })}
               </strong>
             </Typography>
           )}
         </Box>
 
-        <Button
-          variant="contained"
-          onClick={handleEntendido}
-          sx={{
-            bgcolor: '#025E44',
-            textTransform: 'none',
-            fontWeight: 700,
-            borderRadius: '12px',
-            px: 4,
-            '&:hover': { bgcolor: '#014d36' },
-          }}
-        >
-          Entendido
-        </Button>
+        <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => setShowResumenDatos(true)}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              borderRadius: '12px',
+              px: 3,
+            }}
+          >
+            Ver datos enviados
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleEntendido}
+            sx={{
+              bgcolor: '#025E44',
+              textTransform: 'none',
+              fontWeight: 700,
+              borderRadius: '12px',
+              px: 4,
+              '&:hover': { bgcolor: '#014d36' },
+            }}
+          >
+            Entendido
+          </Button>
+        </Stack>
+
+        <Dialog open={showResumenDatos} onClose={() => setShowResumenDatos(false)} maxWidth="sm" fullWidth>
+          <DialogTitle sx={{ fontWeight: 800 }}>Datos Enviados</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Nombres</Typography>
+                <Typography variant="body1" fontWeight={600}>{form.nombre || '-'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Apellidos</Typography>
+                <Typography variant="body1" fontWeight={600}>{form.apellido || '-'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Correo</Typography>
+                <Typography variant="body1" fontWeight={600}>{form.correo || '-'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">{form.tipo_documento === 'DNI' ? 'DNI' : 'Documento'}</Typography>
+                <Typography variant="body1" fontWeight={600}>{form.numero_documento || '-'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Celular</Typography>
+                <Typography variant="body1" fontWeight={600}>{form.celular || '-'}</Typography>
+              </Box>
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowResumenDatos(false)} sx={{ fontWeight: 700 }}>
+              Cerrar
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     )
   }
@@ -536,39 +601,77 @@ export default function TramiteCertificadoFlow({
               Todos los campos son obligatorios. Revisa que la información esté correcta antes de continuar.
             </Typography>
             <Grid container spacing={2}>
-              {(
-                [
-                  ['nombre', 'Nombres'],
-                  ['apellido', 'Apellidos'],
-                  ['correo', 'Correo electrónico'],
-                  ['numero_documento', 'DNI'],
-                ] as const
-              ).map(([key, label]) => (
-                <Grid item xs={12} sm={key === 'correo' ? 12 : 6} key={key}>
-                  <TextField
-                    fullWidth
-                    required
-                    label={label}
-                    value={form[key]}
-                    disabled={key === 'correo'}
-                    error={datosTouched && !!erroresDatos[key]}
-                    helperText={datosTouched ? erroresDatos[key] : undefined}
-                    inputProps={
-                      key === 'numero_documento'
-                        ? { maxLength: 8, inputMode: 'numeric', pattern: '[0-9]*' }
-                        : undefined
-                    }
-                    onChange={e => {
-                      const value =
-                        key === 'numero_documento'
-                          ? e.target.value.replace(/\D/g, '').slice(0, 8)
-                          : e.target.value
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  required
+                  label="Nombres"
+                  value={form.nombre}
+                  error={datosTouched && !!erroresDatos.nombre}
+                  helperText={datosTouched ? erroresDatos.nombre : undefined}
+                  onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  required
+                  label="Apellidos"
+                  value={form.apellido}
+                  error={datosTouched && !!erroresDatos.apellido}
+                  helperText={datosTouched ? erroresDatos.apellido : undefined}
+                  onChange={e => setForm(f => ({ ...f, apellido: e.target.value }))}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  required
+                  disabled
+                  label="Correo electrónico"
+                  value={form.correo}
+                  error={datosTouched && !!erroresDatos.correo}
+                  helperText={datosTouched ? erroresDatos.correo : undefined}
+                  onChange={e => setForm(f => ({ ...f, correo: e.target.value }))}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4} md={3}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Tipo Doc."
+                  value={form.tipo_documento}
+                  onChange={e => setForm(f => ({ ...f, tipo_documento: e.target.value }))}
+                >
+                  <MenuItem value="DNI">DNI</MenuItem>
+                  <MenuItem value="CE">CE</MenuItem>
+                  <MenuItem value="PASAPORTE">Pasaporte</MenuItem>
+                  <MenuItem value="OTRO">Otro</MenuItem>
+                </TextField>
+              </Grid>
+              <Grid item xs={12} sm={8} md={3}>
+                <TextField
+                  fullWidth
+                  required
+                  label={form.tipo_documento === 'DNI' ? 'DNI' : 'Documento'}
+                  value={form.numero_documento}
+                  error={datosTouched && !!erroresDatos.numero_documento}
+                  helperText={datosTouched ? erroresDatos.numero_documento : undefined}
+                  inputProps={
+                    form.tipo_documento === 'DNI'
+                      ? { maxLength: 8, inputMode: 'numeric', pattern: '[0-9]*' }
+                      : { maxLength: 20 }
+                  }
+                  onChange={e => {
+                    const value =
+                      form.tipo_documento === 'DNI'
+                        ? e.target.value.replace(/\D/g, '').slice(0, 8)
+                        : e.target.value.slice(0, 20)
 
-                      setForm(f => ({ ...f, [key]: value }))
-                    }}
-                  />
-                </Grid>
-              ))}
+                    setForm(f => ({ ...f, numero_documento: value }))
+                  }}
+                />
+              </Grid>
               <Grid item xs={12} sm={6}>
                 <MuiTelInput
                   fullWidth
@@ -663,7 +766,7 @@ export default function TramiteCertificadoFlow({
                 ['Nombres', form.nombre],
                 ['Apellidos', form.apellido],
                 ['Correo', form.correo],
-                ['DNI', form.numero_documento],
+                [form.tipo_documento === 'DNI' ? 'DNI' : 'Documento', form.numero_documento],
                 ['Celular', form.celular || '—'],
               ].map(([k, v], i) => (
                 <Box
@@ -879,48 +982,47 @@ export default function TramiteCertificadoFlow({
               onChange={e => setCodigoOperacion(e.target.value)}
               sx={{ mb: 2 }}
             />
-
             <Typography variant="body2" fontWeight={700} sx={{ mb: 0.75 }}>
               Imagen del voucher / comprobante *
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-              Captura de pantalla o foto de la transferencia (JPG, PNG, WEBP — máx. 5 MB)
+              Captura de pantalla o foto de la transferencia (JPG, PNG, WEBP, PDF - máx. 5 MB c/u, hasta 5 archivos)
             </Typography>
 
-            {voucherPreview ? (
-              <Box sx={{ position: 'relative' }}>
-                <Box
-                  component="img"
-                  src={voucherPreview}
-                  alt="Comprobante de pago"
-                  sx={{
-                    width: '100%',
-                    maxHeight: 280,
-                    objectFit: 'contain',
-                    borderRadius: 2,
-                    border: '2px solid',
-                    borderColor: 'success.main',
-                    display: 'block',
-                    bgcolor: 'action.hover',
-                  }}
-                />
-                <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleVoucher(null)}
-                    sx={{ bgcolor: 'error.main', color: 'white', width: 28, height: 28, '&:hover': { bgcolor: 'error.dark' } }}
-                  >
-                    <i className="tabler-x" style={{ fontSize: 14 }} />
-                  </IconButton>
-                </Box>
-                <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.75} sx={{ mt: 1 }}>
-                  <i className="tabler-circle-check-filled" style={{ fontSize: 16, color: '#2e7d32' }} />
-                  <Typography variant="caption" color="success.dark" fontWeight={600}>
-                    Voucher cargado — listo para enviar
-                  </Typography>
-                </Stack>
+            {voucherPreviews.length > 0 && (
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                {voucherPreviews.map((preview, idx) => (
+                  <Box key={idx} sx={{ position: 'relative', width: 80, height: 80 }}>
+                    {vouchers[idx]?.type === 'application/pdf' ? (
+                      <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                        <i className="tabler-file-type-pdf" style={{ fontSize: 32, color: '#ef4444' }} />
+                      </Box>
+                    ) : (
+                      <Box
+                        component="img"
+                        src={preview}
+                        alt="Comprobante de pago"
+                        sx={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
+                      />
+                    )}
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        const newVouchers = [...vouchers]
+
+                        newVouchers.splice(idx, 1)
+                        handleVouchers(newVouchers)
+                      }}
+                      sx={{ position: 'absolute', top: -6, right: -6, bgcolor: 'error.main', color: 'white', width: 20, height: 20, '&:hover': { bgcolor: 'error.dark' } }}
+                    >
+                      <i className="tabler-x" style={{ fontSize: 12 }} />
+                    </IconButton>
+                  </Box>
+                ))}
               </Box>
-            ) : (
+            )}
+
+            {vouchers.length < 5 && (
               <Box
                 component="label"
                 sx={{
@@ -943,25 +1045,37 @@ export default function TramiteCertificadoFlow({
                 <input
                   hidden
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
                   onChange={e => {
-                    const file = e.target.files?.[0] || null
+                    const files = Array.from(e.target.files || [])
+                    
+                    const validFiles = files.filter(f => {
+                      if (f.size > 5 * 1024 * 1024) {
+                        enqueueSnackbar(`El archivo ${f.name} supera los 5 MB`, { variant: 'warning' })
+                        
+return false
+                      }
 
-                    if (file && file.size > 5 * 1024 * 1024) {
-                      enqueueSnackbar('El archivo no debe superar 5 MB', { variant: 'warning' })
+                      
+return true
+                    })
 
-                      return
+                    if (validFiles.length > 0) {
+                      const newVouchers = [...vouchers, ...validFiles].slice(0, 5)
+
+                      handleVouchers(newVouchers)
                     }
-
-                    handleVoucher(file)
+                    
+                    e.target.value = ''
                   }}
                 />
                 <i className="tabler-photo-up" style={{ fontSize: 36, color: '#64748b' }} />
                 <Typography variant="body2" fontWeight={700}>
-                  Haz clic para subir el voucher
+                  Haz clic para subir comprobante(s)
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Se mostrará una vista previa de la imagen
+                  Puedes subir hasta 5 imágenes o PDFs (máx 5MB c/u)
                 </Typography>
               </Box>
             )}

@@ -73,6 +73,7 @@ export function TabCertificacion({ curso, onSuccess }: TabCertificacionProps) {
 
   const [entregas, setEntregas] = useState<CipEntregaRango[]>(() => asEntregas(curso.certificado_cip_entregas))
   const [nuevo, setNuevo] = useState(emptyRango())
+  const [editId, setEditId] = useState<string | null>(null)
 
   const previewIpg = useMemo(() => {
     const valor = esperaValor === '' ? 0 : Number(esperaValor)
@@ -112,12 +113,19 @@ return addEsperaIpgPreview(valor, esperaUnidad)
   }
 
   const handleAddCip = () => {
-    const candidate: CipEntregaRango = {
-      id: crypto.randomUUID(),
-      ...nuevo,
+    let next: CipEntregaRango[]
+
+    if (editId) {
+      next = entregas.map(r => r.id === editId ? { ...nuevo, id: editId } : r)
+    } else {
+      const candidate: CipEntregaRango = {
+        id: crypto.randomUUID(),
+        ...nuevo,
+      }
+
+      next = [...entregas, candidate]
     }
 
-    const next = [...entregas, candidate]
     const error = validateCipEntregasNoOverlap(next)
 
     if (error) {
@@ -128,6 +136,7 @@ return
 
     setEntregas(next)
     setNuevo(emptyRango())
+    setEditId(null)
   }
 
   const handleRemoveCip = (id: string) => {
@@ -383,7 +392,7 @@ return
                   <Grid item xs={12} sm={6} md={3}>
                     <CustomTextField
                       fullWidth
-                      type="date"
+                      type="datetime-local"
                       label="Habilitación / pagos desde"
                       InputLabelProps={{ shrink: true }}
                       value={nuevo.pagos_desde}
@@ -393,7 +402,7 @@ return
                   <Grid item xs={12} sm={6} md={3}>
                     <CustomTextField
                       fullWidth
-                      type="date"
+                      type="datetime-local"
                       label="Habilitación / pagos hasta"
                       InputLabelProps={{ shrink: true }}
                       value={nuevo.pagos_hasta}
@@ -424,11 +433,23 @@ return
                 <Button
                   variant="contained"
                   onClick={handleAddCip}
-                  startIcon={<i className="tabler-plus" />}
+                  startIcon={<i className={editId ? "tabler-check" : "tabler-plus"} />}
                   sx={{ mt: 2, textTransform: 'none', fontWeight: 700 }}
                 >
-                  Agregar periodo
+                  {editId ? 'Actualizar periodo' : 'Agregar periodo'}
                 </Button>
+                {editId && (
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      setEditId(null)
+                      setNuevo(emptyRango())
+                    }}
+                    sx={{ mt: 2, ml: 2, textTransform: 'none', fontWeight: 700 }}
+                  >
+                    Cancelar
+                  </Button>
+                )}
               </Box>
 
               {entregas.length > 0 && (
@@ -444,7 +465,7 @@ return
                       'Hora',
                       'Acciones',
                     ].map(h => (
-                      <Grid item xs={h === 'Acciones' ? 1.5 : 2.625} key={h}>
+                      <Grid item xs={h === 'Acciones' ? 2 : 2.5} key={h}>
                         <Typography variant="caption" fontWeight={700} color="text.secondary">
                           {h}
                         </Typography>
@@ -461,7 +482,7 @@ return
                       sx={{ mb: 1.25 }}
                     >
                       {[r.pagos_desde, r.pagos_hasta, r.fecha_entrega, r.hora].map((val, idx) => (
-                        <Grid item xs={2.625} key={idx}>
+                        <Grid item xs={2.5} key={idx}>
                           <Box
                             sx={{
                               px: 1.5,
@@ -477,7 +498,18 @@ return
                           </Box>
                         </Grid>
                       ))}
-                      <Grid item xs={1.5}>
+                      <Grid item xs={2}>
+                        <IconButton color="primary" onClick={() => {
+                          setEditId(r.id)
+                          setNuevo({
+                            pagos_desde: r.pagos_desde,
+                            pagos_hasta: r.pagos_hasta,
+                            fecha_entrega: r.fecha_entrega,
+                            hora: r.hora
+                          })
+                        }} size="small">
+                          <i className="tabler-pencil" />
+                        </IconButton>
                         <IconButton color="error" onClick={() => handleRemoveCip(r.id)} size="small">
                           <i className="tabler-trash" />
                         </IconButton>

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       return validation.error
     }
 
-    const { usuarios_ids, cursos_ids, precio, estado, metodo_pago, mensaje, tipo_comprobante, numero_comprobante } =
+    const { usuarios_ids, cursos_ids, precio, estado, metodo_pago, mensaje, tipo_comprobante, numero_comprobante, tipo_pedido, tipo_certificado, fecha_entrega_estimada } =
       validation.data
 
     // 3. Obtener información de los cursos
@@ -60,7 +60,89 @@ export async function POST(request: Request) {
         continue
       }
 
-      // Filtrar cursos en los que NO está inscrito
+      if (tipo_pedido === 'CERTIFICADO') {
+        try {
+          await prisma.$transaction(async tx => {
+            await tx.pedido.create({
+              data: {
+                usuario_id: usuario_id,
+                total: precio,
+                moneda: firstCourseMoneda,
+                estado: estado,
+                tipo: 'CERTIFICADO',
+                metodo_pago: metodo_pago,
+                mensaje: mensaje || `Pedido de certificado generado por administrador`,
+                tipo_comprobante: tipo_comprobante,
+                numero_comprobante: numero_comprobante,
+                fecha_entrega_estimada: fecha_entrega_estimada ? new Date(fecha_entrega_estimada) : null,
+                pagado_en: estado === 'COMPLETADO' ? new Date() : null,
+                detalles: {
+                  create: [{
+                    curso_id: cursos[0].id,
+                    precio_unitario: precio,
+                    subtotal: precio,
+                    total: precio,
+                    cantidad: 1,
+                    certificado_tipo: tipo_certificado
+                  }]
+                }
+              }
+            })
+
+            // Si el pedido se crea como COMPLETADO, habilitar el certificado en la inscripción
+            if (estado === 'COMPLETADO') {
+              const insc = await tx.inscripcion.findUnique({
+                where: {
+                  usuario_id_curso_id: {
+                    usuario_id: usuario_id,
+                    curso_id: cursos[0].id,
+                  },
+                },
+                select: { id: true },
+              })
+
+              if (insc) {
+                if (tipo_certificado === 'CIP') {
+                  await tx.$executeRaw`
+                    UPDATE inscripciones
+                    SET certificado_cip_habilitado = true,
+                        certificado_cip_habilitado_en = COALESCE(certificado_cip_habilitado_en, NOW()),
+                        certificado_habilitado = true
+                    WHERE id = ${insc.id}
+                  `
+                } else {
+                  await tx.$executeRaw`
+                    UPDATE inscripciones
+                    SET certificado_ipg_habilitado = true,
+                        certificado_ipg_habilitado_en = COALESCE(certificado_ipg_habilitado_en, NOW()),
+                        certificado_habilitado = true
+                    WHERE id = ${insc.id}
+                  `
+                }
+              }
+            }
+          })
+
+          resultados.push({
+            usuario_id,
+            nombre: `${estudiante.nombre} ${estudiante.apellido}`,
+            status: 'success',
+            cursos: [cursos[0].titulo]
+          })
+        } catch (error: any) {
+          console.error(`Error procesando certificado para estudiante ${usuario_id}:`, error)
+          resultados.push({
+            usuario_id,
+            nombre: `${estudiante.nombre} ${estudiante.apellido}`,
+            status: 'error',
+            message: error.message || 'Error interno'
+          })
+        }
+
+        continue
+      }
+
+      // Filtrar cursos en los que NO está inscrito (solo para tipo CURSO)
       const cursosParaInscribir = cursos.filter(c => !estudiante.inscripciones.some(ins => ins.curso_id === c.id))
 
       if (cursosParaInscribir.length === 0) {
@@ -82,6 +164,7 @@ export async function POST(request: Request) {
               total: precio,
               moneda: firstCourseMoneda,
               estado: estado,
+              tipo: 'CURSO',
               metodo_pago: metodo_pago,
               mensaje: mensaje || `Pedido masivo generado por administrador`,
               tipo_comprobante: tipo_comprobante,
@@ -179,11 +262,17 @@ export async function POST(request: Request) {
 
     const exitosos = resultados.filter(r => r.status === 'success').length
 
+    // Obtain the last created pedido id for the response
+    const lastPedidoId = tipo_pedido === 'CERTIFICADO' 
+      ? await prisma.pedido.findFirst({ where: { tipo: 'CERTIFICADO', usuario_id: usuarios_ids[0] }, orderBy: { creado_en: 'desc' }, select: { id: true } })
+      : null
+
     return ApiResponse.success(
       request,
       {
-        message: `Proceso completado. ${exitosos} estudiantes inscritos exitosamente.`,
-        detalles: resultados
+        message: `Proceso completado. ${exitosos} pedidos creados exitosamente.`,
+        detalles: resultados,
+        pedidoId: lastPedidoId?.id
       },
       201
     )

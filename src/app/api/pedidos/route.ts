@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       return validation.error
     }
 
-    const { page, limit, estado, buscar, nro_pedido, nombre } = validation.data
+    const { page, limit, estado, buscar, nro_pedido, nombre, cursoId } = validation.data
 
     const where: any = {}
     
@@ -52,6 +52,14 @@ export async function GET(request: Request) {
         { usuario: { apellido: { contains: nombre, mode: 'insensitive' } } },
         { usuario: { correo: { contains: nombre, mode: 'insensitive' } } }
       ]
+    }
+
+    if (cursoId && cursoId !== 'TODOS') {
+      where.detalles = {
+        some: {
+          curso_id: cursoId
+        }
+      }
     }
 
     if (buscar) {
@@ -80,7 +88,9 @@ export async function GET(request: Request) {
               id: true,
               nombre: true,
               apellido: true,
-              correo: true
+              correo: true,
+              numero_documento: true,
+              celular: true
             }
           },
           cupon: {

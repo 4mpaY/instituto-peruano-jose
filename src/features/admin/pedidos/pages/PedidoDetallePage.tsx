@@ -139,29 +139,49 @@ export function PedidoDetallePage() {
               </Typography>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems='flex-start'>
                 {pedido.comprobante_url ? (
-                  <Box>
+                  <Box sx={{ maxWidth: { xs: '100%', md: 400 } }}>
                     <Typography variant='subtitle2' fontWeight={700} gutterBottom>
-                      Imagen del voucher
+                      Voucher(s) de pago
                     </Typography>
-                    <Box
-                      component='img'
-                      src={pedido.comprobante_url}
-                      alt='Voucher de pago'
-                      sx={{
-                        maxWidth: { xs: '100%', md: 360 },
-                        maxHeight: 420,
-                        width: 'auto',
-                        borderRadius: 2,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        cursor: 'pointer',
-                        display: 'block',
-                        bgcolor: 'action.hover',
-                      }}
-                      onClick={() => window.open(pedido.comprobante_url!, '_blank')}
-                    />
-                    <Typography variant='caption' color='text.secondary' display='block' sx={{ mt: 0.75 }}>
-                      Clic para ampliar
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                      {pedido.comprobante_url.split(',').map((url, idx) => (
+                        <Box key={idx}>
+                          {url.toLowerCase().endsWith('.pdf') ? (
+                            <Box
+                              sx={{
+                                width: 120, height: 160, display: 'flex', flexDirection: 'column',
+                                alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover',
+                                borderRadius: 2, border: '1px solid', borderColor: 'divider', cursor: 'pointer'
+                              }}
+                              onClick={() => window.open(url, '_blank')}
+                            >
+                              <i className="tabler-file-type-pdf" style={{ fontSize: 40, color: '#ef4444' }} />
+                              <Typography variant="caption" sx={{ mt: 1, fontWeight: 700 }}>Ver PDF</Typography>
+                            </Box>
+                          ) : (
+                            <Box
+                              component='img'
+                              src={url}
+                              alt={`Voucher de pago ${idx + 1}`}
+                              sx={{
+                                width: 120,
+                                height: 160,
+                                objectFit: 'cover',
+                                borderRadius: 2,
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                cursor: 'pointer',
+                                display: 'block',
+                                bgcolor: 'action.hover',
+                              }}
+                              onClick={() => window.open(url, '_blank')}
+                            />
+                          )}
+                        </Box>
+                      ))}
+                    </Box>
+                    <Typography variant='caption' color='text.secondary' display='block' sx={{ mt: 1 }}>
+                      Clic en las imágenes o PDFs para abrir en pestaña nueva
                       {pedido.comprobante_subido_en && (
                         <> · Subido: <HydratedDate date={pedido.comprobante_subido_en} format='locale' /></>
                       )}

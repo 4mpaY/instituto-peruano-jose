@@ -86,10 +86,15 @@ const LoginV2 = ({ mode }: { mode: SystemMode }) => {
   const authBackground = useImageVariant(mode, lightImg, darkImg)
 
   useEffect(() => {
-    const callbackUrl = new URLSearchParams(window.location.search).get('callbackUrl')
+    const params = new URLSearchParams(window.location.search)
+    const callbackUrl = params.get('callbackUrl')
 
     if (callbackUrl) {
       setRegisterUrl(`/register?callbackUrl=${callbackUrl}`)
+    }
+
+    if (params.get('sessionExpired') === '1') {
+      setError('Tu sesión expiró. Vuelve a iniciar sesión.')
     }
   }, [])
 

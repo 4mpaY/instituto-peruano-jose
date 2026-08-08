@@ -64,6 +64,12 @@ export default async function LearningPage({
       redirect(`/cursos/${params.slug}?sin-acceso=1`)
     }
 
+    const status = err?.statusCode ?? err?.response?.status
+
+    if (status === 401) {
+      redirect(`/cursos/${params.slug}?login=1`)
+    }
+
     notFound()
   }
 }

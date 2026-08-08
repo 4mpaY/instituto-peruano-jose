@@ -1,6 +1,8 @@
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosStatic } from 'axios'
 import axios from 'axios'
 
+import { handleSessionExpired } from './sessionExpired'
+
 type Params = {
   axiosLib?: AxiosStatic
   baseURL: string
@@ -26,6 +28,17 @@ export class AxiosInternalHttpClient {
 
       return config
     })
+
+    this.client.interceptors.response.use(
+      res => res,
+      error => {
+        if (error?.response?.status === 401 && typeof window !== 'undefined') {
+          handleSessionExpired()
+        }
+
+        return Promise.reject(error)
+      }
+    )
   }
 
   protected parseResponse<T = any>(res: AxiosResponse): T {

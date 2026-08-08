@@ -22,7 +22,6 @@ export default async function LearningPage({
   const cursoData = await prisma.curso.findUnique({
     where: { slug: params.slug },
     select: {
-      numero_asesor: true,
       grupo_whatsapp: true,
       profesor: {
         select: {
@@ -34,13 +33,11 @@ export default async function LearningPage({
 
   let phoneNumberProfesor: string | null = null
 
-  if (cursoData?.numero_asesor) {
-    phoneNumberProfesor = cursoData.numero_asesor
-  } else if (cursoData?.profesor?.celular) {
+  if (cursoData?.profesor?.celular) {
     phoneNumberProfesor = cursoData.profesor.celular
   }
 
-  const grupoWhatsapp = cursoData?.grupo_whatsapp?.trim() || null
+  const grupoWhatsapp = null
 
   const token = session.user?.accessToken ?? null
 

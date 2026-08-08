@@ -8,6 +8,7 @@ module.exports = {
     '@next/next/no-img-element': 'off',
     '@next/next/no-page-custom-font': 'off',
     '@typescript-eslint/consistent-type-imports': 'error',
+    'import/no-unresolved': 'off',
     '@typescript-eslint/ban-ts-comment': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/no-unused-vars': 'error',

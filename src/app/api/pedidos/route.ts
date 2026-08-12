@@ -98,6 +98,12 @@ export async function GET(request: Request) {
               codigo: true
             }
           },
+          metodo_pago_manual: {
+            select: {
+              nombre: true,
+              nombre_banco: true
+            }
+          },
           detalles: {
             include: {
               curso: {

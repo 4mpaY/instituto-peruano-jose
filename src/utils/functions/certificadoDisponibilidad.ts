@@ -125,16 +125,14 @@ export function resolveCertificadoDisponibilidad(opts: {
 
   const refDay = new Date(fechaReferencia)
 
-  refDay.setHours(0, 0, 0, 0)
-
   const match = entregas.find(rango => {
     const desde = parseDateOnly(rango.pagos_desde)
     const hasta = parseDateOnly(rango.pagos_hasta)
 
     if (!desde || !hasta) return false
-    hasta.setHours(23, 59, 59, 999)
+    if (!rango.pagos_hasta.includes('T')) hasta.setHours(23, 59, 59, 999)
     
-return refDay >= desde && refDay <= hasta
+    return refDay >= desde && refDay <= hasta
   })
 
   if (!match) {

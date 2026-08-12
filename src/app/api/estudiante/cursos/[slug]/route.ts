@@ -163,6 +163,15 @@ export async function GET(request: Request, { params }: { params: { slug: string
       }
     })
 
+    const progreso = await prisma.progresoCurso.findUnique({
+      where: {
+        usuario_id_curso_id: {
+          usuario_id: user.id,
+          curso_id: course.id
+        }
+      }
+    })
+
     const formattedCourse = {
       id: course.id,
       slug: course.slug,
@@ -172,6 +181,7 @@ export async function GET(request: Request, { params }: { params: { slug: string
       a_quien_va_dirigido: (course as any).a_quien_va_dirigido || null,
       miniatura: (course as any).miniatura || null,
       brochure: (course as any).brochure || null,
+      porcentaje_progreso: progreso?.porcentaje_progreso ?? 0,
       modulos: course.modulos.map(m => ({
         id: m.id,
         titulo: m.titulo,

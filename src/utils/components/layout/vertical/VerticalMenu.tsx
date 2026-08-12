@@ -2,10 +2,8 @@
 
 // MUI Imports
 import { useTheme } from '@mui/material/styles'
-import { Divider } from '@mui/material'
+import { Divider, Box } from '@mui/material'
 
-// Third-party Imports
-import PerfectScrollbar from 'react-perfect-scrollbar'
 import { useSession } from 'next-auth/react'
 
 // Type Imports
@@ -45,28 +43,25 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
   const theme = useTheme()
   const verticalNavOptions = useVerticalNav()
   const { settings } = useSettings()
-  const { isBreakpointReached } = useVerticalNav()
   const { data: session } = useSession()
 
   // Vars
   const { transitionDuration } = verticalNavOptions
   const rol = session?.user?.rol
 
-  const ScrollWrapper = isBreakpointReached ? 'div' : PerfectScrollbar
-
   return (
     // eslint-disable-next-line lines-around-comment
     /* Custom scrollbar instead of browser scroll, remove if you want browser scroll only */
-    <ScrollWrapper
-      {...(isBreakpointReached
-        ? {
-          className: 'bs-full overflow-y-auto overflow-x-hidden',
-          onScroll: container => scrollMenu(container, false)
-        }
-        : {
-          options: { wheelPropagation: false, suppressScrollX: true },
-          onScrollY: container => scrollMenu(container, true)
-        })}
+    <Box
+      className='bs-full overflow-y-auto overflow-x-hidden'
+      onScroll={container => scrollMenu(container, false)}
+      sx={{
+        '&::-webkit-scrollbar': {
+          display: 'none'
+        },
+        msOverflowStyle: 'none',
+        scrollbarWidth: 'none'
+      }}
     >
       {/* Incase you also want to scroll NavHeader to scroll with Vertical Menu, remove NavHeader from above and paste it below this comment */}
       {/* Vertical Menu */}
@@ -143,7 +138,7 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
           </>
         )}
       </Menu>
-    </ScrollWrapper>
+    </Box>
   )
 }
 

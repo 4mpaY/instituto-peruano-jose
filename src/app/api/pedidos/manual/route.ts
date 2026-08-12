@@ -31,8 +31,20 @@ export async function POST(request: Request) {
       return validation.error
     }
 
-    const { usuarios_ids, cursos_ids, precio, estado, metodo_pago, mensaje, tipo_comprobante, numero_comprobante, tipo_pedido, tipo_certificado, fecha_entrega_estimada } =
-      validation.data
+    const {
+      usuarios_ids,
+      cursos_ids,
+      precio,
+      estado,
+      metodo_pago,
+      metodo_pago_manual_id,
+      mensaje,
+      tipo_comprobante,
+      numero_comprobante,
+      tipo_pedido,
+      tipo_certificado,
+      fecha_entrega_estimada
+    } = validation.data
 
     // 3. Obtener información de los cursos
     const cursos = await prisma.curso.findMany({
@@ -71,6 +83,7 @@ export async function POST(request: Request) {
                 estado: estado,
                 tipo: 'CERTIFICADO',
                 metodo_pago: metodo_pago,
+                metodo_pago_manual_id: metodo_pago_manual_id || null,
                 mensaje: mensaje || `Pedido de certificado generado por administrador`,
                 tipo_comprobante: tipo_comprobante,
                 numero_comprobante: numero_comprobante,
@@ -166,6 +179,7 @@ export async function POST(request: Request) {
               estado: estado,
               tipo: 'CURSO',
               metodo_pago: metodo_pago,
+              metodo_pago_manual_id: metodo_pago_manual_id || null,
               mensaje: mensaje || `Pedido masivo generado por administrador`,
               tipo_comprobante: tipo_comprobante,
               numero_comprobante: numero_comprobante,

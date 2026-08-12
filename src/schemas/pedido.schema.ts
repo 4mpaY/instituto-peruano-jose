@@ -10,6 +10,7 @@ export const crearPedidoManualSchema = z.object({
   precio: z.coerce.number().min(0, 'El precio no puede ser negativo').max(1000000, 'El precio es demasiado alto'),
   estado: z.enum(['PENDIENTE', 'PROCESANDO', 'COMPLETADO', 'CANCELADO', 'REEMBOLSADO']).default('COMPLETADO'),
   metodo_pago: z.nativeEnum(MetodoPago).default(MetodoPago.TRANSFERENCIA),
+  metodo_pago_manual_id: z.string().optional().nullable(),
   mensaje: z.string().trim().max(500, 'El mensaje no puede exceder 500 caracteres').optional(),
   tipo_comprobante: z.string().optional().nullable(),
   numero_comprobante: z.string().optional().nullable(),

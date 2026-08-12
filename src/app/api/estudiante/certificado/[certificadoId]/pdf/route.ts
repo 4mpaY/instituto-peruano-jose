@@ -158,6 +158,22 @@ export async function GET(request: Request, { params }: { params: { certificadoI
           inscripcionPedido?.inscrito_en ||
           null
 
+        const pedidosCert = await prisma.$queryRaw<
+          Array<{ fecha_entrega_estimada: Date | null, certificado_tipo: string | null }>
+        >`
+          SELECT p.fecha_entrega_estimada, d.certificado_tipo::text AS certificado_tipo
+          FROM pedidos p
+          JOIN detalles_pedido d ON d.pedido_id = p.id
+          WHERE p.usuario_id = ${certificado.usuario_id}
+            AND p.estado = 'COMPLETADO'
+            AND d.curso_id = ${certificado.curso_id}
+            AND (p.tipo = 'CERTIFICADO'::"TipoPedido" OR d.certificado_tipo IS NOT NULL)
+        `
+
+        const fechaEstimada = pedidosCert.find(p => 
+          certificado.tipo === 'CIP' ? p.certificado_tipo === 'CIP' : (p.certificado_tipo === 'IPG' || !p.certificado_tipo)
+        )?.fecha_entrega_estimada ?? null
+
         const disponibilidad = resolveCertificadoDisponibilidad({
           tipo: certificado.tipo === 'CIP' ? 'cip' : 'ipg',
           habilitado: true,
@@ -169,6 +185,7 @@ export async function GET(request: Request, { params }: { params: { certificadoI
           ipgEsperaUnidad: cursoPago?.certificado_ipg_espera_unidad,
           cipEntregas: cipEntregas as any,
           fechaPago,
+          fechaEntregaEstimada: fechaEstimada,
         })
 
         if (!disponibilidad.disponible) {

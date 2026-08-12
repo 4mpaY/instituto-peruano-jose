@@ -45,6 +45,7 @@ export interface Course {
     titulo: string
     modulos: Module[]
     examenes?: CourseExamen[]
+    porcentaje_progreso?: number
 }
 
 type ExamStatus = 'locked' | 'available' | 'in_progress' | 'passed' | 'failed'
@@ -91,7 +92,12 @@ export const useCourseStore = create<CourseState>((set) => ({
 
             const allLessons = course.modulos.flatMap(m => m.lecciones)
             const completed = allLessons.filter(l => l.completada).length
-            const percentage = allLessons.length > 0 ? Math.round((completed / allLessons.length) * 100) : 0
+            
+            let percentage = course.porcentaje_progreso ?? 0;
+            
+            if (!course.examenes || course.examenes.length === 0) {
+                percentage = allLessons.length > 0 ? Math.round((completed / allLessons.length) * 100) : 0
+            }
 
             // Resume desde la primera lección incompleta; si todas están completas, ir a la última
             const firstIncomplete = allLessons.find(l => !l.completada)
@@ -119,9 +125,11 @@ export const useCourseStore = create<CourseState>((set) => ({
             )
         }))
 
-        let percentage = newPercentage
+        let percentage = state.progressPercentage;
 
-        if (percentage === undefined) {
+        if (newPercentage !== undefined) {
+            percentage = newPercentage;
+        } else if (!state.course.examenes || state.course.examenes.length === 0) {
             const allLessons = updatedModulos.flatMap(m => m.lecciones)
             const completedCount = allLessons.filter(l => l.completada).length
 
@@ -159,13 +167,22 @@ export const useCourseStore = create<CourseState>((set) => ({
     markExamApproved: (examenId) => set((state) => {
         if (!state.course?.examenes) return state
 
+        const updatedExamenes = state.course.examenes.map(ex =>
+            ex.id === examenId ? { ...ex, ya_aprobado: true } : ex
+        );
+
+        const approvedCount = updatedExamenes.filter(ex => ex.ya_aprobado).length;
+
+        const newPercentage = updatedExamenes.length > 0 
+            ? Math.round((approvedCount / updatedExamenes.length) * 100) 
+            : state.progressPercentage;
+
         return {
             course: {
                 ...state.course,
-                examenes: state.course.examenes.map(ex =>
-                    ex.id === examenId ? { ...ex, ya_aprobado: true } : ex
-                ),
+                examenes: updatedExamenes,
             },
+            progressPercentage: newPercentage
         }
     }),
 }))

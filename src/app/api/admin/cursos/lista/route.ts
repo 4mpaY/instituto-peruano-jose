@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     if (!auth.authorized) return auth.error
 
     const cursos = await prisma.curso.findMany({
-      select: { id: true, titulo: true, estado: true, tipo_emision: true, fecha_inicio: true, creado_en: true },
+      select: { id: true, titulo: true, estado: true, tipo_emision: true, fecha_inicio: true, creado_en: true, precio: true, precio_certificado: true, certificado_ipg_espera_unidad: true, certificado_ipg_espera_valor: true, certificado_cip_entregas: true },
       orderBy: { titulo: 'asc' }
     })
 

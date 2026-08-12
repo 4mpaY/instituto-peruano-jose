@@ -200,6 +200,32 @@ export async function POST(request: Request, { params }: { params: { examenId: s
             }
           })
         }
+
+        // Calcular porcentaje de progreso basado en evaluaciones (exámenes aprobados / total de exámenes publicados)
+        const examenesAprobados = examenesCurso.filter(ex => {
+          const intento = intentosPorExamen.find(i => i.examenId === ex.id);
+
+          return intento && intento.puntaje !== null && intento.puntaje >= ex.puntaje_aprobacion;
+        });
+
+        const porcentajeProgreso = Math.round((examenesAprobados.length / examenesCurso.length) * 100);
+
+        await tx.progresoCurso.upsert({
+          where: {
+            usuario_id_curso_id: {
+              usuario_id: auth.user.id,
+              curso_id: examen.curso.id
+            }
+          },
+          update: {
+            porcentaje_progreso: porcentajeProgreso
+          },
+          create: {
+            usuario_id: auth.user.id,
+            curso_id: examen.curso.id,
+            porcentaje_progreso: porcentajeProgreso
+          }
+        });
       }
 
       return nuevoIntento

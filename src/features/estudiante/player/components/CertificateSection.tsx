@@ -968,12 +968,9 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                                     Estado: <strong>Pendiente de validación de pago</strong>
                                     {s.tieneComprobante ? ' (comprobante recibido)' : ''}
                                 </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    {s.etiquetaEntrega || 'La fecha de entrega se confirmará al validar el pago.'}
-                                </Typography>
-                                {s.disponibleDesde && (
-                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
-                                        Disponible estimado desde:{' '}
+                                {s.disponibleDesde ? (
+                                    <Typography variant="body2" color="text.secondary">
+                                        Fecha de habilitación:{' '}
                                         <HydratedDate
                                             date={s.disponibleDesde}
                                             options={{
@@ -982,6 +979,10 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                                                 year: 'numeric',
                                             }}
                                         />
+                                    </Typography>
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                        Fecha de habilitación: Se confirmará al validar el pago.
                                     </Typography>
                                 )}
                                 <Button
@@ -1004,7 +1005,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                         onClose={() => setShowDetalleSolicitud(false)}
                         solicitud={detalleSolicitudActiva as any}
                         cursoTitulo={cursoTitulo}
-                        notaFinal={elegibilidad?.promedioScore ? Number(elegibilidad.promedioScore) : null}
+                        notaFinal={elegibilidad?.promedioScore != null ? Math.round((Number(elegibilidad.promedioScore) / 100) * 20 * 10) / 10 : null}
                         usuarioDatosEnvio={usuarioDatosEnvio}
                     />
 
@@ -1264,7 +1265,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                     onClose={() => setShowDetalleSolicitud(false)}
                     solicitud={detalleSolicitudActiva as any}
                     cursoTitulo={cursoTitulo}
-                    notaFinal={elegibilidad?.promedioScore ? Number(elegibilidad.promedioScore) : null}
+                    notaFinal={elegibilidad?.promedioScore != null ? Math.round((Number(elegibilidad.promedioScore) / 100) * 20 * 10) / 10 : null}
                     usuarioDatosEnvio={usuarioDatosEnvio}
                 />
             </>

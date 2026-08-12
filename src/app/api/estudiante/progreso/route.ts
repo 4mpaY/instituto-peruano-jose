@@ -56,51 +56,81 @@ export async function POST(request: Request) {
       }
     })
 
-    // 3. Recalcular progreso del curso
-    // Obtener todas las lecciones del curso
-    const todasLasLecciones = await prisma.leccion.findMany({
+    // 3. Verificar si el curso tiene evaluaciones
+    const examenesDelCurso = await prisma.examen.count({
       where: {
-        modulo: { curso_id: cursoId }
-      },
-      select: { id: true }
-    })
-
-    const totalLecciones = todasLasLecciones.length
-
-    if (totalLecciones === 0) {
-      return ApiResponse.success(request, { porcentaje: 100 })
-    }
-
-    // Obtener lecciones completadas por el usuario en este curso
-    const leccionesCompletadasCount = await prisma.progresoLeccion.count({
-      where: {
-        usuario_id: auth.user.id,
-        esta_completado: true,
-        leccion: {
-          modulo: { curso_id: cursoId }
-        }
+        curso_id: cursoId,
+        esta_publicado: true
       }
     })
 
-    const porcentaje = Math.round((leccionesCompletadasCount / totalLecciones) * 100)
-
-    // 4. Actualizar ProgresoCurso
-    const progresoCurso = await prisma.progresoCurso.upsert({
+    let porcentaje = 0
+    let progresoCurso = await prisma.progresoCurso.findUnique({
       where: {
         usuario_id_curso_id: {
           usuario_id: auth.user.id,
           curso_id: cursoId
         }
-      },
-      update: {
-        porcentaje_progreso: porcentaje
-      },
-      create: {
-        usuario_id: auth.user.id,
-        curso_id: cursoId,
-        porcentaje_progreso: porcentaje
       }
     })
+
+    if (examenesDelCurso > 0) {
+      // Si hay exámenes, el porcentaje se mantiene (se actualiza al enviar un examen)
+      porcentaje = progresoCurso?.porcentaje_progreso || 0
+      
+      if (!progresoCurso) {
+        progresoCurso = await prisma.progresoCurso.create({
+          data: {
+            usuario_id: auth.user.id,
+            curso_id: cursoId,
+            porcentaje_progreso: 0
+          }
+        })
+      }
+    } else {
+      // Si no hay exámenes, se calcula en base a las lecciones
+      const todasLasLecciones = await prisma.leccion.findMany({
+        where: {
+          modulo: { curso_id: cursoId }
+        },
+        select: { id: true }
+      })
+
+      const totalLecciones = todasLasLecciones.length
+
+      if (totalLecciones > 0) {
+        const leccionesCompletadasCount = await prisma.progresoLeccion.count({
+          where: {
+            usuario_id: auth.user.id,
+            esta_completado: true,
+            leccion: {
+              modulo: { curso_id: cursoId }
+            }
+          }
+        })
+
+        porcentaje = Math.round((leccionesCompletadasCount / totalLecciones) * 100)
+      } else {
+        porcentaje = 100
+      }
+
+      progresoCurso = await prisma.progresoCurso.upsert({
+        where: {
+          usuario_id_curso_id: {
+            usuario_id: auth.user.id,
+            curso_id: cursoId
+          }
+        },
+        update: {
+          porcentaje_progreso: porcentaje
+        },
+        create: {
+          usuario_id: auth.user.id,
+          curso_id: cursoId,
+          porcentaje_progreso: porcentaje
+        }
+      })
+    }
 
     return ApiResponse.success(request, { 
       porcentaje,

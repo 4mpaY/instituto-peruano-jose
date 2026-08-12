@@ -100,17 +100,26 @@ return cursosLista.map(c => ({
       const res = await axiosPedido.getAll({ estado: estadoFiltro, nro_pedido: nroPedido, nombre, limit: '5000' })
       const todos: Pedido[] = res?.pedidos ?? []
 
-      const filas = todos.map(p => ({
-        '# Pedido': `#${String(p.numero_pedido).padStart(6, '0')}`,
-        Estudiante: `${p.usuario?.nombre ?? ''} ${p.usuario?.apellido ?? ''}`.trim(),
-        Correo: p.usuario?.correo ?? '',
-        'Curso(s)': p.detalles?.map(d => d.curso?.titulo).join(' | ') ?? '',
-        Total: `${p.moneda} ${Number(p.total).toFixed(2)}`,
-        Cupón: p.cupon?.codigo ?? '',
-        'Método de pago': p.metodo_pago?.toLowerCase().replace('_', ' ') ?? '',
-        Estado: p.estado,
-        Fecha: p.creado_en ? new Date(p.creado_en).toLocaleDateString('es-PE') : ''
-      }))
+      const filas = todos.map((p: any) => {
+        const metodoPagoBase = p.metodo_pago?.toLowerCase().replace('_', ' ') ?? ''
+        const manualName = p.metodo_pago_manual ? `${p.metodo_pago_manual.nombre} ${p.metodo_pago_manual.nombre_banco || ''}`.trim() : null
+        
+        return {
+          '# Pedido': `#${String(p.numero_pedido).padStart(6, '0')}`,
+          Estudiante: `${p.usuario?.nombre ?? ''} ${p.usuario?.apellido ?? ''}`.trim(),
+          'DNI / Documento': p.usuario?.numero_documento ?? '',
+          Celular: p.usuario?.celular ?? '',
+          Correo: p.usuario?.correo ?? '',
+          'Curso(s)': p.detalles?.map((d: any) => d.curso?.titulo).join(' | ') ?? '',
+          Total: `${p.moneda} ${Number(p.total).toFixed(2)}`,
+          Cupón: p.cupon?.codigo ?? '',
+          'Método de pago / Banco': manualName || metodoPagoBase,
+          'Cód. Operación': p.numero_comprobante || p.referencia_pago || '',
+          'Imagen de Comprobante': p.comprobante_url ? `${window.location.origin}${p.comprobante_url}` : '',
+          Estado: p.estado,
+          Fecha: p.creado_en ? new Date(p.creado_en).toLocaleDateString('es-PE') : ''
+        }
+      })
 
       const ws = XLSX.utils.json_to_sheet(filas)
       const wb = XLSX.utils.book_new()
@@ -235,6 +244,20 @@ return cursosLista.map(c => ({
               </Typography>
             )}
           </Stack>
+        )
+      }),
+      columnHelper.accessor('creado_en', {
+        header: 'Fecha Creación',
+        cell: ({ row }) => (
+          <Typography variant='body2' color='text.secondary' className='whitespace-nowrap'>
+            {new Date(row.original.creado_en).toLocaleString('es-PE', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </Typography>
         )
       }),
       columnHelper.accessor('total', {

@@ -80,7 +80,7 @@ export function PedidoEditPage() {
         tipo_comprobante: p.tipo_comprobante || '',
         numero_comprobante: p.numero_comprobante || '',
         referencia_pago: p.referencia_pago || '',
-        fecha_entrega_estimada: p.fecha_entrega_estimada ? new Date(p.fecha_entrega_estimada).toISOString().slice(0, 10) : '',
+        fecha_entrega_estimada: p.fecha_entrega_estimada ? new Date(new Date(p.fecha_entrega_estimada).getTime() - new Date(p.fecha_entrega_estimada).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '',
       })
       setVoucherPreview(p.comprobante_url || null)
     }
@@ -102,7 +102,7 @@ export function PedidoEditPage() {
           tipo_comprobante: formData.tipo_comprobante || null,
           numero_comprobante: formData.numero_comprobante || null,
           referencia_pago: formData.referencia_pago?.trim() || null,
-          fecha_entrega_estimada: formData.fecha_entrega_estimada || null,
+          fecha_entrega_estimada: formData.fecha_entrega_estimada ? new Date(formData.fecha_entrega_estimada).toISOString() : null,
         } as any
       })
 
@@ -515,9 +515,9 @@ export function PedidoEditPage() {
                         render={({ field }) => (
                           <CustomTextField
                             {...field}
-                            type='date'
+                            type='datetime-local'
                             fullWidth
-                            label='Fecha de Envío Estimada (Opcional)'
+                            label='Fecha y Hora Estimada (Opcional)'
                             helperText='Sobrescribe la fecha calculada por el curso'
                             InputLabelProps={{ shrink: true }}
                           />

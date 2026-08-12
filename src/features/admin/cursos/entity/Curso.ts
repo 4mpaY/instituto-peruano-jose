@@ -4,8 +4,13 @@ export interface CursoListaItem {
   estado: string
   tipo_emision?: string | null
   fecha_inicio?: string | Date | null
-  es_asincrono: boolean
+  es_asincrono?: boolean
   creado_en: string
+  precio?: number | string | null
+  precio_certificado?: number | string | null
+  certificado_ipg_espera_unidad?: string | null
+  certificado_ipg_espera_valor?: number | null
+  certificado_cip_entregas?: any[] | null
 }
 
 export interface CursoProfesor {

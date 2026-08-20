@@ -64,7 +64,9 @@ export async function POST(request: Request) {
           create: { usuario_id: auth.user.id, curso_id: cursoId, porcentaje_progreso: 100 }
         })
       }
-      return ApiResponse.success(request, { porcentaje: examenesCount === 0 ? 100 : 0, leccionesCompletadas: 0 })
+
+      
+return ApiResponse.success(request, { porcentaje: examenesCount === 0 ? 100 : 0, leccionesCompletadas: 0 })
     }
 
     await prisma.$transaction(async tx => {

@@ -306,7 +306,7 @@ export async function ensureCertificado(usuarioId: string, cursoId: string, tipo
         : (curso.fecha_fin || inscripcion.completado_en || new Date()),
       emision: (existente?.datos as any)?.emision_manual 
         ? (existente?.datos as any)?.fechas?.emision 
-        : (fechaEstimada || existente?.emitido_en || disponibilidad.disponibleDesde || new Date())
+        : (existente?.emitido_en || disponibilidad?.disponibleDesde || new Date())
     }
   }
 

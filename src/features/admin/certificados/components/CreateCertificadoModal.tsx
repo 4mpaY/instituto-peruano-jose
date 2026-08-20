@@ -66,15 +66,19 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
 
     if (tipoCertificado === 'cip') {
       const entregas = cursoSelected.certificado_cip_entregas || []
+
       if (entregas.length > 0) {
         // Find if today falls into any period
         const now = new Date()
+
         const match = entregas.find((r: any) => {
           if (!r.pagos_desde || !r.pagos_hasta) return false
           const desde = new Date(r.pagos_desde)
           const hasta = new Date(r.pagos_hasta)
+
           hasta.setHours(23, 59, 59, 999)
-          return now >= desde && now <= hasta
+          
+return now >= desde && now <= hasta
         })
 
         if (match && match.fecha_entrega) {
@@ -82,6 +86,7 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
         } else {
           // If out of bounds, use the latest configured delivery date
           const ultimaEntrega = entregas[entregas.length - 1]
+
           if (ultimaEntrega && ultimaEntrega.fecha_entrega) {
             setFechaEmision(ultimaEntrega.fecha_entrega)
           } else {
@@ -95,6 +100,7 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
       // IPG logic
       import('@/utils/functions/certificadoDisponibilidad').then(({ resolveCertificadoDisponibilidad }) => {
         const now = new Date()
+
         const disponibilidad = resolveCertificadoDisponibilidad({
           tipo: 'ipg',
           habilitado: true,
@@ -313,6 +319,7 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
               value={cursoSelected}
               onChange={(_, v) => {
                 setCursoSelected(v)
+
                 if (v) {
                   if (v.fecha_inicio) setFechaInicio(new Date(v.fecha_inicio).toISOString().split('T')[0])
                   else setFechaInicio('')

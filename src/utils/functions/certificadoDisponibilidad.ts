@@ -138,6 +138,7 @@ export function resolveCertificadoDisponibilidad(opts: {
   // Fallback: Si no coincide por fecha de pago, intentar con la fecha de habilitación (si existe y es distinta)
   if (!match && opts.habilitadoEn && opts.habilitadoEn.getTime() !== refDay.getTime()) {
     const habDay = new Date(opts.habilitadoEn)
+
     match = entregas.find(rango => {
       const desde = parseDateOnly(rango.pagos_desde)
       const hasta = parseDateOnly(rango.pagos_hasta)
@@ -154,8 +155,10 @@ export function resolveCertificadoDisponibilidad(opts: {
     const sortedEntregas = [...entregas].sort((a, b) => {
       const dA = parseDateOnly(a.pagos_desde)
       const dB = parseDateOnly(b.pagos_desde)
+
       if (!dA || !dB) return 0
-      return dA.getTime() - dB.getTime()
+      
+return dA.getTime() - dB.getTime()
     })
     
     const primerRango = sortedEntregas[0]

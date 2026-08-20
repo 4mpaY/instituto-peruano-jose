@@ -88,7 +88,6 @@ export async function buildCertificadoData(opts: BuildCertificadoDataOptions): P
   const cursoVigenciaMeses = snapshot?.curso?.vigencia_meses ?? certificado.curso.vigencia_meses ?? null
 
   // ── Fechas ──
-  const esSincrono = certificado.curso.tipo_emision === 'SINCRONO'
   const fechaEmisionVal = snapshot?.fechas?.emision || certificado.emitido_en
 
   const fechaInicioVal =

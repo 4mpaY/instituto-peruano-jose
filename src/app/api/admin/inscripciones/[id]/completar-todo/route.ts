@@ -44,7 +44,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
           create: { usuario_id: inscripcion.usuario_id, curso_id: inscripcion.curso_id, porcentaje_progreso: 100 }
         })
       }
-      return ApiResponse.success(request, { porcentaje: examenesCount === 0 ? 100 : 0, leccionesCompletadas: 0 })
+
+      
+return ApiResponse.success(request, { porcentaje: examenesCount === 0 ? 100 : 0, leccionesCompletadas: 0 })
     }
 
     const ahora = new Date()

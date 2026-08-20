@@ -123,11 +123,7 @@ export async function GET(request: Request) {
       { requiereHabilitacion: requiereHabilitacionExplicita }
     )
 
-    const fechaPago =
-      inscripcionPedido?.pedido?.pagado_en ||
-      inscripcionPedido?.pedido?.creado_en ||
-      inscripcionPedido?.inscrito_en ||
-      null
+
 
     // Si hay precio o tiempo de espera, el admin controla la liberación
     const requiereHabilitacionIpg = precioIpg != null || esperaIpg
@@ -147,6 +143,7 @@ export async function GET(request: Request) {
     })
 
     const pedidoCip = pedidosCertCompletados.find(p => p.certificado_tipo === 'CIP')
+
     const fechaPagoCip =
       pedidoCip?.creado_en ||
       pedidoCip?.pagado_en ||

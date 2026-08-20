@@ -289,6 +289,7 @@ export async function GET(request: Request, { params }: { params: { certificadoI
     })
   } catch (error) {
     console.error('PDF GENERATION ERROR:', error);
-    return handleApiError(error, request)
+    
+return handleApiError(error, request)
   }
 }

@@ -188,7 +188,7 @@ async function assertDisponibilidadCertificado(
   `
 
   const fechaPago =
-    inscPedido?.pedido?.pagado_en || inscPedido?.pedido?.creado_en || inscPedido?.inscrito_en || null
+    inscPedido?.pedido?.creado_en || inscPedido?.pedido?.pagado_en || inscPedido?.inscrito_en || null
 
   const fechaEstimada = pedidosCert.find(p => 
     tipo === 'CIP' ? p.certificado_tipo === 'CIP' : (p.certificado_tipo === 'IPG' || !p.certificado_tipo)
@@ -214,6 +214,8 @@ async function assertDisponibilidadCertificado(
       disponibilidad.mensaje || 'El certificado aún no está disponible por el tiempo de espera configurado.'
     )
   }
+
+  return disponibilidad
 }
 
 export async function ensureCertificado(usuarioId: string, cursoId: string, tipo: CertificadoTipo) {
@@ -234,12 +236,6 @@ export async function ensureCertificado(usuarioId: string, cursoId: string, tipo
     }
   })
 
-  if (existente) {
-    await assertDisponibilidadCertificado(usuarioId, cursoId, tipo, existente.curso)
-
-    return existente
-  }
-
   const inscripcion = await prisma.inscripcion.findUnique({
     where: { usuario_id_curso_id: { usuario_id: usuarioId, curso_id: cursoId } }
   })
@@ -259,11 +255,9 @@ export async function ensureCertificado(usuarioId: string, cursoId: string, tipo
     throw new EnsureCertificadoError('CURSO_NO_ENCONTRADO', 'Curso no encontrado')
   }
 
-  await assertDisponibilidadCertificado(usuarioId, cursoId, tipo, curso)
+  const disponibilidad = await assertDisponibilidadCertificado(usuarioId, cursoId, tipo, curso)
 
   const elegibilidad = await calcularElegibilidad(usuarioId, cursoId)
-
-
 
   if (elegibilidad.totalExamenes > 0 && elegibilidad.promedioScore < elegibilidad.promedioMinimo) {
     const notaPromedio = Math.round((elegibilidad.promedioScore / 100) * 20 * 10) / 10
@@ -304,10 +298,27 @@ export async function ensureCertificado(usuarioId: string, cursoId: string, tipo
       firma: curso.profesor.firma
     },
     fechas: {
-      inicio_curso: curso.tipo_emision === 'SINCRONO' ? curso.fecha_inicio : inscripcion.inscrito_en,
-      culminacion: inscripcion.completado_en || new Date(),
-      emision: new Date()
+      inicio_curso: (existente?.datos as any)?.emision_manual 
+        ? (existente?.datos as any)?.fechas?.inicio_curso 
+        : (curso.fecha_inicio || inscripcion.inscrito_en),
+      culminacion: (existente?.datos as any)?.emision_manual 
+        ? (existente?.datos as any)?.fechas?.culminacion 
+        : (curso.fecha_fin || inscripcion.completado_en || new Date()),
+      emision: (existente?.datos as any)?.emision_manual 
+        ? (existente?.datos as any)?.fechas?.emision 
+        : (fechaEstimada || existente?.emitido_en || disponibilidad.disponibleDesde || new Date())
     }
+  }
+
+  if (existente) {
+    return prisma.certificado.update({
+      where: { id: existente.id },
+      data: { datos: datosSnapshot as any },
+      include: {
+        curso: { select: { titulo: true } },
+        usuario: { select: { nombre: true, apellido: true } }
+      }
+    })
   }
 
   return prisma.certificado.create({

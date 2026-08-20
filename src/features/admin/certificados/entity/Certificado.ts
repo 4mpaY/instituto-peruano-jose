@@ -59,4 +59,10 @@ export interface CursoBusqueda {
   id: string
   titulo: string
   estado: string
+  fecha_inicio: string | null
+  fecha_fin: string | null
+  duracion: string | null
+  certificado_cip_entregas: any | null
+  certificado_ipg_espera_valor: number | null
+  certificado_ipg_espera_unidad: string | null
 }

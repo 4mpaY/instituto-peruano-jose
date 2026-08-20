@@ -92,12 +92,16 @@ export async function buildCertificadoData(opts: BuildCertificadoDataOptions): P
   const fechaEmisionVal = snapshot?.fechas?.emision || certificado.emitido_en
 
   const fechaInicioVal =
+    certificado.curso.fecha_inicio ||
     snapshot?.fechas?.inicio_curso ||
-    (esSincrono ? certificado.curso.fecha_inicio : inscripcion?.inscrito_en || certificado.emitido_en)
+    inscripcion?.inscrito_en ||
+    certificado.emitido_en
 
   const fechaFinVal =
+    cursoFechaFin ||
     snapshot?.fechas?.culminacion ||
-    (esSincrono ? cursoFechaFin || certificado.emitido_en : inscripcion?.completado_en || certificado.emitido_en)
+    inscripcion?.completado_en ||
+    certificado.emitido_en
 
   const vigenciaHastaVal =
     snapshot?.fechas?.vigencia_hasta ||

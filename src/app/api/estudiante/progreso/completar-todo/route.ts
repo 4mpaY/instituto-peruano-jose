@@ -50,34 +50,44 @@ export async function POST(request: Request) {
 
     const totalLecciones = lecciones.length
 
-    if (totalLecciones === 0) {
-      await prisma.progresoCurso.upsert({
-        where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } },
-        update: { porcentaje_progreso: 100 },
-        create: { usuario_id: auth.user.id, curso_id: cursoId, porcentaje_progreso: 100 }
-      })
-
-      return ApiResponse.success(request, { porcentaje: 100, leccionesCompletadas: 0 })
-    }
+    const examenesCount = await prisma.examen.count({
+      where: { curso_id: cursoId, esta_publicado: true }
+    })
 
     const ahora = new Date()
 
-    await prisma.$transaction([
-      ...lecciones.map(l =>
-        prisma.progresoLeccion.upsert({
-          where: { usuario_id_leccion_id: { usuario_id: auth.user.id, leccion_id: l.id } },
-          update: { esta_completado: true, completado_en: ahora },
-          create: { usuario_id: auth.user.id, leccion_id: l.id, esta_completado: true, completado_en: ahora }
+    if (totalLecciones === 0) {
+      if (examenesCount === 0) {
+        await prisma.progresoCurso.upsert({
+          where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } },
+          update: { porcentaje_progreso: 100 },
+          create: { usuario_id: auth.user.id, curso_id: cursoId, porcentaje_progreso: 100 }
         })
-      ),
-      prisma.progresoCurso.upsert({
-        where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } },
-        update: { porcentaje_progreso: 100 },
-        create: { usuario_id: auth.user.id, curso_id: cursoId, porcentaje_progreso: 100 }
-      })
-    ])
+      }
+      return ApiResponse.success(request, { porcentaje: examenesCount === 0 ? 100 : 0, leccionesCompletadas: 0 })
+    }
 
-    return ApiResponse.success(request, { porcentaje: 100, leccionesCompletadas: totalLecciones })
+    await prisma.$transaction(async tx => {
+      await Promise.all(
+        lecciones.map(l =>
+          tx.progresoLeccion.upsert({
+            where: { usuario_id_leccion_id: { usuario_id: auth.user.id, leccion_id: l.id } },
+            update: { esta_completado: true, completado_en: ahora },
+            create: { usuario_id: auth.user.id, leccion_id: l.id, esta_completado: true, completado_en: ahora }
+          })
+        )
+      )
+
+      if (examenesCount === 0) {
+        await tx.progresoCurso.upsert({
+          where: { usuario_id_curso_id: { usuario_id: auth.user.id, curso_id: cursoId } },
+          update: { porcentaje_progreso: 100 },
+          create: { usuario_id: auth.user.id, curso_id: cursoId, porcentaje_progreso: 100 }
+        })
+      }
+    })
+
+    return ApiResponse.success(request, { porcentaje: examenesCount === 0 ? 100 : undefined, leccionesCompletadas: totalLecciones })
   } catch (error) {
     return handleApiError(error, request)
   }

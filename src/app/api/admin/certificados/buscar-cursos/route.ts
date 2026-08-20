@@ -22,7 +22,17 @@ export async function GET(request: Request) {
       where: buscar
         ? { titulo: { contains: buscar, mode: 'insensitive' } }
         : {},
-      select: { id: true, titulo: true, estado: true },
+      select: { 
+        id: true, 
+        titulo: true, 
+        estado: true,
+        fecha_inicio: true,
+        fecha_fin: true,
+        duracion: true,
+        certificado_cip_entregas: true,
+        certificado_ipg_espera_valor: true,
+        certificado_ipg_espera_unidad: true
+      },
       orderBy: [{ estado: 'asc' }, { titulo: 'asc' }]
     })
 

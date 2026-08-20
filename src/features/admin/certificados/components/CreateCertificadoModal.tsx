@@ -60,6 +60,59 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
   const [docenteCargo, setDocenteCargo] = useState('')
   const [tipoCertificado, setTipoCertificado] = useState<'ipg' | 'cip'>('ipg')
 
+  // Auto-calcular fecha de emisión basada en la configuración del curso
+  useEffect(() => {
+    if (!cursoSelected) return
+
+    if (tipoCertificado === 'cip') {
+      const entregas = cursoSelected.certificado_cip_entregas || []
+      if (entregas.length > 0) {
+        // Find if today falls into any period
+        const now = new Date()
+        const match = entregas.find((r: any) => {
+          if (!r.pagos_desde || !r.pagos_hasta) return false
+          const desde = new Date(r.pagos_desde)
+          const hasta = new Date(r.pagos_hasta)
+          hasta.setHours(23, 59, 59, 999)
+          return now >= desde && now <= hasta
+        })
+
+        if (match && match.fecha_entrega) {
+          setFechaEmision(match.fecha_entrega)
+        } else {
+          // If out of bounds, use the latest configured delivery date
+          const ultimaEntrega = entregas[entregas.length - 1]
+          if (ultimaEntrega && ultimaEntrega.fecha_entrega) {
+            setFechaEmision(ultimaEntrega.fecha_entrega)
+          } else {
+            setFechaEmision(today())
+          }
+        }
+      } else {
+        setFechaEmision(today())
+      }
+    } else {
+      // IPG logic
+      import('@/utils/functions/certificadoDisponibilidad').then(({ resolveCertificadoDisponibilidad }) => {
+        const now = new Date()
+        const disponibilidad = resolveCertificadoDisponibilidad({
+          tipo: 'ipg',
+          habilitado: true,
+          habilitadoEn: now,
+          ipgEsperaValor: cursoSelected.certificado_ipg_espera_valor,
+          ipgEsperaUnidad: cursoSelected.certificado_ipg_espera_unidad,
+          now
+        })
+
+        if (disponibilidad.disponibleDesde) {
+          setFechaEmision(disponibilidad.disponibleDesde.toISOString().split('T')[0])
+        } else {
+          setFechaEmision(today())
+        }
+      })
+    }
+  }, [cursoSelected, tipoCertificado])
+
   const getAxios = useCallback(async () => {
     const s = await getSession()
     const token = s?.user?.accessToken ?? null
@@ -258,7 +311,19 @@ export function CreateCertificadoModal({ open, onClose }: Props) {
               options={cursoOpts}
               loading={cursoLoading}
               value={cursoSelected}
-              onChange={(_, v) => setCursoSelected(v)}
+              onChange={(_, v) => {
+                setCursoSelected(v)
+                if (v) {
+                  if (v.fecha_inicio) setFechaInicio(new Date(v.fecha_inicio).toISOString().split('T')[0])
+                  else setFechaInicio('')
+
+                  if (v.fecha_fin) setFechaCulminacion(new Date(v.fecha_fin).toISOString().split('T')[0])
+                  else setFechaCulminacion('')
+
+                  if (v.duracion) setDuracion(v.duracion)
+                  else setDuracion('')
+                }
+              }}
               inputValue={cursoInput}
               onInputChange={(_, v) => setCursoInput(v)}
               getOptionLabel={(o) => o.titulo}

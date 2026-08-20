@@ -557,28 +557,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cursoId])
 
-    // Auto-generar si no hay evaluaciones, está al 100% y no hay pago/espera pendiente
-    useEffect(() => {
-        if (
-            !loading &&
-            !certificado &&
-            !pagoPendiente &&
-            !hayEsperaActiva &&
-            elegibilidad?.isEligible &&
-            elegibilidad?.totalExamenes === 0 &&
-            !autoGeneradoRef.current
-        ) {
-            autoGeneradoRef.current = true
-            setGenerating(true)
-            axios.post('/api/estudiante/certificado', { cursoId })
-                .then(async res => {
-                    if (res.data.status) await refreshCertificadoState()
-                })
-                .catch(() => { })
-                .finally(() => setGenerating(false))
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loading, certificado, pagoPendiente, hayEsperaActiva, elegibilidad, cursoId])
+
 
     const handleCompletarTodo = async () => {
         setCompletandoTodo(true)
@@ -600,7 +579,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     const [pendingAction, setPendingAction] = useState<{ type: 'generar' | 'descargar', plantillaId?: string } | null>(null)
 
     const handleGenerar = async (force: boolean = false) => {
-        if (!force && !documentoCompleto) {
+        if (!force) {
             setPendingAction({ type: 'generar' })
             setShowProfileModal(true)
 
@@ -1435,25 +1414,23 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                                     : 'Ya puedes obtener tu certificado. Si tiene costo, tramita el pago correspondiente.'
                             }
                         </Typography>
-                        {el.totalExamenes > 0 && (
-                            <Button
-                                variant="contained"
-                                onClick={abrirTramiteOGenerar}
-                                disabled={generating}
-                                startIcon={generating ? <CircularProgress size={18} color="inherit" /> : <i className="tabler-certificate" />}
-                                sx={{
-                                    bgcolor: '#025E44', borderRadius: '12px', textTransform: 'none',
-                                    fontWeight: 700, fontSize: '0.95rem', px: 4, py: 1.25,
-                                    boxShadow: 'none', '&:hover': { bgcolor: '#014d36', boxShadow: 'none' }
-                                }}
-                            >
-                                {generating
-                                    ? 'Generando certificado...'
-                                    : preciosCurso
-                                        ? 'Tramitar mi certificado'
-                                        : 'Obtener mi Certificado'}
-                            </Button>
-                        )}
+                        <Button
+                            variant="contained"
+                            onClick={abrirTramiteOGenerar}
+                            disabled={generating}
+                            startIcon={generating ? <CircularProgress size={18} color="inherit" /> : <i className="tabler-certificate" />}
+                            sx={{
+                                bgcolor: '#025E44', borderRadius: '12px', textTransform: 'none',
+                                fontWeight: 700, fontSize: '0.95rem', px: 4, py: 1.25,
+                                boxShadow: 'none', '&:hover': { bgcolor: '#014d36', boxShadow: 'none' }
+                            }}
+                        >
+                            {generating
+                                ? 'Generando certificado...'
+                                : preciosCurso
+                                    ? 'Tramitar mi certificado'
+                                    : 'Obtener mi Certificado'}
+                        </Button>
                     </Box>
                 ) : (
 

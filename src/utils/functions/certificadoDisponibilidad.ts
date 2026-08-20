@@ -104,12 +104,12 @@ export function resolveCertificadoDisponibilidad(opts: {
   // CIP: fecha de entrega según el periodo en que el alumno pagó o fue habilitado
   const entregas = Array.isArray(opts.cipEntregas) ? opts.cipEntregas : []
 
-  // Prioriza la fecha de habilitación admin; si no hay, usa pago/inscripción
-  const fechaReferencia = opts.habilitadoEn ?? opts.fechaPago ?? null
+  // Prioriza la fecha de pago/inscripción; si no hay, usa habilitación admin
+  const fechaReferencia = opts.fechaPago ?? opts.habilitadoEn ?? null
 
   if (!fechaReferencia || entregas.length === 0) {
-    // Sin rangos: disponible apenas se habilita
-    const disponibleDesde = opts.habilitadoEn ?? now
+    // Sin rangos: prioriza la fecha manual, si no existe, disponible apenas se habilita
+    const disponibleDesde = fechaEstimadaPeru ?? opts.habilitadoEn ?? now
     const disponible = now >= disponibleDesde
 
     return {
@@ -125,7 +125,7 @@ export function resolveCertificadoDisponibilidad(opts: {
 
   const refDay = new Date(fechaReferencia)
 
-  const match = entregas.find(rango => {
+  let match = entregas.find(rango => {
     const desde = parseDateOnly(rango.pagos_desde)
     const hasta = parseDateOnly(rango.pagos_hasta)
 
@@ -134,6 +134,51 @@ export function resolveCertificadoDisponibilidad(opts: {
     
     return refDay >= desde && refDay <= hasta
   })
+
+  // Fallback: Si no coincide por fecha de pago, intentar con la fecha de habilitación (si existe y es distinta)
+  if (!match && opts.habilitadoEn && opts.habilitadoEn.getTime() !== refDay.getTime()) {
+    const habDay = new Date(opts.habilitadoEn)
+    match = entregas.find(rango => {
+      const desde = parseDateOnly(rango.pagos_desde)
+      const hasta = parseDateOnly(rango.pagos_hasta)
+  
+      if (!desde || !hasta) return false
+      if (!rango.pagos_hasta.includes('T')) hasta.setHours(23, 59, 59, 999)
+      
+      return habDay >= desde && habDay <= hasta
+    })
+  }
+
+  // Fallback 2: Si aún no coincide y el pago es anterior al primer rango, asignar al primer rango.
+  if (!match) {
+    const sortedEntregas = [...entregas].sort((a, b) => {
+      const dA = parseDateOnly(a.pagos_desde)
+      const dB = parseDateOnly(b.pagos_desde)
+      if (!dA || !dB) return 0
+      return dA.getTime() - dB.getTime()
+    })
+    
+    const primerRango = sortedEntregas[0]
+    const desdePrimer = primerRango ? parseDateOnly(primerRango.pagos_desde) : null
+    
+    if (desdePrimer && refDay < desdePrimer) {
+      match = primerRango
+    }
+  }
+
+  // Si no coincide y tenemos una fecha manual, la usamos como salvavidas absoluto
+  if (!match && fechaEstimadaPeru) {
+    const disponibleDesde = fechaEstimadaPeru
+    const disponible = now >= disponibleDesde
+
+    return {
+      habilitado: true,
+      disponible,
+      disponibleDesde,
+      enEspera: !disponible,
+      mensaje: disponible ? null : 'Tu certificado CIP estará disponible en la fecha indicada.',
+    }
+  }
 
   if (!match) {
     return {

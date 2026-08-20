@@ -87,7 +87,7 @@ export function ResumenSolicitudModal({
               <strong>Curso:</strong> {cursoTitulo}
             </Typography>
             <Typography variant="body2">
-              <strong>Promedio obtenido:</strong> {notaFinal != null ? `${Number(notaFinal).toFixed(2).replace(/\.00$/, '')} / 20` : 'N/A'}
+              <strong>Promedio obtenido:</strong> {notaFinal != null ? `${Math.round(Number(notaFinal))} / 20` : 'N/A'}
             </Typography>
           </Box>
 

@@ -379,7 +379,7 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   const h3 = nombreLines.length * NOMBRE_SIZE * ptToMm * 1.06
   const h4 = DESC_SIZE * ptToMm * 1.06
   const h5 = cursoLines.length * CURSO_SIZE * ptToMm * 1.06
-  const h6 = descLineCount * descLh
+  const h6 = descLineCount * (descLh * 1.35)
   const h7 = porcuantoLines.length * descLh
   const h8 = DESC_SIZE * ptToMm * 1.06
   const h9 = DESC_SIZE * ptToMm * 1.06
@@ -461,11 +461,12 @@ return await sharp(buf).flatten({ background: '#ffffff' }).greyscale().threshold
   y += g + h5
 
   // Descripción
-  const descDrawY = y + g + descLh
+  const descLhSpaced = descLh * 1.35
+  const descDrawY = y + g + descLhSpaced
 
   doc.setFontSize(DESC_SIZE); setNormal()
   doc.setTextColor(GRAY.r, GRAY.g, GRAY.b)
-  renderMixed(descSegs, cx, descDrawY, textMaxW, descLh)
+  renderMixed(descSegs, cx, descDrawY, textMaxW, descLhSpaced)
   y += g + h6
 
   // "Por cuanto..."

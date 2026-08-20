@@ -56,7 +56,25 @@ export function TabInformacion({ curso, profesores, onSuccess }: TabInformacionP
   })
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+
+    setForm(prev => {
+      const next = { ...prev, [name]: value }
+
+      if (name === 'fecha_inicio' && next.fecha_fin && value) {
+        if (new Date(value) > new Date(next.fecha_fin)) {
+          next.fecha_fin = ''
+        }
+      }
+      
+      if (name === 'fecha_fin' && next.fecha_inicio && value) {
+        if (new Date(value) < new Date(next.fecha_inicio)) {
+          next.fecha_fin = '' // Limpiar si intenta poner una fecha de fin menor
+        }
+      }
+
+      return next
+    })
   }
 
   const handleSave = async () => {
@@ -186,38 +204,35 @@ export function TabInformacion({ curso, profesores, onSuccess }: TabInformacionP
           </Button>
         </Box>
       </Grid>
-      {(form.tipo_emision === 'SINCRONO' || form.tipo_emision === 'MIXTO') && (
-        <>
-          <Grid item xs={12} sm={6}>
-            <CustomTextField
-              fullWidth
-              type='date'
-              label='Fecha de Inicio'
-              name='fecha_inicio'
-              value={form.fecha_inicio}
-              onChange={handleChange}
-              InputLabelProps={{ shrink: true }}
-              InputProps={{
-                startAdornment: <InputAdornment position='start'><i className='tabler-calendar text-xl text-textSecondary' /></InputAdornment>
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <CustomTextField
-              fullWidth
-              type='date'
-              label='Fecha de Fin'
-              name='fecha_fin'
-              value={form.fecha_fin}
-              onChange={handleChange}
-              InputLabelProps={{ shrink: true }}
-              InputProps={{
-                startAdornment: <InputAdornment position='start'><i className='tabler-calendar-event text-xl text-textSecondary' /></InputAdornment>
-              }}
-            />
-          </Grid>
-        </>
-      )}
+      <Grid item xs={12} sm={6}>
+        <CustomTextField
+          fullWidth
+          type='date'
+          label='Fecha de Inicio'
+          name='fecha_inicio'
+          value={form.fecha_inicio}
+          onChange={handleChange}
+          InputLabelProps={{ shrink: true }}
+          InputProps={{
+            startAdornment: <InputAdornment position='start'><i className='tabler-calendar text-xl text-textSecondary' /></InputAdornment>
+          }}
+        />
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <CustomTextField
+          fullWidth
+          type='date'
+          label='Fecha de Fin'
+          name='fecha_fin'
+          value={form.fecha_fin}
+          onChange={handleChange}
+          InputLabelProps={{ shrink: true }}
+          inputProps={{ min: form.fecha_inicio || undefined }}
+          InputProps={{
+            startAdornment: <InputAdornment position='start'><i className='tabler-calendar-event text-xl text-textSecondary' /></InputAdornment>
+          }}
+        />
+      </Grid>
       <Grid item xs={12} sm={6}>
         <CustomTextField
           fullWidth

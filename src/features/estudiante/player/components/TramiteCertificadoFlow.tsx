@@ -926,7 +926,7 @@ return
                       />
                     )}
                     <PagoCopyRow
-                      label="N° Cuenta / Yape"
+                      label="N° Cuenta"
                       value={metodoSeleccionado.numero_cuenta}
                       onCopy={() => copyToClipboard(metodoSeleccionado.numero_cuenta)}
                     />

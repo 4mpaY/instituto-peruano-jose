@@ -305,10 +305,10 @@ return true
                                         render={({ field }) => (
                                             <CustomTextField
                                                 {...field}
-                                                type='date'
+                                                type='datetime-local'
                                                 fullWidth
-                                                label='Fecha de Entrega (Opcional)'
-                                                value={field.value ? String(field.value).split('T')[0] : ''}
+                                                label='Fecha y Hora Estimada (Opcional)'
+                                                value={field.value ? String(field.value).slice(0, 16) : ''}
                                                 InputLabelProps={{ shrink: true }}
                                                 error={!!errors.fecha_entrega_estimada}
                                                 helperText={errors.fecha_entrega_estimada?.message}

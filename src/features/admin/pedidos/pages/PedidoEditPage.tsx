@@ -80,7 +80,11 @@ export function PedidoEditPage() {
         tipo_comprobante: p.tipo_comprobante || '',
         numero_comprobante: p.numero_comprobante || '',
         referencia_pago: p.referencia_pago || '',
-        fecha_entrega_estimada: p.fecha_entrega_estimada ? new Date(new Date(p.fecha_entrega_estimada).getTime() - new Date(p.fecha_entrega_estimada).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '',
+        fecha_entrega_estimada: p.fecha_entrega_estimada 
+          ? new Date(new Date(p.fecha_entrega_estimada).getTime() - new Date(p.fecha_entrega_estimada).getTimezoneOffset() * 60000).toISOString().slice(0, 16) 
+          : (p as any).fecha_entrega_default
+            ? new Date(new Date((p as any).fecha_entrega_default).getTime() - new Date((p as any).fecha_entrega_default).getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+            : '',
       })
       setVoucherPreview(p.comprobante_url || null)
     }
@@ -253,7 +257,7 @@ export function PedidoEditPage() {
                         <i className='tabler-book' style={{ fontSize: 16 }} />
                       </Avatar>
                       <Box flex={1}>
-                        <Typography variant='body2' fontWeight={600}>{d.curso?.titulo}</Typography>
+                        <Typography variant='body2' fontWeight={600}>{d.titulo_display || d.curso?.titulo}</Typography>
                       </Box>
                       <Typography variant='body2' fontWeight={700} color='primary.main'>
                         {pedido.moneda} {Number(d.subtotal).toFixed(2)}

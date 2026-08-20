@@ -251,7 +251,6 @@ export async function drawFirmanteCertificadoBlock(
   const DARK = opts?.darkColor ?? { r: 30, g: 30, b: 30 }
   const GRAY = opts?.grayColor ?? { r: 100, g: 100, b: 100 }
 
-  const GAP_TO_LINE = 2
   const SELLO_SIZE = 24
   const FIRMA_W = 40
   const FIRMA_H = 22
@@ -263,7 +262,7 @@ export async function drawFirmanteCertificadoBlock(
       if (buf) {
         const { buffer: comp, jsPdfFormat } = await compressImageForPdf(buf, { maxWidth: 240, format: 'png' })
 
-        doc.addImage(comp, jsPdfFormat, cx - 40, lineY - GAP_TO_LINE - SELLO_SIZE, SELLO_SIZE, SELLO_SIZE)
+        doc.addImage(comp, jsPdfFormat, cx - 40, lineY - (SELLO_SIZE * 0.9), SELLO_SIZE, SELLO_SIZE)
       }
     } catch { /* skip */ }
   }
@@ -275,7 +274,7 @@ export async function drawFirmanteCertificadoBlock(
       if (buf) {
         const { buffer: comp, jsPdfFormat } = await compressImageForPdf(buf, { maxWidth: 320, format: 'png' })
 
-        doc.addImage(comp, jsPdfFormat, cx - 13, lineY - GAP_TO_LINE - FIRMA_H, FIRMA_W, FIRMA_H)
+        doc.addImage(comp, jsPdfFormat, cx - 13, lineY - (FIRMA_H * 0.9), FIRMA_W, FIRMA_H)
       }
     } catch { /* skip */ }
   }

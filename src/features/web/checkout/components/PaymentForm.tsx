@@ -948,7 +948,7 @@ const PaymentForm = ({ courses, appliedCouponCode, finalTotal }: PaymentFormProp
                               />
                             )}
                             <CopyRow
-                              label='N° Cuenta / Yape'
+                              label='N° Cuenta'
                               value={selectedMetodo.numero_cuenta}
                               onCopy={() => copyToClipboard(selectedMetodo.numero_cuenta)}
                             />

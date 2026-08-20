@@ -30,7 +30,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
         metodo_pago_manual: true,
         detalles: {
           include: {
-            curso: { select: { id: true, titulo: true, miniatura: true, precio: true } }
+            curso: { select: { id: true, titulo: true, miniatura: true, precio: true, certificado_ipg_espera_valor: true, certificado_ipg_espera_unidad: true, certificado_cip_entregas: true } }
           }
         }
       }
@@ -51,9 +51,31 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
     const certById = new Map(certs.map(c => [c.id, c.certificado_tipo]))
 
+    const { resolveCertificadoDisponibilidad } = await import('@/utils/functions/certificadoDisponibilidad')
+
+    let fechaEntregaDefault: Date | null = null
+
+    if (tipoRow?.tipo === 'CERTIFICADO' && pedido.detalles.length > 0) {
+      const detalle = pedido.detalles[0]
+      const certTipo = certById.get(detalle.id) || 'IPG'
+      
+      const disp = resolveCertificadoDisponibilidad({
+        tipo: certTipo === 'CIP' ? 'cip' : 'ipg',
+        habilitado: true,
+        habilitadoEn: pedido.creado_en || pedido.pagado_en,
+        ipgEsperaValor: detalle.curso.certificado_ipg_espera_valor,
+        ipgEsperaUnidad: detalle.curso.certificado_ipg_espera_unidad,
+        cipEntregas: detalle.curso.certificado_cip_entregas as any,
+        fechaPago: pedido.creado_en || pedido.pagado_en,
+      })
+      
+      fechaEntregaDefault = disp.disponibleDesde
+    }
+
     return ApiResponse.success(request, {
       data: {
         ...pedido,
+        fecha_entrega_default: fechaEntregaDefault,
         tipo: tipoRow?.tipo || 'CURSO',
         detalles: pedido.detalles.map(d => ({
           ...d,

@@ -373,7 +373,7 @@ export const generarColegioIngenieros: GeneratorFn = async data => {
   const DESC_SIZE = 10.6
   const NOMBRE_SIZE = 20
   const CURSO_SIZE = 14
-  const descLh = DESC_SIZE * ptToMm * 1.06
+  const descLh = DESC_SIZE * ptToMm * 1.35
 
   doc.setFontSize(NOMBRE_SIZE); setBold()
   const nombreLines = doc.splitTextToSize(nombreCompleto, textMaxW)

@@ -5,6 +5,8 @@ import { ApiResponse } from '@/utils/libs/apiResponse'
 import { requireAdmin } from '@/utils/libs/auth-helpers'
 import { handleApiError } from '@/utils/libs/validation'
 import { sanitizeDatetimeInput } from '@/utils/functions/sanitizeDatetime'
+import { parsePeruDate } from '@/utils/functions/dateHelpers'
+
 
 /**
  * GET /api/cupones/[id]
@@ -83,7 +85,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         ...camposBase,
         valor: camposBase.valor ? Number(camposBase.valor) : undefined,
         limite_uso: camposBase.limite_uso !== undefined ? (camposBase.limite_uso ? Number(camposBase.limite_uso) : null) : undefined,
-        fecha_expiracion: fechaExpiracion ? new Date(fechaExpiracion) : undefined
+        fecha_expiracion: fechaExpiracion ? parsePeruDate(fechaExpiracion) : undefined
       },
       include: {
         cursos: {

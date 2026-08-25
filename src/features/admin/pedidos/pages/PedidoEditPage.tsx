@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation'
 import {
   Card, CardContent, Grid, Typography,
   Button, MenuItem, Box, Divider, Chip,
-  Avatar, Stack, Paper, Alert, CircularProgress
+  Avatar, Stack, Paper, Alert, CircularProgress, IconButton
 } from '@mui/material'
 import { toast } from 'react-toastify'
 import { useForm, Controller } from 'react-hook-form'
@@ -51,13 +51,13 @@ export function PedidoEditPage() {
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { data, isLoading } = usePedido(id as string)
+  const { data, isLoading, isError, error } = usePedido(id as string)
   const { mutateAsync: updatePedido, isPending } = useUpdatePedido()
 
   const [voucherPreview, setVoucherPreview] = useState<string | null>(null)
   const [uploadingVoucher, setUploadingVoucher] = useState(false)
 
-  const { control, handleSubmit, reset } = useForm({
+  const { control, handleSubmit, reset, getValues } = useForm({
     defaultValues: {
       estado: '',
       metodo_pago: '',
@@ -117,19 +117,24 @@ export function PedidoEditPage() {
     }
   }
 
-  const handleVoucherChange = async (file: File | null) => {
-    if (!file) return
+  const handleVoucherChange = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('El archivo no debe superar 5 MB')
+    const validFiles = Array.from(files).filter(f => {
+      if (f.size > 5 * 1024 * 1024) {
+        toast.warning(`El archivo ${f.name} supera 5 MB`)
+        
+return false
+      }
 
-      return
-    }
+      
+return true
+    }).slice(0, 5)
 
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      toast.error('Solo se permiten imágenes JPG, PNG o WEBP')
-
-      return
+    if (validFiles.length === 0) {
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      
+return
     }
 
     setUploadingVoucher(true)
@@ -139,7 +144,8 @@ export function PedidoEditPage() {
       const token = session?.user?.accessToken
       const fd = new FormData()
 
-      fd.append('voucher', file)
+      validFiles.forEach(v => fd.append('voucher', v))
+      fd.append('existing_urls', voucherPreview || '')
 
       const res = await fetch(`/api/pedidos/${id}/voucher`, {
         method: 'POST',
@@ -166,8 +172,31 @@ export function PedidoEditPage() {
       toast.error(err?.message || 'Error al subir el voucher')
     } finally {
       setUploadingVoucher(false)
-
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleDeleteVoucher = async (index: number) => {
+    if (!voucherPreview) return
+    
+    const currentUrls = voucherPreview.split(',').filter(Boolean)
+    const newUrls = currentUrls.filter((_, i) => i !== index)
+    const newUrlString = newUrls.join(',') || ''
+    
+    try {
+      await updatePedido({
+        id: id as string,
+        data: { 
+          estado: getValues('estado'),
+          comprobante_url: newUrlString 
+        } as any
+      })
+      
+      setVoucherPreview(newUrlString || null)
+      await queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+      toast.success('Voucher eliminado')
+    } catch (error) {
+      toast.error('Error al eliminar voucher')
     }
   }
 
@@ -185,6 +214,18 @@ export function PedidoEditPage() {
   }
 
   const pedido = data?.data as Pedido
+
+  if (!pedido || isError) {
+    return (
+      <Card>
+        <CardContent>
+          <Alert severity='error' variant='outlined'>
+            No se pudo cargar la información del pedido. {(error as any)?.message || 'Es posible que tu sesión haya expirado o el pedido ya no exista.'}
+          </Alert>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -353,67 +394,78 @@ export function PedidoEditPage() {
                         onClick={() => fileInputRef.current?.click()}
                         sx={{ textTransform: 'none', fontWeight: 700 }}
                       >
-                        {uploadingVoucher ? 'Subiendo...' : voucherPreview ? 'Cambiar imagen' : 'Subir imagen'}
+                        {uploadingVoucher ? 'Subiendo...' : voucherPreview ? 'Agregar voucher' : 'Subir imágenes'}
                       </Button>
                       <input
                         ref={fileInputRef}
                         type='file'
                         hidden
-                        accept='image/jpeg,image/png,image/webp'
-                        onChange={e => {
-                          const file = e.target.files?.[0] || null
-
-                          void handleVoucherChange(file)
-                        }}
+                        multiple
+                        accept='image/*,application/pdf'
+                        onChange={e => handleVoucherChange(e.target.files)}
                       />
                     </Stack>
 
                     {voucherPreview ? (
-                      <Box
-                        sx={{
-                          position: 'relative',
-                          py: 2,
-                          px: 2,
-                          borderRadius: 2,
-                          border: '1.5px solid',
-                          borderColor: 'divider',
-                          bgcolor: '#f8fafc',
-                        }}
-                      >
-                        <Box
-                          component='img'
-                          src={voucherPreview}
-                          alt='Voucher'
-                          onClick={() => window.open(voucherPreview.split('?')[0], '_blank')}
-                          sx={{
-                            width: '100%',
-                            maxHeight: 340,
-                            objectFit: 'contain',
-                            borderRadius: 1.5,
-                            display: 'block',
-                            cursor: 'zoom-in',
-                            transition: 'transform 0.2s',
-                            '&:hover': { transform: 'scale(1.01)' },
-                          }}
-                        />
-                        {uploadingVoucher && (
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
+                        {voucherPreview.split(',').map((url, idx) => (
                           <Box
+                            key={idx}
                             sx={{
-                              position: 'absolute',
-                              inset: 0,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              bgcolor: 'rgba(255,255,255,0.65)',
+                              position: 'relative',
+                              width: 120,
+                              height: 120,
                               borderRadius: 2,
+                              border: '1.5px solid',
+                              borderColor: 'divider',
+                              bgcolor: '#f8fafc',
+                              overflow: 'hidden',
+                              '&:hover .delete-btn': { opacity: 1 }
                             }}
                           >
-                            <CircularProgress size={28} />
+                            <IconButton
+                              className="delete-btn"
+                              size="small"
+                              color="error"
+                              onClick={(e) => { e.stopPropagation(); void handleDeleteVoucher(idx); }}
+                              sx={{
+                                position: 'absolute',
+                                top: 4,
+                                right: 4,
+                                bgcolor: 'rgba(255,255,255,0.9)',
+                                opacity: 0,
+                                transition: 'opacity 0.2s',
+                                zIndex: 10,
+                                '&:hover': { bgcolor: 'rgba(255,255,255,1)' }
+                              }}
+                            >
+                              <i className='tabler-x' style={{ fontSize: 16 }} />
+                            </IconButton>
+                            {url.toLowerCase().includes('.pdf') ? (
+                              <Box
+                                onClick={() => window.open(url.split('?')[0], '_blank')}
+                                sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover', cursor: 'pointer' }}
+                              >
+                                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 700 }}>PDF</Typography>
+                              </Box>
+                            ) : (
+                              <Box
+                                component='img'
+                                src={url}
+                                alt={`Voucher ${idx + 1}`}
+                                onClick={() => window.open(url.split('?')[0], '_blank')}
+                                sx={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  cursor: 'zoom-in',
+                                  transition: 'transform 0.2s',
+                                  '&:hover': { transform: 'scale(1.05)' },
+                                }}
+                              />
+                            )}
                           </Box>
-                        )}
-                        <Typography variant='caption' color='text.secondary' sx={{ mt: 1.5, display: 'block', textAlign: 'center' }}>
-                          Click en la imagen para verla en tamaño completo
-                        </Typography>
+                        ))}
                       </Box>
                     ) : (
                       <Box
@@ -436,8 +488,8 @@ export function PedidoEditPage() {
                         onClick={() => fileInputRef.current?.click()}
                       >
                         <i className='tabler-photo-up' style={{ fontSize: 32, color: '#94a3b8' }} />
-                        <Typography variant='body2' fontWeight={700}>Subir voucher</Typography>
-                        <Typography variant='caption' color='text.secondary'>JPG, PNG o WEBP — máx. 5 MB</Typography>
+                        <Typography variant='body2' fontWeight={700}>Subir vouchers</Typography>
+                        <Typography variant='caption' color='text.secondary'>Imágenes o PDFs — máx. 5 MB (hasta 5 arch.)</Typography>
                       </Box>
                     )}
                   </Box>

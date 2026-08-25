@@ -17,6 +17,7 @@
     "db:migration:dev": "prisma migrate dev",
     "db:migration:deploy": "prisma migrate deploy",
     "db:seed": "dotenv -- tsx ./prisma/seed/main",
+    "recalculate-progress": "tsx scripts/recalculateProgress.ts",
     "db:seed:notas": "dotenv -e .env -- tsx ./prisma/seed/seed-notas.ts",
     "db:reset": "dotenv -e .env -- npx prisma migrate reset"
   },

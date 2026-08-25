@@ -4,6 +4,7 @@ import { handleApiError, validateRequest } from '@/utils/libs/validation'
 
 import { ApiResponse } from '@/utils/libs/apiResponse'
 import prisma from '@/utils/libs/prisma'
+import { parsePeruDate } from '@/utils/functions/dateHelpers'
 import { requireAdmin } from '@/utils/libs/auth-helpers'
 import { updatePedidoSchema } from '@/schemas/pedido.schema'
 import { labelDetalleCertificado } from '@/utils/libs/order-service'
@@ -115,7 +116,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return validation.error
     }
 
-    const { estado, metodo_pago, mensaje, tipo_comprobante, numero_comprobante, referencia_pago, fecha_entrega_estimada } =
+    const { estado, metodo_pago, mensaje, tipo_comprobante, numero_comprobante, referencia_pago, fecha_entrega_estimada, comprobante_url } =
       validation.data
 
     const pedidoAnterior = await prisma.pedido.findUnique({
@@ -160,7 +161,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           tipo_comprobante,
           numero_comprobante,
           ...(referencia_pago !== undefined ? { referencia_pago } : {}),
-          ...(fecha_entrega_estimada !== undefined ? { fecha_entrega_estimada: fecha_entrega_estimada ? new Date(fecha_entrega_estimada) : null } : {}),
+          ...(fecha_entrega_estimada !== undefined ? { fecha_entrega_estimada: fecha_entrega_estimada ? parsePeruDate(fecha_entrega_estimada) : null } : {}),
+          ...(comprobante_url !== undefined ? { comprobante_url } : {}),
           pagado_en: estado === 'COMPLETADO' ? pagado_en : null
         }
       })

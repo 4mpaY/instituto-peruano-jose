@@ -23,18 +23,29 @@ function parseDateOnly(value: string): Date | null {
 
   if (!y || !m || !d) return null
   
-return new Date(y, m - 1, d, 0, 0, 0, 0)
+  // Force parsing in UTC-5 (Peru Time)
+  const isoString = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T00:00:00-05:00`
+  const date = new Date(isoString)
+
+  
+return isNaN(date.getTime()) ? null : date
 }
 
 function parseDateTime(fecha: string, hora: string): Date | null {
-  const base = parseDateOnly(fecha)
-
-  if (!base) return null
-  const [hh = '0', mm = '0'] = (hora || '00:00').split(':')
-
-  base.setHours(Number(hh) || 0, Number(mm) || 0, 0, 0)
+  if (!fecha) return null
   
-return base
+  const [y, m, d] = fecha.split('-').map(Number)
+
+  if (!y || !m || !d) return null
+
+  const [hh = '0', mm = '0'] = (hora || '00:00').split(':')
+  
+  // Force parsing in UTC-5 (Peru Time)
+  const isoString = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00-05:00`
+  const date = new Date(isoString)
+
+  
+return isNaN(date.getTime()) ? null : date
 }
 
 function addEspera(from: Date, valor: number, unidad: UnidadEsperaIpg): Date {

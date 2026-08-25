@@ -49,6 +49,7 @@ export const updatePedidoSchema = z.object({
   numero_comprobante: z.string().optional().nullable(),
   referencia_pago: z.string().trim().max(200).optional().nullable(),
   fecha_entrega_estimada: z.union([z.string(), z.date()]).optional().nullable(),
+  comprobante_url: z.string().optional().nullable(),
 })
 
 export type UpdatePedidoDto = z.infer<typeof updatePedidoSchema>

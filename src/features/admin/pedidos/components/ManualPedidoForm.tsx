@@ -31,6 +31,7 @@ import { crearPedidoManualSchema, type CrearPedidoManualDto } from '@/schemas/pe
 import { useCreatePedidoManual } from '../hooks/usePedidos'
 import { useUsuarios } from '@/features/admin/usuarios/hooks/useUsuarios'
 import { useCursos } from '@/features/admin/cursos/hooks/useCursos'
+import { useCursoAlumnos } from '@/features/admin/cursos/hooks/useCursoAlumnos'
 
 export function ManualPedidoForm() {
     const router = useRouter()
@@ -43,9 +44,6 @@ export function ManualPedidoForm() {
 
     const { data: usuariosData, isLoading: isLoadingUsuarios } = useUsuarios({ limit: '1000' })
     const { data: cursosData, isLoading: isLoadingCursos } = useCursos()
-
-    const usuarios = (usuariosData?.usuarios || []).filter(u => u.rol === 'ESTUDIANTE')
-    const cursos = (cursosData?.cursos || []).filter(c => c.estado === 'PUBLICADO')
 
     const {
         control,
@@ -69,6 +67,18 @@ export function ManualPedidoForm() {
     })
 
     const tipoPedido = watch('tipo_pedido')
+    const cursosIdsWatch = watch('cursos_ids')
+    const selectedCursoId = tipoPedido === 'CERTIFICADO' && cursosIdsWatch?.length > 0 ? cursosIdsWatch[0] : null
+
+    const { data: cursoAlumnosData, isLoading: isLoadingCursoAlumnos } = useCursoAlumnos({ cursoId: selectedCursoId })
+
+    const usuarios = tipoPedido === 'CERTIFICADO'
+        ? (cursoAlumnosData?.alumnos || [])
+        : (usuariosData?.usuarios || []).filter(u => u.rol === 'ESTUDIANTE')
+        
+    const isUsuariosLoading = tipoPedido === 'CERTIFICADO' && selectedCursoId ? isLoadingCursoAlumnos : isLoadingUsuarios
+
+    const cursos = (cursosData?.cursos || []).filter(c => c.estado === 'PUBLICADO')
 
     // Clean up voucher object URL
     useEffect(() => {
@@ -84,11 +94,11 @@ export function ManualPedidoForm() {
             if (f.size > 5 * 1024 * 1024) {
                 enqueueSnackbar(`El archivo ${f.name} supera los 5 MB`, { variant: 'warning' })
                 
-return false
+                return false
             }
 
             
-return true
+            return true
         })
 
         if (validFiles.length > 0) {
@@ -159,6 +169,112 @@ return true
         }
     }
 
+    const fieldCursos = (
+        <Grid item xs={12} md={6}>
+            <Controller
+                name='cursos_ids'
+                control={control}
+                render={({ field: { value, onChange } }) => (
+                    <Autocomplete
+                        fullWidth
+                        multiple={tipoPedido === 'CURSO'}
+                        options={cursos}
+                        getOptionLabel={(option) => option.titulo}
+                        loading={isLoadingCursos}
+                        value={tipoPedido === 'CURSO' ? cursos.filter((c) => value.includes(c.id)) : (cursos.find(c => value.includes(c.id)) || null)}
+                        onChange={(_, newValue) => {
+                            if (tipoPedido === 'CURSO') {
+                                const vals = newValue as any[]
+
+                                onChange(vals.map(c => c.id))
+                                const totalPrice = vals.reduce((acc, curr) => acc + Number(curr.precio), 0)
+
+                                setValue('precio', totalPrice)
+                                setSelectedCoursePrice(totalPrice)
+                            } else {
+                                const val = newValue as any
+
+                                onChange(val ? [val.id] : [])
+
+                                // For certificate, use the course certificate price
+                                const certPrice = val ? Number(val.precio_certificado || 50) : 0
+
+                                setValue('precio', certPrice)
+                                setSelectedCoursePrice(certPrice)
+                                
+                                // Reset student selection when course changes
+                                setValue('usuarios_ids', [])
+                            }
+                        }}
+                        renderInput={(params) => (
+                            <CustomTextField
+                                {...params}
+                                label={tipoPedido === 'CURSO' ? 'Seleccionar Cursos' : 'Seleccionar Curso'}
+                                placeholder='Busca cursos activos'
+                                error={!!errors.cursos_ids}
+                                helperText={(errors.cursos_ids as any)?.message}
+                                InputProps={{
+                                    ...params.InputProps,
+                                    endAdornment: (
+                                        <Fragment>
+                                            {isLoadingCursos ? <CircularProgress color="inherit" size={20} /> : null}
+                                            {params.InputProps.endAdornment}
+                                        </Fragment>
+                                    ),
+                                }}
+                            />
+                        )}
+                    />
+                )}
+            />
+        </Grid>
+    )
+
+    const fieldEstudiantes = (
+        <Grid item xs={12} md={6}>
+            <Controller
+                name='usuarios_ids'
+                control={control}
+                render={({ field: { value, onChange } }) => (
+                    <Autocomplete
+                        fullWidth
+                        multiple={tipoPedido === 'CURSO'}
+                        options={usuarios}
+                        getOptionLabel={(option) => `${option.nombre} ${option.apellido} (${option.correo})`}
+                        loading={isUsuariosLoading}
+                        disabled={tipoPedido === 'CERTIFICADO' && !selectedCursoId}
+                        value={tipoPedido === 'CURSO' ? usuarios.filter((u) => value.includes(u.id)) : (usuarios.find(u => value.includes(u.id)) || null)}
+                        onChange={(_, newValue) => {
+                            if (tipoPedido === 'CURSO') {
+                                onChange((newValue as any[]).map(u => u.id))
+                            } else {
+                                onChange(newValue ? [(newValue as any).id] : [])
+                            }
+                        }}
+                        renderInput={(params) => (
+                            <CustomTextField
+                                {...params}
+                                label={tipoPedido === 'CURSO' ? 'Seleccionar Estudiantes' : 'Seleccionar Estudiante'}
+                                placeholder={tipoPedido === 'CERTIFICADO' && !selectedCursoId ? 'Primero selecciona un curso' : 'Busca por nombre o correo'}
+                                error={!!errors.usuarios_ids}
+                                helperText={(errors.usuarios_ids as any)?.message}
+                                InputProps={{
+                                    ...params.InputProps,
+                                    endAdornment: (
+                                        <Fragment>
+                                            {isUsuariosLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                                            {params.InputProps.endAdornment}
+                                        </Fragment>
+                                    ),
+                                }}
+                            />
+                        )}
+                    />
+                )}
+            />
+        </Grid>
+    )
+
     return (
         <Card>
             <CardHeader title='Generar Nuevo Pedido Manual' />
@@ -178,103 +294,17 @@ return true
                             />
                         </Grid>
 
-                        <Grid item xs={12} md={6}>
-                            <Controller
-                                name='usuarios_ids'
-                                control={control}
-                                render={({ field: { value, onChange } }) => (
-                                    <Autocomplete
-                                        fullWidth
-                                        multiple={tipoPedido === 'CURSO'}
-                                        options={usuarios}
-                                        getOptionLabel={(option) => `${option.nombre} ${option.apellido} (${option.correo})`}
-                                        loading={isLoadingUsuarios}
-                                        value={tipoPedido === 'CURSO' ? usuarios.filter((u) => value.includes(u.id)) : (usuarios.find(u => value.includes(u.id)) || null)}
-                                        onChange={(_, newValue) => {
-                                            if (tipoPedido === 'CURSO') {
-                                                onChange((newValue as any[]).map(u => u.id))
-                                            } else {
-                                                onChange(newValue ? [(newValue as any).id] : [])
-                                            }
-                                        }}
-                                        renderInput={(params) => (
-                                            <CustomTextField
-                                                {...params}
-                                                label={tipoPedido === 'CURSO' ? 'Seleccionar Estudiantes' : 'Seleccionar Estudiante'}
-                                                placeholder='Busca por nombre o correo'
-                                                error={!!errors.usuarios_ids}
-                                                helperText={(errors.usuarios_ids as any)?.message}
-                                                InputProps={{
-                                                    ...params.InputProps,
-                                                    endAdornment: (
-                                                        <Fragment>
-                                                            {isLoadingUsuarios ? <CircularProgress color="inherit" size={20} /> : null}
-                                                            {params.InputProps.endAdornment}
-                                                        </Fragment>
-                                                    ),
-                                                }}
-                                            />
-                                        )}
-                                    />
-                                )}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12} md={6}>
-                            <Controller
-                                name='cursos_ids'
-                                control={control}
-                                render={({ field: { value, onChange } }) => (
-                                    <Autocomplete
-                                        fullWidth
-                                        multiple={tipoPedido === 'CURSO'}
-                                        options={cursos}
-                                        getOptionLabel={(option) => option.titulo}
-                                        loading={isLoadingCursos}
-                                        value={tipoPedido === 'CURSO' ? cursos.filter((c) => value.includes(c.id)) : (cursos.find(c => value.includes(c.id)) || null)}
-                                        onChange={(_, newValue) => {
-                                            if (tipoPedido === 'CURSO') {
-                                                const vals = newValue as any[]
-
-                                                onChange(vals.map(c => c.id))
-                                                const totalPrice = vals.reduce((acc, curr) => acc + Number(curr.precio), 0)
-
-                                                setValue('precio', totalPrice)
-                                                setSelectedCoursePrice(totalPrice)
-                                            } else {
-                                                const val = newValue as any
-
-                                                onChange(val ? [val.id] : [])
-
-                                                // For certificate, use the course certificate price
-                                                const certPrice = val ? Number(val.precio_certificado || 50) : 0
-
-                                                setValue('precio', certPrice)
-                                                setSelectedCoursePrice(certPrice)
-                                            }
-                                        }}
-                                        renderInput={(params) => (
-                                            <CustomTextField
-                                                {...params}
-                                                label={tipoPedido === 'CURSO' ? 'Seleccionar Cursos' : 'Seleccionar Curso'}
-                                                placeholder='Busca cursos activos'
-                                                error={!!errors.cursos_ids}
-                                                helperText={(errors.cursos_ids as any)?.message}
-                                                InputProps={{
-                                                    ...params.InputProps,
-                                                    endAdornment: (
-                                                        <Fragment>
-                                                            {isLoadingCursos ? <CircularProgress color="inherit" size={20} /> : null}
-                                                            {params.InputProps.endAdornment}
-                                                        </Fragment>
-                                                    ),
-                                                }}
-                                            />
-                                        )}
-                                    />
-                                )}
-                            />
-                        </Grid>
+                        {tipoPedido === 'CURSO' ? (
+                            <Fragment>
+                                {fieldEstudiantes}
+                                {fieldCursos}
+                            </Fragment>
+                        ) : (
+                            <Fragment>
+                                {fieldCursos}
+                                {fieldEstudiantes}
+                            </Fragment>
+                        )}
 
                         {tipoPedido === 'CERTIFICADO' && (
                             <>

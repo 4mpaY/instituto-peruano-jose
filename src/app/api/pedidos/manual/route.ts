@@ -5,7 +5,9 @@ import { crearPedidoManualSchema } from '@/schemas/pedido.schema'
 import { getConfigs } from '@/utils/libs/config'
 import { getOrderConfirmationTemplate } from '@/utils/libs/email-templates'
 import prisma from '@/utils/libs/prisma'
+import { parsePeruDate } from '@/utils/functions/dateHelpers'
 import { requireAdmin } from '@/utils/libs/auth-helpers'
+
 import { sendMail } from '@/utils/libs/mailer'
 
 /**
@@ -87,7 +89,7 @@ export async function POST(request: Request) {
                 mensaje: mensaje || `Pedido de certificado generado por administrador`,
                 tipo_comprobante: tipo_comprobante,
                 numero_comprobante: numero_comprobante,
-                fecha_entrega_estimada: fecha_entrega_estimada ? new Date(fecha_entrega_estimada) : null,
+                fecha_entrega_estimada: fecha_entrega_estimada ? parsePeruDate(fecha_entrega_estimada) : null,
                 pagado_en: estado === 'COMPLETADO' ? new Date() : null,
                 detalles: {
                   create: [{

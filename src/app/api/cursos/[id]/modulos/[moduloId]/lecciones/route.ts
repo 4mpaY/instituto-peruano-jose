@@ -1,4 +1,5 @@
 import prisma from '@/utils/libs/prisma'
+import { parsePeruDate } from '@/utils/functions/dateHelpers'
 import { crearLeccionSchema } from '@/schemas/leccion.schema'
 import { validateRequest, handleApiError } from '@/utils/libs/validation'
 import { requireProfesorOrAdmin } from '@/utils/libs/auth-helpers'
@@ -59,8 +60,8 @@ export async function POST(request: Request, { params }: { params: { id: string;
         video_url: validation.data.video_url || null,
         es_vista_previa: validation.data.es_vista_previa || false,
         es_en_vivo: validation.data.es_en_vivo || false,
-        fecha_programada: validation.data.fecha_programada ? new Date(validation.data.fecha_programada) : null,
-        fecha_fin: validation.data.fecha_fin ? new Date(validation.data.fecha_fin) : null,
+        fecha_programada: validation.data.fecha_programada ? parsePeruDate(validation.data.fecha_programada) : null,
+        fecha_fin: validation.data.fecha_fin ? parsePeruDate(validation.data.fecha_fin) : null,
         recursos: validation.data.recursos || [],
         subtemas: validation.data.subtemas ?? [],
         orden,

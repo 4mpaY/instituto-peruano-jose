@@ -897,6 +897,12 @@ const CoursePlayerView = ({ course, phoneNumberProfesor, grupoWhatsapp, initialL
 
                         return (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                                {byModule['__']?.length > 0 && (
+                                    <Box>
+                                        <Typography variant="caption" sx={{ fontWeight: 700, color: '#025E44', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', mb: 1 }}>Otras Evaluaciones</Typography>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>{byModule['__'].map((ex: any) => <ExamCard key={ex.id} ex={ex} />)}</Box>
+                                    </Box>
+                                )}
                                 {storeCourse?.modulos.map((mod: any) => {
                                     const exams = byModule[mod.id] || []
 

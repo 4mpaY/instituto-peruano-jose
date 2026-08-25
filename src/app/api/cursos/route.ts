@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic'
 
 import prisma from '@/utils/libs/prisma'
+import { parsePeruDate } from '@/utils/functions/dateHelpers'
+
 import { crearCursoSchema, listarCursosQuerySchema } from '@/schemas/curso.schema'
 import { validateRequest, handleApiError } from '@/utils/libs/validation'
 import { requireProfesorOrAdmin } from '@/utils/libs/auth-helpers'
@@ -175,7 +177,7 @@ export async function POST(request: Request) {
       data: {
         ...validation.data,
         slug,
-        fecha_inicio: fechaInicio ? new Date(fechaInicio) : null,
+        fecha_inicio: fechaInicio ? parsePeruDate(fechaInicio) : null,
         estado: 'BORRADOR'
       },
       include: {

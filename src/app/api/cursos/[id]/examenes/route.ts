@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import prisma from '@/utils/libs/prisma'
+import { parsePeruDate } from '@/utils/functions/dateHelpers'
 import { ApiResponse } from '@/utils/libs/apiResponse'
 import { requireProfesorOrAdmin } from '@/utils/libs/auth-helpers'
 import { handleApiError } from '@/utils/libs/validation'
@@ -119,8 +120,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
         mezclar_preguntas,
         curso_id: cursoId,
         modulo_id: modulo_id || null,
-        fecha_inicio: fecha_inicio ? new Date(fecha_inicio) : null,
-        fecha_fin: fecha_fin ? new Date(fecha_fin) : null
+        fecha_inicio: fecha_inicio ? parsePeruDate(fecha_inicio) : null,
+        fecha_fin: fecha_fin ? parsePeruDate(fecha_fin) : null
       },
       include: {
         modulo: { select: { id: true, titulo: true, orden: true } },

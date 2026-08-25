@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import prisma from '@/utils/libs/prisma'
+import { parsePeruDate } from '@/utils/functions/dateHelpers'
 import { ApiResponse } from '@/utils/libs/apiResponse'
 import { requireAdmin } from '@/utils/libs/auth-helpers'
 import { handleApiError } from '@/utils/libs/validation'
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
         valor: data.valor,
         tipo: data.tipo,
         limite_uso: data.limite_uso ? Number(data.limite_uso) : null,
-        fecha_expiracion: fechaExpiracion ? new Date(fechaExpiracion) : null,
+        fecha_expiracion: fechaExpiracion ? parsePeruDate(fechaExpiracion) : null,
         esta_activo: data.esta_activo !== undefined ? data.esta_activo : true,
         cursos: cursoIds.length > 0
           ? { create: cursoIds.map((id: string) => ({ curso_id: id })) }

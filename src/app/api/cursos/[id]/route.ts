@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import prisma from '@/utils/libs/prisma'
+import { parsePeruDate } from '@/utils/functions/dateHelpers'
 import { actualizarCursoSchema } from '@/schemas/curso.schema'
 import { validateRequest, handleApiError } from '@/utils/libs/validation'
 import { requireProfesorOrAdmin, requireAuth } from '@/utils/libs/auth-helpers'
@@ -199,7 +200,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (data.fecha_inicio) {
       const fechaInicio = sanitizeDatetimeInput(data.fecha_inicio)
 
-      updateData.fecha_inicio = fechaInicio ? new Date(fechaInicio) : null
+      updateData.fecha_inicio = fechaInicio ? parsePeruDate(fechaInicio) : null
     } else if (data.fecha_inicio === null) {
       updateData.fecha_inicio = null
     }
@@ -207,7 +208,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (data.fecha_fin) {
       const fechaFin = sanitizeDatetimeInput(data.fecha_fin)
 
-      updateData.fecha_fin = fechaFin ? new Date(fechaFin) : null
+      updateData.fecha_fin = fechaFin ? parsePeruDate(fechaFin) : null
     } else if (data.fecha_fin === null) {
       updateData.fecha_fin = null
     }

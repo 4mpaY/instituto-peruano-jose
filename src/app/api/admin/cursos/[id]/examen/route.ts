@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import { getAuthSession } from '@/utils/libs/auth-helpers'
 
 import prisma from '@/utils/libs/prisma'
+import { parsePeruDate } from '@/utils/functions/dateHelpers'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -114,8 +115,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           intentos_maximos: intentos_maximos !== undefined ? Number(intentos_maximos) : examen.intentos_maximos,
           esta_publicado: esta_publicado !== undefined ? esta_publicado : examen.esta_publicado,
           mezclar_preguntas: mezclar_preguntas !== undefined ? mezclar_preguntas : examen.mezclar_preguntas,
-          fecha_inicio: fecha_inicio !== undefined ? (fecha_inicio ? new Date(fecha_inicio) : null) : examen.fecha_inicio,
-          fecha_fin: fecha_fin !== undefined ? (fecha_fin ? new Date(fecha_fin) : null) : examen.fecha_fin
+          fecha_inicio: fecha_inicio !== undefined ? (fecha_inicio ? parsePeruDate(fecha_inicio) : null) : examen.fecha_inicio,
+          fecha_fin: fecha_fin !== undefined ? (fecha_fin ? parsePeruDate(fecha_fin) : null) : examen.fecha_fin
         }
       })
     } else {
@@ -133,8 +134,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           intentos_maximos: Number(intentos_maximos || 1),
           esta_publicado: esta_publicado || false,
           mezclar_preguntas: mezclar_preguntas || false,
-          fecha_inicio: fecha_inicio ? new Date(fecha_inicio) : null,
-          fecha_fin: fecha_fin ? new Date(fecha_fin) : null,
+          fecha_inicio: fecha_inicio ? parsePeruDate(fecha_inicio) : null,
+          fecha_fin: fecha_fin ? parsePeruDate(fecha_fin) : null,
           curso_id: cursoId
         }
       })

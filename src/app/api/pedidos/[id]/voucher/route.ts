@@ -57,12 +57,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     const formData = await request.formData()
     const files = formData.getAll('voucher') as File[]
+    const existingUrls = formData.get('existing_urls') as string | null
 
-    if (!files || files.length === 0) {
+    const existingCount = existingUrls ? existingUrls.split(',').filter(Boolean).length : 0
+
+    if ((!files || files.length === 0) && existingCount === 0) {
       return ApiResponse.error(request, 'No se proporcionó ningún archivo', 400)
     }
 
-    if (files.length > 5) {
+    if (files.length + existingCount > 5) {
       return ApiResponse.error(request, 'Solo se permiten hasta 5 comprobantes', 400)
     }
 
@@ -100,7 +103,7 @@ return ApiResponse.error(request, normalized.message, 500)
       }
     }
 
-    const finalUrl = savedUrls.join(',')
+    const finalUrl = [existingUrls, ...savedUrls].filter(Boolean).join(',')
 
     await prisma.pedido.update({
       where: { id: params.id },

@@ -12,6 +12,7 @@ import {
     ListItem,
     ListItemButton,
     ListItemIcon,
+    ListItemText,
     LinearProgress,
     Divider,
     Button,
@@ -112,9 +113,75 @@ const CourseContentSidebar = ({ onLessonSelect, onOpenCertificate, isCertificate
 
             </Box>
 
+            {/* ── Standalone Exams ── */}
+            {(() => {
+                const standaloneExams = (course?.examenes || []).filter((ex: any) => !ex.modulo_id && ex.tipo === 'INTERMEDIO');
+
+                if (standaloneExams.length === 0) return null;
+                
+                return (
+                    <Box sx={{ flexShrink: 0, px: 3, py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                        <Typography sx={{ fontWeight: 700, fontSize: '0.82rem', color: '#025E44', letterSpacing: '0.01em', mb: 1 }}>
+                            Otras Evaluaciones
+                        </Typography>
+                        <List sx={{ p: 0 }}>
+                            {standaloneExams.map((item: any) => {
+                                const isLocked = progressPercentage < (item.progreso_minimo || 0);
+                                const isSelected = currentExamenId === item.id && currentView === 'exam';
+                                
+                                const getIcon = () => {
+                                    if (isLocked) return <i className="tabler-lock" style={{ fontSize: '1rem', color: '#9ca3af' }} />;
+                                    if (item.ya_aprobado) return <i className="tabler-circle-check-filled" style={{ fontSize: '1rem', color: '#16a34a' }} />;
+                                    if ((item.intentos_realizados || 0) > 0) return <i className="tabler-circle-x-filled" style={{ fontSize: '1rem', color: '#dc2626' }} />;
+                                    
+return <i className="tabler-clipboard-check" style={{ fontSize: '1rem', color: '#d97706' }} />;
+                                };
+
+                                return (
+                                    <ListItem
+                                        key={`standalone-exam-${item.id}`}
+                                        disablePadding
+                                        sx={{ mb: 0.5 }}
+                                    >
+                                        <ListItemButton
+                                            disabled={isLocked}
+                                            onClick={() => openExam(item.id)}
+                                            sx={{
+                                                borderRadius: '8px',
+                                                py: 1,
+                                                px: 1.5,
+                                                bgcolor: isSelected ? 'rgba(2,94,68,0.06)' : 'transparent',
+                                                '&:hover': { bgcolor: isSelected ? 'rgba(2,94,68,0.08)' : 'action.hover' },
+                                                borderLeft: '3px solid',
+                                                borderColor: isSelected ? '#025E44' : 'transparent',
+                                            }}
+                                        >
+                                            <ListItemIcon sx={{ minWidth: 32 }}>
+                                                {getIcon()}
+                                            </ListItemIcon>
+                                            <ListItemText
+                                                primary={item.titulo}
+                                                primaryTypographyProps={{
+                                                    variant: 'body2',
+                                                    sx: {
+                                                        fontWeight: isSelected ? 700 : 500,
+                                                        color: isLocked ? 'text.disabled' : (isSelected ? '#025E44' : 'text.primary'),
+                                                        fontSize: '0.82rem',
+                                                    }
+                                                }}
+                                            />
+                                        </ListItemButton>
+                                    </ListItem>
+                                );
+                            })}
+                        </List>
+                    </Box>
+                );
+            })()}
+
             {/* ── Lesson list ── */}
             <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-                {filteredModules.length === 0 ? (
+                {filteredModules.length === 0 && (course?.examenes || []).filter((ex: any) => !ex.modulo_id && ex.tipo === 'INTERMEDIO').length === 0 ? (
                     <Box sx={{ p: 4, textAlign: 'center' }}>
                         <i className="tabler-search-off" style={{ fontSize: '2rem', opacity: 0.3 }} />
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>

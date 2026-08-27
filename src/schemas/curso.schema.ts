@@ -57,6 +57,7 @@ export const actualizarCursoSchema = z.object({
   precio_certificado: z.coerce.number().min(0).optional().nullable(),
   precio_certificado_ipg: z.coerce.number().min(0).optional().nullable(),
   precio_certificado_cip: z.coerce.number().min(0).optional().nullable(),
+  precio_envio_fisico: z.coerce.number().min(0).optional().nullable(),
   certificado_ipg_espera_valor: z.coerce.number().int().min(0).optional().nullable(),
   certificado_ipg_espera_unidad: z.enum(['DIAS', 'HORAS', 'MINUTOS']).optional().nullable(),
   certificado_cip_entregas: z

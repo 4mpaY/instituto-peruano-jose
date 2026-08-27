@@ -497,6 +497,36 @@ return
               </Card>
             )}
 
+            {/* Datos de Envío */}
+            {pedido?.datos_envio && (
+              <Card>
+                <CardContent>
+                  <Stack direction='row' alignItems='center' spacing={1.5} sx={{ mb: 2 }}>
+                    <Box sx={{ width: 36, height: 36, borderRadius: 1.5, bgcolor: 'primary.lighterOpacity', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className='tabler-truck' style={{ fontSize: 18, color: 'primary.main' }} />
+                    </Box>
+                    <Typography variant='subtitle2' fontWeight={700}>Datos de Envío Físico</Typography>
+                  </Stack>
+
+                  <Grid container spacing={2}>
+                    {[
+                      ['Método', (pedido.datos_envio as any).metodo === 'OLVA' ? 'Olva Courier' : 'Agencia de Encomiendas'],
+                      ['Departamento', (pedido.datos_envio as any).departamento],
+                      ['Provincia', (pedido.datos_envio as any).provincia],
+                      ['Distrito', (pedido.datos_envio as any).distrito],
+                      ['Dirección', (pedido.datos_envio as any).direccion],
+                      ['Referencia', (pedido.datos_envio as any).referencia || '-'],
+                    ].map(([label, value]) => (
+                      <Grid item xs={12} sm={6} key={label as string}>
+                        <Typography variant='caption' color='text.secondary' display='block'>{label}</Typography>
+                        <Typography variant='body2' fontWeight={600}>{value}</Typography>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Formulario de edición */}
             <Card component='form' id='pedido-edit-form' onSubmit={handleSubmit(onSubmit)}>
               <CardContent>

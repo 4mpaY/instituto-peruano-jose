@@ -38,7 +38,7 @@ import {
 import { isValidCelular, normalizeCelular } from '@/utils/functions/validatePhone'
 import { getTelFlagElement } from '@/utils/functions/getTelFlagElement'
 
-type Step = 'datos' | 'certificacion' | 'resumen' | 'pago'
+type Step = 'datos' | 'certificacion' | 'envio' | 'resumen' | 'pago'
 
 type CertTipo = 'IPG' | 'CIP'
 
@@ -59,6 +59,7 @@ export interface TramiteCertificadoCursoInfo {
   precio_certificado?: number | null
   precio_certificado_ipg?: number | null
   precio_certificado_cip?: number | null
+  precio_envio_fisico?: number | null
   certificado_ipg_espera_valor?: number | null
   certificado_ipg_espera_unidad?: string | null
   certificado_cip_entregas?: CipEntregaRango[] | null
@@ -81,12 +82,7 @@ interface Props {
   tiposDisponibles?: { ipg?: boolean; cip?: boolean }
 }
 
-const STEPS: { id: Step; label: string }[] = [
-  { id: 'datos', label: 'Datos' },
-  { id: 'certificacion', label: 'Certificación' },
-  { id: 'resumen', label: 'Resumen' },
-  { id: 'pago', label: 'Pago' },
-]
+
 
 function formatMoney(valor: number, moneda = 'PEN') {
   const symbol = moneda === 'USD' ? '$' : 'S/'
@@ -124,6 +120,7 @@ export default function TramiteCertificadoFlow({
   const [vouchers, setVouchers] = useState<File[]>([])
   const [voucherPreviews, setVoucherPreviews] = useState<string[]>([])
 
+
   const [form, setForm] = useState({
     nombre: '',
     apellido: '',
@@ -132,6 +129,24 @@ export default function TramiteCertificadoFlow({
     numero_documento: '',
     celular: '',
   })
+
+  const [solicitaEnvio, setSolicitaEnvio] = useState(false)
+  const [datosEnvio, setDatosEnvio] = useState({
+    metodo: 'OLVA',
+    departamento: '',
+    provincia: '',
+    distrito: '',
+    direccion: '',
+    referencia: '',
+  })
+
+  const STEPS: { id: Step; label: string }[] = [
+    { id: 'datos', label: 'Datos' },
+    { id: 'certificacion', label: 'Certificación' },
+    ...(solicitaEnvio ? [{ id: 'envio' as Step, label: 'Envío' }] : []),
+    { id: 'resumen', label: 'Resumen' },
+    { id: 'pago', label: 'Pago' },
+  ]
 
   const [datosTouched, setDatosTouched] = useState(false)
 
@@ -168,7 +183,8 @@ export default function TramiteCertificadoFlow({
     [curso.certificado_cip_entregas]
   )
 
-  const precioSeleccionado = tipo === 'CIP' ? precioCip : tipo === 'IPG' ? precioIpg : null
+  const precioBase = tipo === 'CIP' ? precioCip : tipo === 'IPG' ? precioIpg : null
+  const precioSeleccionado = precioBase != null ? precioBase + (solicitaEnvio ? Number(curso.precio_envio_fisico || 0) : 0) : null
   const stepIndex = STEPS.findIndex(s => s.id === step)
   const metodoSeleccionado = metodos.find(m => m.id === metodoId)
   const copyToClipboard = (text: string) => navigator.clipboard.writeText(text).catch(() => {})
@@ -304,6 +320,8 @@ return
           numero_documento: form.numero_documento,
           celular: form.celular,
         },
+        solicitaEnvio,
+        datosEnvio: solicitaEnvio ? datosEnvio : undefined,
       })
 
       if (!checkoutRes.data?.status) {
@@ -514,6 +532,31 @@ return
                 <Typography variant="caption" color="text.secondary">Celular</Typography>
                 <Typography variant="body1" fontWeight={600}>{form.celular || '-'}</Typography>
               </Box>
+
+              {solicitaEnvio && (
+                <>
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ mt: 1 }}>Envío Físico</Typography>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Método</Typography>
+                    <Typography variant="body1" fontWeight={600}>{datosEnvio.metodo === 'OLVA' ? 'Olva Courier' : 'Agencia de Encomiendas'}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Ubicación</Typography>
+                    <Typography variant="body1" fontWeight={600}>{`${datosEnvio.departamento}, ${datosEnvio.provincia}, ${datosEnvio.distrito}`}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Dirección</Typography>
+                    <Typography variant="body1" fontWeight={600}>{datosEnvio.direccion || '-'}</Typography>
+                  </Box>
+                  {datosEnvio.referencia && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Referencia</Typography>
+                      <Typography variant="body1" fontWeight={600}>{datosEnvio.referencia}</Typography>
+                    </Box>
+                  )}
+                </>
+              )}
             </Stack>
           </DialogContent>
           <DialogActions>
@@ -746,6 +789,148 @@ return
                 Este curso aún no tiene precios de certificado configurados.
               </Typography>
             )}
+
+            {curso.precio_envio_fisico != null && Number(curso.precio_envio_fisico) > 0 && (
+              <Box sx={{ mt: 3, p: 2, borderRadius: 2, border: '1px dashed', borderColor: 'divider', bgcolor: solicitaEnvio ? 'rgba(2,94,68,0.02)' : 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+                <FormControlLabel
+                  sx={{ m: 0, alignItems: 'flex-start' }}
+                  control={
+                    <Checkbox
+                      sx={{ mt: -1 }}
+                      checked={solicitaEnvio}
+                      onChange={e => setSolicitaEnvio(e.target.checked)}
+                      color="primary"
+                    />
+                  }
+                  label={
+                    <Box sx={{ ml: 1 }}>
+                      <Typography fontWeight={700}>También quiero mi certificado físico <Typography component="span" variant="caption" color="text.secondary">(opcional)</Typography></Typography>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Envío estimado: 5 a 7 días hábiles después de la emisión. En el siguiente paso eliges cómo recibirlo.
+                      </Typography>
+                    </Box>
+                  }
+                />
+                <Typography variant="h6" fontWeight={800} sx={{ pr: 1, pl: { xs: 5, sm: 0 }, alignSelf: { xs: 'flex-start', sm: 'center' } }}>
+                  + {formatMoney(Number(curso.precio_envio_fisico), moneda)}
+                </Typography>
+              </Box>
+            )}
+          </>
+        )}
+
+        {step === 'envio' && solicitaEnvio && (
+          <>
+            <Typography variant="h6" fontWeight={800} sx={{ mb: 0.5 }}>
+              Datos de envío
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+              Elige cómo deseas recibir tu certificado físico e ingresa la dirección.
+            </Typography>
+
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2 }}>Método de envío</Typography>
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} sm={6}>
+                  <Box
+                    onClick={() => setDatosEnvio(d => ({ ...d, metodo: 'OLVA' }))}
+                    sx={{
+                      p: 1.5,
+                      border: '2px solid',
+                      borderColor: datosEnvio.metodo === 'OLVA' ? 'primary.main' : 'divider',
+                      borderRadius: 2,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      bgcolor: datosEnvio.metodo === 'OLVA' ? 'rgba(2,94,68,0.04)' : 'transparent',
+                    }}
+                  >
+                    <Radio checked={datosEnvio.metodo === 'OLVA'} sx={{ p: 0 }} />
+                    <Box>
+                      <Typography variant="body2" fontWeight={700}>Olva Courier</Typography>
+                      <Typography variant="caption" color="text.secondary">Entrega en tu dirección.</Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box
+                    onClick={() => setDatosEnvio(d => ({ ...d, metodo: 'SHALOM' }))}
+                    sx={{
+                      p: 1.5,
+                      border: '2px solid',
+                      borderColor: datosEnvio.metodo === 'SHALOM' ? 'primary.main' : 'divider',
+                      borderRadius: 2,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      bgcolor: datosEnvio.metodo === 'SHALOM' ? 'rgba(2,94,68,0.04)' : 'transparent',
+                    }}
+                  >
+                    <Radio checked={datosEnvio.metodo === 'SHALOM'} sx={{ p: 0 }} />
+                    <Box>
+                      <Typography variant="body2" fontWeight={700}>Shalom</Typography>
+                      <Typography variant="caption" color="text.secondary">Recojo en agencia.</Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+              </Grid>
+              
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    required
+                    label="Departamento"
+                    value={datosEnvio.departamento}
+                    onChange={e => setDatosEnvio(d => ({ ...d, departamento: e.target.value }))}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    required
+                    label="Provincia"
+                    value={datosEnvio.provincia}
+                    onChange={e => setDatosEnvio(d => ({ ...d, provincia: e.target.value }))}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    required
+                    label="Distrito"
+                    value={datosEnvio.distrito}
+                    onChange={e => setDatosEnvio(d => ({ ...d, distrito: e.target.value }))}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    required
+                    label="Dirección completa"
+                    placeholder="Av. / Jr. / Calle, número, urbanización"
+                    value={datosEnvio.direccion}
+                    onChange={e => setDatosEnvio(d => ({ ...d, direccion: e.target.value }))}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Referencia"
+                    placeholder="Ej. Frente al parque central"
+                    value={datosEnvio.referencia}
+                    onChange={e => setDatosEnvio(d => ({ ...d, referencia: e.target.value }))}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
           </>
         )}
 
@@ -800,14 +985,56 @@ return
               </Typography>
             </Box>
 
+            {solicitaEnvio && (
+              <>
+                <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+                  ENVÍO FÍSICO
+                </Typography>
+                <Box sx={{ mt: 1, mb: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+                  {[
+                    ['Método', datosEnvio.metodo === 'OLVA' ? 'Olva Courier' : 'Agencia de Encomiendas'],
+                    ['Ubicación', `${datosEnvio.departamento}, ${datosEnvio.provincia}, ${datosEnvio.distrito}`],
+                    ['Dirección', datosEnvio.direccion],
+                    datosEnvio.referencia ? ['Referencia', datosEnvio.referencia] : null,
+                  ].filter(Boolean).map((item, i) => {
+                    if (!item) return null
+                    const [k, v] = item
+                    return (
+                      <Box
+                        key={k as string}
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: 2,
+                          px: 2,
+                          py: 1.25,
+                          borderTop: i ? '1px solid' : 'none',
+                          borderColor: 'divider',
+                        }}
+                      >
+                        <Typography variant="body2" color="text.secondary">{k}</Typography>
+                        <Typography variant="body2" fontWeight={600} sx={{ textAlign: 'right' }}>{v}</Typography>
+                      </Box>
+                    )
+                  })}
+                </Box>
+              </>
+            )}
+
             <Typography variant="caption" fontWeight={800} color="text.secondary">
               PAGO
             </Typography>
             <Box sx={{ mt: 1, px: 0.5 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: solicitaEnvio ? 0.5 : 1 }}>
                 <Typography variant="body2">Precio del certificado</Typography>
-                <Typography variant="body2">{formatMoney(precioSeleccionado, moneda)}</Typography>
+                <Typography variant="body2">{formatMoney(precioBase, moneda)}</Typography>
               </Box>
+              {solicitaEnvio && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">Envío físico</Typography>
+                  <Typography variant="body2">{formatMoney(Number(curso.precio_envio_fisico || 0), moneda)}</Typography>
+                </Box>
+              )}
               <Divider sx={{ my: 1 }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography fontWeight={800}>Total a pagar</Typography>
@@ -829,6 +1056,8 @@ return
                 sx={{ fontWeight: 800 }}
               />
             </Box>
+
+
 
             {/* Paso 1: elegir dónde pagar */}
             <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
@@ -1095,9 +1324,10 @@ return true
           startIcon={<i className="tabler-chevron-left" />}
           onClick={() => {
             if (step === 'datos') onClose?.()
-            else if (step === 'certificacion') setStep('datos')
-            else if (step === 'resumen') setStep('certificacion')
-            else setStep('resumen')
+            else {
+              const currentIdx = STEPS.findIndex(s => s.id === step)
+              setStep(STEPS[currentIdx - 1].id)
+            }
           }}
           sx={{ textTransform: 'none', fontWeight: 700 }}
         >
@@ -1120,8 +1350,10 @@ return true
                 }
 
                 setStep('certificacion')
-              } else if (step === 'certificacion') setStep('resumen')
-              else setStep('pago')
+              } else {
+                const currentIdx = STEPS.findIndex(s => s.id === step)
+                setStep(STEPS[currentIdx + 1].id)
+              }
             }}
             sx={{ textTransform: 'none', fontWeight: 700 }}
           >

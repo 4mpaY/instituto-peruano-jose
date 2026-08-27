@@ -31,6 +31,8 @@ export async function POST(request: Request) {
     const metodoPagoManualId = body.metodoPagoManualId as string | undefined
     const numeroComprobante = (body.numeroComprobante as string | undefined)?.trim() || null
     const bancoPago = (body.bancoPago as string | undefined)?.trim() || null
+    const solicitaEnvio = body.solicitaEnvio === true
+    const datosEnvio = body.datosEnvio as any
 
     const datosPerfil = body.datosPerfil as
       | {
@@ -130,19 +132,24 @@ export async function POST(request: Request) {
 
     // Precios (columnas nuevas vía raw por si el client Prisma no está regenerado)
     const [preciosRow] = await prisma.$queryRaw<
-      Array<{ precio_certificado_ipg: any; precio_certificado_cip: any; precio_certificado: any }>
+      Array<{ precio_certificado_ipg: any; precio_certificado_cip: any; precio_certificado: any; precio_envio_fisico: any }>
     >`
-      SELECT precio_certificado_ipg, precio_certificado_cip, precio_certificado
+      SELECT precio_certificado_ipg, precio_certificado_cip, precio_certificado, precio_envio_fisico
       FROM cursos WHERE id = ${cursoId}
     `
 
-    const precio =
+    let precio =
       certificadoTipo === 'CIP'
         ? resolvePrecioCertificadoCip(preciosRow || curso)
         : resolvePrecioCertificadoIpg(preciosRow || curso)
 
     if (precio == null) {
       return ApiResponse.error(request, 'Este certificado no tiene precio configurado', 400)
+    }
+
+    if (solicitaEnvio) {
+      const costoEnvio = preciosRow?.precio_envio_fisico != null ? Number(preciosRow.precio_envio_fisico) : 0
+      precio += costoEnvio
     }
 
     if (pedidoPendiente.length > 0) {
@@ -223,6 +230,8 @@ export async function POST(request: Request) {
             numero_comprobante: numeroComprobante,
             tipo_comprobante: 'OPERACION',
             referencia_pago: bancoPago,
+            solicita_envio: solicitaEnvio,
+            datos_envio: solicitaEnvio ? datosEnvio : null,
             ...(metodoPagoManualId ? { metodo_pago_manual_id: metodoPagoManualId } : {}),
             detalles: {
               create: [
@@ -267,6 +276,8 @@ export async function POST(request: Request) {
             numero_comprobante: numeroComprobante,
             tipo_comprobante: 'OPERACION',
             referencia_pago: bancoPago,
+            solicita_envio: solicitaEnvio,
+            datos_envio: solicitaEnvio ? datosEnvio : null,
             ...(metodoPagoManualId ? { metodo_pago_manual_id: metodoPagoManualId } : {}),
             detalles: {
               create: [

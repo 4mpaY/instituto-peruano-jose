@@ -16,9 +16,9 @@ import {
     CircularProgress,
     Box,
     FormControlLabel,
-    Radio,
     RadioGroup,
-    IconButton
+    IconButton,
+    Checkbox
 } from '@mui/material'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -41,6 +41,17 @@ export function ManualPedidoForm() {
     // Upload state
     const [vouchers, setVouchers] = useState<File[]>([])
     const [voucherPreviews, setVoucherPreviews] = useState<string[]>([])
+
+    // Envio físico state
+    const [solicitaEnvio, setSolicitaEnvio] = useState(false)
+    const [datosEnvio, setDatosEnvio] = useState({
+        metodo: 'OLVA',
+        departamento: '',
+        provincia: '',
+        distrito: '',
+        direccion: '',
+        referencia: '',
+    })
 
     const { data: usuariosData, isLoading: isLoadingUsuarios } = useUsuarios({ limit: '1000' })
     const { data: cursosData, isLoading: isLoadingCursos } = useCursos()
@@ -141,7 +152,13 @@ export function ManualPedidoForm() {
                 }
             }
 
-            const res = await createPedido(data) as any
+            const payload = {
+                ...data,
+                solicita_envio: solicitaEnvio,
+                datos_envio: solicitaEnvio ? datosEnvio : null
+            }
+
+            const res = await createPedido(payload) as any
             
             // Upload voucher if needed
             if (data.tipo_pedido === 'CERTIFICADO' && vouchers.length > 0 && res?.pedidoId) {
@@ -197,7 +214,10 @@ export function ManualPedidoForm() {
                                 onChange(val ? [val.id] : [])
 
                                 // For certificate, use the course certificate price
-                                const certPrice = val ? Number(val.precio_certificado || 50) : 0
+                                let certPrice = val ? Number(val.precio_certificado || 50) : 0
+                                if (solicitaEnvio && val && val.precio_envio_fisico) {
+                                    certPrice += Number(val.precio_envio_fisico)
+                                }
 
                                 setValue('precio', certPrice)
                                 setSelectedCoursePrice(certPrice)
@@ -345,6 +365,139 @@ export function ManualPedidoForm() {
                                             />
                                         )}
                                     />
+                                </Grid>
+                                
+                                <Grid item xs={12}>
+                                    <Box sx={{ p: 2.5, borderRadius: 1, border: '1px solid', borderColor: 'divider', bgcolor: solicitaEnvio ? 'rgba(2,94,68,0.02)' : 'transparent' }}>
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={solicitaEnvio}
+                                                    onChange={(e) => {
+                                                        const checked = e.target.checked
+                                                        setSolicitaEnvio(checked)
+                                                        
+                                                        const selectedCourse = cursos.find(c => cursosIdsWatch.includes(c.id))
+                                                        if (selectedCourse) {
+                                                            let basePrice = Number(selectedCourse.precio_certificado || 50)
+                                                            if (checked && selectedCourse.precio_envio_fisico) {
+                                                                basePrice += Number(selectedCourse.precio_envio_fisico)
+                                                            }
+                                                            setValue('precio', basePrice)
+                                                        }
+                                                    }}
+                                                    color="primary"
+                                                />
+                                            }
+                                            label={
+                                                <Box>
+                                                    <Typography fontWeight={700}>Solicita envío de certificado en físico</Typography>
+                                                    {cursos.find(c => cursosIdsWatch.includes(c.id))?.precio_envio_fisico != null && (
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            Costo adicional configurado: {cursos.find(c => cursosIdsWatch.includes(c.id))?.precio_envio_fisico} PEN
+                                                        </Typography>
+                                                    )}
+                                                </Box>
+                                            }
+                                        />
+
+                                        {solicitaEnvio && (
+                                            <Box sx={{ mt: 3 }}>
+                                                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2 }}>Método de envío</Typography>
+                                                <Grid container spacing={2} sx={{ mb: 3 }}>
+                                                    <Grid item xs={12} sm={6}>
+                                                        <Box
+                                                            onClick={() => setDatosEnvio(d => ({ ...d, metodo: 'OLVA' }))}
+                                                            sx={{
+                                                                p: 1.5,
+                                                                border: '1px solid',
+                                                                borderColor: datosEnvio.metodo === 'OLVA' ? 'primary.main' : 'divider',
+                                                                borderRadius: 1,
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: 1.5,
+                                                                bgcolor: datosEnvio.metodo === 'OLVA' ? 'rgba(2,94,68,0.04)' : 'transparent',
+                                                            }}
+                                                        >
+                                                            <Radio checked={datosEnvio.metodo === 'OLVA'} sx={{ p: 0 }} />
+                                                            <Box>
+                                                                <Typography variant="body2" fontWeight={700}>Olva Courier</Typography>
+                                                            </Box>
+                                                        </Box>
+                                                    </Grid>
+                                                    <Grid item xs={12} sm={6}>
+                                                        <Box
+                                                            onClick={() => setDatosEnvio(d => ({ ...d, metodo: 'SHALOM' }))}
+                                                            sx={{
+                                                                p: 1.5,
+                                                                border: '1px solid',
+                                                                borderColor: datosEnvio.metodo === 'SHALOM' ? 'primary.main' : 'divider',
+                                                                borderRadius: 1,
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: 1.5,
+                                                                bgcolor: datosEnvio.metodo === 'SHALOM' ? 'rgba(2,94,68,0.04)' : 'transparent',
+                                                            }}
+                                                        >
+                                                            <Radio checked={datosEnvio.metodo === 'SHALOM'} sx={{ p: 0 }} />
+                                                            <Box>
+                                                                <Typography variant="body2" fontWeight={700}>Shalom</Typography>
+                                                            </Box>
+                                                        </Box>
+                                                    </Grid>
+                                                </Grid>
+                                                
+                                                <Grid container spacing={2}>
+                                                    <Grid item xs={12} sm={6}>
+                                                        <CustomTextField
+                                                            fullWidth
+                                                            required
+                                                            label="Departamento"
+                                                            value={datosEnvio.departamento}
+                                                            onChange={e => setDatosEnvio(d => ({ ...d, departamento: e.target.value }))}
+                                                        />
+                                                    </Grid>
+                                                    <Grid item xs={12} sm={6}>
+                                                        <CustomTextField
+                                                            fullWidth
+                                                            required
+                                                            label="Provincia"
+                                                            value={datosEnvio.provincia}
+                                                            onChange={e => setDatosEnvio(d => ({ ...d, provincia: e.target.value }))}
+                                                        />
+                                                    </Grid>
+                                                    <Grid item xs={12}>
+                                                        <CustomTextField
+                                                            fullWidth
+                                                            required
+                                                            label="Distrito"
+                                                            value={datosEnvio.distrito}
+                                                            onChange={e => setDatosEnvio(d => ({ ...d, distrito: e.target.value }))}
+                                                        />
+                                                    </Grid>
+                                                    <Grid item xs={12}>
+                                                        <CustomTextField
+                                                            fullWidth
+                                                            required
+                                                            label="Dirección completa"
+                                                            value={datosEnvio.direccion}
+                                                            onChange={e => setDatosEnvio(d => ({ ...d, direccion: e.target.value }))}
+                                                        />
+                                                    </Grid>
+                                                    <Grid item xs={12}>
+                                                        <CustomTextField
+                                                            fullWidth
+                                                            label="Referencia"
+                                                            value={datosEnvio.referencia}
+                                                            onChange={e => setDatosEnvio(d => ({ ...d, referencia: e.target.value }))}
+                                                        />
+                                                    </Grid>
+                                                </Grid>
+                                            </Box>
+                                        )}
+                                    </Box>
                                 </Grid>
                             </>
                         )}

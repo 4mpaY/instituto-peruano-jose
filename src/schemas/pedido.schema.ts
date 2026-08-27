@@ -17,6 +17,8 @@ export const crearPedidoManualSchema = z.object({
   tipo_pedido: z.enum(['CURSO', 'CERTIFICADO']).default('CURSO'),
   tipo_certificado: z.enum(['IPG', 'CIP']).optional().nullable(),
   fecha_entrega_estimada: z.union([z.string(), z.date()]).optional().nullable(),
+  solicita_envio: z.boolean().default(false),
+  datos_envio: z.any().optional().nullable(),
 })
 
 export type CrearPedidoManualDto = z.infer<typeof crearPedidoManualSchema>

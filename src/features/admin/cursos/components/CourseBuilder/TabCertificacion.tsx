@@ -70,6 +70,10 @@ export function TabCertificacion({ curso, onSuccess }: TabCertificacionProps) {
   const [precioCip, setPrecioCip] = useState<number | ''>(
     curso.precio_certificado_cip ?? ''
   )
+  
+  const [precioEnvioFisico, setPrecioEnvioFisico] = useState<number | ''>(
+    (curso as any).precio_envio_fisico ?? ''
+  )
 
   const [entregas, setEntregas] = useState<CipEntregaRango[]>(() => asEntregas(curso.certificado_cip_entregas))
   const [nuevo, setNuevo] = useState(emptyRango())
@@ -180,6 +184,23 @@ return
     }
   }
 
+  const handleSaveEnvioFisico = async () => {
+    try {
+      const envio = precioEnvioFisico === '' ? null : Number(precioEnvioFisico)
+
+      await editMutation.mutateAsync({
+        id: curso.id,
+        data: {
+          precio_envio_fisico: envio,
+        } as any,
+      })
+      enqueueSnackbar('Costo de envío físico guardado', { variant: 'success' })
+      onSuccess()
+    } catch (err: any) {
+      enqueueSnackbar(err?.message || 'Error al guardar', { variant: 'error' })
+    }
+  }
+
   return (
     <Box>
       <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>
@@ -188,6 +209,38 @@ return
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Defina cuándo el alumno podrá ver y descargar cada certificado después de habilitarlo.
       </Typography>
+
+      <Card variant="outlined" sx={{ borderRadius: 3, mb: 4, bgcolor: 'action.hover' }}>
+        <CardContent sx={{ p: { xs: 3, md: 4 } }}>
+          <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
+            Envío Físico
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Costo adicional si el alumno solicita la entrega del certificado en físico.
+          </Typography>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={6} md={4}>
+              <CustomTextField
+                fullWidth
+                type="number"
+                label="Costo de envío (S/)"
+                value={precioEnvioFisico}
+                onChange={e => setPrecioEnvioFisico(e.target.value === '' ? '' : Number(e.target.value))}
+                inputProps={{ min: 0, step: '0.01' }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Button
+                variant="contained"
+                onClick={handleSaveEnvioFisico}
+                disabled={editMutation.isPending}
+              >
+                Guardar costo de envío
+              </Button>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
       <TabContext value={tab}>
         <Box

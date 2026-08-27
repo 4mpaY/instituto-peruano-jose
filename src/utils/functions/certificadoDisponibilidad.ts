@@ -119,18 +119,24 @@ export function resolveCertificadoDisponibilidad(opts: {
   const fechaReferencia = opts.fechaPago ?? opts.habilitadoEn ?? null
 
   if (!fechaReferencia || entregas.length === 0) {
-    // Sin rangos: prioriza la fecha manual, si no existe, disponible apenas se habilita
-    const disponibleDesde = fechaEstimadaPeru ?? opts.habilitadoEn ?? now
-    const disponible = now >= disponibleDesde
+    // Sin rangos
+    if (fechaEstimadaPeru) {
+      const disponible = now >= fechaEstimadaPeru
+      return {
+        habilitado: true,
+        disponible,
+        disponibleDesde: fechaEstimadaPeru,
+        enEspera: !disponible,
+        mensaje: disponible ? null : 'Tu certificado CIP aún no está disponible.',
+      }
+    }
 
     return {
       habilitado: true,
-      disponible,
-      disponibleDesde,
-      enEspera: !disponible,
-      mensaje: disponible
-        ? null
-        : 'Tu certificado CIP aún no está disponible.',
+      disponible: false,
+      disponibleDesde: null,
+      enEspera: true,
+      mensaje: 'Comunícate con administración para conocer la fecha de entrega.',
     }
   }
 

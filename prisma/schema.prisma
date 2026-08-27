@@ -89,6 +89,7 @@ model Curso {
   precio_certificado   Decimal?          @db.Decimal(10, 2)
   precio_certificado_ipg Decimal?        @db.Decimal(10, 2)
   precio_certificado_cip Decimal?        @db.Decimal(10, 2)
+  precio_envio_fisico    Decimal?        @db.Decimal(10, 2)
   certificado_ipg_espera_valor  Int?     @default(0)
   certificado_ipg_espera_unidad String?  @default("DIAS")
   certificado_cip_entregas      Json?    @default("[]")
@@ -218,6 +219,8 @@ model Pedido {
   usuario_id            String
   cupon_id              String?
   metodo_pago_manual_id String?
+  solicita_envio        Boolean           @default(false)
+  datos_envio           Json?
   detalles              DetallePedido[]
   inscripciones         Inscripcion[]
   cupon                 Cupon?            @relation(fields: [cupon_id], references: [id])

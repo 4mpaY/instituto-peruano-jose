@@ -88,9 +88,9 @@ export async function GET(request: Request) {
     const precioCert = curso?.precio_certificado ? Number(curso.precio_certificado) : null
 
     const [preciosRow] = await prisma.$queryRaw<
-      Array<{ precio_certificado_ipg: any; precio_certificado_cip: any }>
+      Array<{ precio_certificado_ipg: any; precio_certificado_cip: any; precio_envio_fisico: any }>
     >`
-      SELECT precio_certificado_ipg, precio_certificado_cip FROM cursos WHERE id = ${cursoId}
+      SELECT precio_certificado_ipg, precio_certificado_cip, precio_envio_fisico FROM cursos WHERE id = ${cursoId}
     `
 
     const precioIpg = resolvePrecioCertificadoIpg({
@@ -312,6 +312,7 @@ export async function GET(request: Request) {
         precio_certificado: precioCert,
         precio_certificado_ipg: precioIpg,
         precio_certificado_cip: precioCip,
+        precio_envio_fisico: preciosRow?.precio_envio_fisico != null ? Number(preciosRow.precio_envio_fisico) : null,
         certificado_ipg_espera_valor: curso?.certificado_ipg_espera_valor ?? 0,
         certificado_ipg_espera_unidad: curso?.certificado_ipg_espera_unidad ?? 'DIAS',
         certificado_cip_entregas: cipEntregas,

@@ -45,7 +45,9 @@ export async function POST(request: Request) {
       numero_comprobante,
       tipo_pedido,
       tipo_certificado,
-      fecha_entrega_estimada
+      fecha_entrega_estimada,
+      solicita_envio,
+      datos_envio
     } = validation.data
 
     // 3. Obtener información de los cursos
@@ -90,6 +92,8 @@ export async function POST(request: Request) {
                 tipo_comprobante: tipo_comprobante,
                 numero_comprobante: numero_comprobante,
                 fecha_entrega_estimada: fecha_entrega_estimada ? parsePeruDate(fecha_entrega_estimada) : null,
+                solicita_envio,
+                datos_envio: datos_envio || null,
                 pagado_en: estado === 'COMPLETADO' ? new Date() : null,
                 detalles: {
                   create: [{

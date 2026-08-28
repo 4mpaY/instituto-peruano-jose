@@ -153,6 +153,99 @@ export function MiPedidoDetallePage() {
             </Grid>
           )}
 
+          {/* Tracking */}
+          {pedido.datos_envio?.estado_envio && (
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Seguimiento del Certificado Físico</Typography>
+              <Grid container spacing={4}>
+                <Grid item xs={12} md={6}>
+                  <Paper variant="outlined" sx={{ p: 4, height: '100%' }}>
+                    <div className="flex items-center gap-3 mb-4">
+                      <Avatar sx={{ bgcolor: 'info.light', color: 'info.main' }}>
+                        <i className="tabler-truck-delivery text-[24px]" />
+                      </Avatar>
+                      <div>
+                        <Typography variant="body2" color="text.secondary">Estado del envío</Typography>
+                        <Typography variant="h6" fontWeight={700}>{pedido.datos_envio.estado_envio}</Typography>
+                      </div>
+                    </div>
+                    {pedido.datos_envio.estado_envio === 'En tránsito' && (
+                      <Typography variant="body2" color="text.secondary">
+                        ¡Tu certificado ya está en camino! Usa el número de seguimiento para conocer su ubicación.
+                      </Typography>
+                    )}
+                    {pedido.datos_envio.estado_envio === 'En origen' && (
+                      <Typography variant="body2" color="text.secondary">
+                        Tu certificado está siendo preparado para su envío.
+                      </Typography>
+                    )}
+                    {pedido.datos_envio.estado_envio === 'Listo para recojo' && (
+                      <Typography variant="body2" color="text.secondary">
+                        Tu certificado ya llegó a la agencia de destino y está listo para ser recogido.
+                      </Typography>
+                    )}
+                    {pedido.datos_envio.estado_envio === 'Entregado' && (
+                      <Typography variant="body2" color="success.main">
+                        El certificado ha sido entregado exitosamente.
+                      </Typography>
+                    )}
+                    {pedido.datos_envio.estado_envio === 'Hubo un error' && (
+                      <Typography variant="body2" color="error.main">
+                        Hubo un inconveniente con el envío. Por favor, comunícate al número {pedido.datos_envio.error_telefono}.
+                      </Typography>
+                    )}
+                  </Paper>
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                  <Paper variant="outlined" sx={{ p: 4, height: '100%' }}>
+                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 3 }}>Datos de seguimiento</Typography>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" color="text.secondary">EMPRESA TRANSPORTISTA</Typography>
+                      <Typography variant="body2">{pedido.datos_envio.empresa_transportista}</Typography>
+                    </Box>
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="caption" color="text.secondary">NÚMERO DE SEGUIMIENTO</Typography>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Chip label={pedido.datos_envio.numero_seguimiento} size="small" variant="tonal" color="secondary" />
+                        <Button 
+                          size="small" 
+                          startIcon={<i className="tabler-copy" />} 
+                          onClick={() => {
+                            navigator.clipboard.writeText(pedido.datos_envio.numero_seguimiento)
+                          }}
+                        >
+                          Copiar
+                        </Button>
+                      </div>
+                    </Box>
+
+                    {pedido.datos_envio.numero_recojo && (
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="caption" color="text.secondary">CLAVE O NÚMERO DE RECOJO</Typography>
+                        <Typography variant="body2">{pedido.datos_envio.numero_recojo}</Typography>
+                      </Box>
+                    )}
+
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      startIcon={<i className="tabler-external-link" />}
+                      onClick={() => {
+                        const isShalom = pedido.datos_envio.empresa_transportista.toLowerCase().includes('shalom')
+                        const url = isShalom ? 'https://shalom.com.pe/rastrea' : 'https://tracking.olvacourier.com/'
+
+                        window.open(url, '_blank')
+                      }}
+                    >
+                      Rastrear en {pedido.datos_envio.empresa_transportista}
+                    </Button>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </Grid>
+          )}
+
           {/* Tabla de cursos comprados */}
           <Grid item xs={12}>
             <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Cursos Comprados (Detalle)</Typography>

@@ -16,6 +16,7 @@ export interface Pedido {
   transaccion_id: string | null
   tipo?: string
   fecha_entrega_estimada?: string | null
+  datos_envio?: any | null
   creado_en: string
   pagado_en: string | null
   usuario_id: string

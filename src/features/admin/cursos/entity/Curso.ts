@@ -99,6 +99,7 @@ export interface Curso {
   }> | null
   precio: number
   precio_falso: number
+  precio_envio_fisico?: number | null
   moneda: string
   creado_en: string
   actualizado_en: string

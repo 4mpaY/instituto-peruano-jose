@@ -18,7 +18,8 @@ import {
     FormControlLabel,
     RadioGroup,
     IconButton,
-    Checkbox
+    Checkbox,
+    Radio
 } from '@mui/material'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -44,6 +45,7 @@ export function ManualPedidoForm() {
 
     // Envio físico state
     const [solicitaEnvio, setSolicitaEnvio] = useState(false)
+
     const [datosEnvio, setDatosEnvio] = useState({
         metodo: 'OLVA',
         departamento: '',
@@ -215,6 +217,7 @@ export function ManualPedidoForm() {
 
                                 // For certificate, use the course certificate price
                                 let certPrice = val ? Number(val.precio_certificado || 50) : 0
+
                                 if (solicitaEnvio && val && val.precio_envio_fisico) {
                                     certPrice += Number(val.precio_envio_fisico)
                                 }
@@ -375,14 +378,18 @@ export function ManualPedidoForm() {
                                                     checked={solicitaEnvio}
                                                     onChange={(e) => {
                                                         const checked = e.target.checked
+
                                                         setSolicitaEnvio(checked)
                                                         
-                                                        const selectedCourse = cursos.find(c => cursosIdsWatch.includes(c.id))
+                                                        const selectedCourse = cursos.find(c => (cursosIdsWatch || []).includes(c.id))
+
                                                         if (selectedCourse) {
                                                             let basePrice = Number(selectedCourse.precio_certificado || 50)
+
                                                             if (checked && selectedCourse.precio_envio_fisico) {
                                                                 basePrice += Number(selectedCourse.precio_envio_fisico)
                                                             }
+
                                                             setValue('precio', basePrice)
                                                         }
                                                     }}
@@ -392,9 +399,9 @@ export function ManualPedidoForm() {
                                             label={
                                                 <Box>
                                                     <Typography fontWeight={700}>Solicita envío de certificado en físico</Typography>
-                                                    {cursos.find(c => cursosIdsWatch.includes(c.id))?.precio_envio_fisico != null && (
+                                                    {cursos.find(c => (cursosIdsWatch || []).includes(c.id))?.precio_envio_fisico != null && (
                                                         <Typography variant="caption" color="text.secondary">
-                                                            Costo adicional configurado: {cursos.find(c => cursosIdsWatch.includes(c.id))?.precio_envio_fisico} PEN
+                                                            Costo adicional configurado: {cursos.find(c => (cursosIdsWatch || []).includes(c.id))?.precio_envio_fisico} PEN
                                                         </Typography>
                                                     )}
                                                 </Box>

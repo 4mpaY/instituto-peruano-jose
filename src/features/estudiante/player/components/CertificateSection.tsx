@@ -60,6 +60,8 @@ interface SolicitudCertPendiente {
     numeroComprobante?: string | null
     referenciaPago?: string | null
     estado?: string
+    solicitaEnvio?: boolean
+    datosEnvio?: any
 }
 
 const CertificadoPreviewGrid = ({
@@ -206,6 +208,131 @@ const CertificadoPreviewGrid = ({
                     </Box>
                 </>
             )}
+        </Box>
+    )
+}
+
+const EnviosFisicosList = ({ envios }: { envios: SolicitudCertPendiente[] }) => {
+    if (!envios || envios.length === 0) return null
+
+    return (
+        <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                Estado de envío físico
+            </Typography>
+            {envios.map(s => {
+                const isCompletado = s.estado === 'COMPLETADO'
+                const isPendiente = s.estado === 'PENDIENTE'
+                const isCancelado = s.estado === 'CANCELADO'
+                
+                let icon = 'tabler-truck'
+                let iconColor = '#0ea5e9'
+                let bgColor = 'rgba(14, 165, 233, 0.08)'
+                let borderColor = 'rgba(14, 165, 233, 0.2)'
+                let title = 'Envío en proceso'
+                let desc = 'Tu certificado físico está siendo gestionado para su envío.'
+                
+                if (isPendiente) {
+                    icon = 'tabler-clock'
+                    iconColor = '#d97706'
+                    bgColor = 'rgba(245, 158, 11, 0.08)'
+                    borderColor = 'rgba(245, 158, 11, 0.2)'
+                    title = 'Envío pendiente'
+                    desc = 'Validando pago para iniciar el envío físico.'
+                } else if (isCancelado) {
+                    icon = 'tabler-x'
+                    iconColor = '#ef4444'
+                    bgColor = 'rgba(239, 68, 68, 0.08)'
+                    borderColor = 'rgba(239, 68, 68, 0.2)'
+                    title = 'Envío cancelado'
+                    desc = 'El pedido de envío físico fue cancelado.'
+                } else if (isCompletado && s.datosEnvio?.estado_envio) {
+                    const ee = s.datosEnvio.estado_envio;
+
+                    if (ee === 'En tránsito') {
+                        icon = 'tabler-truck-delivery'
+                        title = 'Envío en tránsito'
+                        desc = 'Tu certificado físico está en camino hacia el destino.'
+                    } else if (ee === 'Listo para recojo') {
+                        icon = 'tabler-package'
+                        iconColor = '#10b981'
+                        bgColor = 'rgba(16, 185, 129, 0.08)'
+                        borderColor = 'rgba(16, 185, 129, 0.2)'
+                        title = 'Listo para recojo'
+                        desc = 'Tu certificado ya llegó a la agencia de destino. Puedes ir a recogerlo.'
+                    } else if (ee === 'Entregado') {
+                        icon = 'tabler-circle-check-filled'
+                        iconColor = '#16a34a'
+                        bgColor = 'rgba(22, 163, 74, 0.08)'
+                        borderColor = 'rgba(22, 163, 74, 0.2)'
+                        title = 'Envío Entregado'
+                        desc = 'El certificado físico ha sido entregado exitosamente.'
+                    } else if (ee === 'Hubo un error') {
+                        icon = 'tabler-alert-triangle'
+                        iconColor = '#ef4444'
+                        bgColor = 'rgba(239, 68, 68, 0.08)'
+                        borderColor = 'rgba(239, 68, 68, 0.2)'
+                        title = 'Error en el envío'
+                        desc = 'Hubo un problema con tu envío. Comunícate con soporte.'
+                    }
+                }
+
+                return (
+                    <Box key={`envio-${s.pedidoId}`} sx={{
+                        p: 2.5, borderRadius: '16px', border: '1.5px solid', borderColor,
+                        bgcolor: bgColor, display: 'flex', gap: 2, alignItems: 'flex-start'
+                    }}>
+                        <Box sx={{
+                            width: 42, height: 42, borderRadius: '12px', flexShrink: 0,
+                            bgcolor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                        }}>
+                            <i className={icon} style={{ fontSize: '1.5rem', color: iconColor }} />
+                        </Box>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: iconColor, mb: 0.5 }}>
+                                {title} - {s.nombreTipo || s.certificadoTipo}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                {desc}
+                            </Typography>
+                            {s.datosEnvio && (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1.5 }}>
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, p: 1.5, bgcolor: 'rgba(255,255,255,0.6)', borderRadius: 2 }}>
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Destino</Typography>
+                                            <Typography variant="caption" sx={{ fontWeight: 600 }}>{s.datosEnvio.departamento}, {s.datosEnvio.provincia}</Typography>
+                                        </Box>
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Agencia</Typography>
+                                            <Typography variant="caption" sx={{ fontWeight: 600 }}>{s.datosEnvio.metodo === 'OLVA' ? 'Olva Courier' : 'Agencia de Encomiendas'}</Typography>
+                                        </Box>
+                                    </Box>
+
+                                    {s.datosEnvio.estado_envio && s.datosEnvio.estado_envio !== 'En origen' && (
+                                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, p: 1.5, bgcolor: 'rgba(255,255,255,0.6)', borderRadius: 2 }}>
+                                            <Box>
+                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Empresa Transportista</Typography>
+                                                <Typography variant="caption" sx={{ fontWeight: 600 }}>{s.datosEnvio.empresa_transportista || 'No registrada'}</Typography>
+                                            </Box>
+                                            <Box>
+                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Nro de seguimiento</Typography>
+                                                <Typography variant="caption" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>{s.datosEnvio.numero_seguimiento || '-'}</Typography>
+                                            </Box>
+                                            {s.datosEnvio.numero_recojo && (
+                                                <Box sx={{ gridColumn: '1 / -1', mt: 0.5 }}>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Clave o número de recojo</Typography>
+                                                    <Typography variant="caption" sx={{ fontWeight: 700, fontFamily: 'monospace', color: 'primary.main', fontSize: '0.75rem' }}>{s.datosEnvio.numero_recojo}</Typography>
+                                                </Box>
+                                            )}
+                                        </Box>
+                                    )}
+                                </Box>
+                            )}
+                        </Box>
+                    </Box>
+                )
+            })}
         </Box>
     )
 }
@@ -495,6 +622,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                     setUsuarioDatosEnvio(res.data.result.usuarioDatosEnvio ?? null)
                     setCursoCertificacion(res.data.result.cursoCertificacion ?? null)
                     applySolicitudesFromApi(res.data.result.solicitudesPendientes ?? [])
+                    setHistorialSolicitudes(res.data.result.historialSolicitudes ?? [])
                 } else {
                     setFetchError(true)
                 }
@@ -816,6 +944,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
                 {/* Body */}
                 <Box sx={{ p: 3 }}>
                     {children}
+                    <EnviosFisicosList envios={historialSolicitudes.filter(s => s.solicitaEnvio)} />
                 </Box>
             </Box>
         )

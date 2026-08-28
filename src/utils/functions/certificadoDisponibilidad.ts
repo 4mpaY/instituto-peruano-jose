@@ -122,7 +122,9 @@ export function resolveCertificadoDisponibilidad(opts: {
     // Sin rangos
     if (fechaEstimadaPeru) {
       const disponible = now >= fechaEstimadaPeru
-      return {
+
+      
+return {
         habilitado: true,
         disponible,
         disponibleDesde: fechaEstimadaPeru,

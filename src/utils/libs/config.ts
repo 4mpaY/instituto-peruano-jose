@@ -7,7 +7,7 @@ import prisma from './prisma'
 
 let configCache: Record<string, string> | null = null
 let lastFetch = 0
-const CACHE_TTL = 1000 * 60 * 5 // 5 minutos
+const CACHE_TTL = 1000 * 60 * 5 // 5 minutos (modificado para recarga)
 
 export async function getConfigs(): Promise<Record<string, string>> {
   const now = Date.now()

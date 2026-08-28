@@ -131,6 +131,7 @@ export default function TramiteCertificadoFlow({
   })
 
   const [solicitaEnvio, setSolicitaEnvio] = useState(false)
+
   const [datosEnvio, setDatosEnvio] = useState({
     metodo: 'OLVA',
     departamento: '',
@@ -999,7 +1000,9 @@ return
                   ].filter(Boolean).map((item, i) => {
                     if (!item) return null
                     const [k, v] = item
-                    return (
+
+                    
+return (
                       <Box
                         key={k as string}
                         sx={{
@@ -1027,7 +1030,7 @@ return
             <Box sx={{ mt: 1, px: 0.5 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: solicitaEnvio ? 0.5 : 1 }}>
                 <Typography variant="body2">Precio del certificado</Typography>
-                <Typography variant="body2">{formatMoney(precioBase, moneda)}</Typography>
+                <Typography variant="body2">{formatMoney(Number(precioBase || 0), moneda)}</Typography>
               </Box>
               {solicitaEnvio && (
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -1326,6 +1329,7 @@ return true
             if (step === 'datos') onClose?.()
             else {
               const currentIdx = STEPS.findIndex(s => s.id === step)
+
               setStep(STEPS[currentIdx - 1].id)
             }
           }}
@@ -1352,6 +1356,7 @@ return true
                 setStep('certificacion')
               } else {
                 const currentIdx = STEPS.findIndex(s => s.id === step)
+
                 setStep(STEPS[currentIdx + 1].id)
               }
             }}

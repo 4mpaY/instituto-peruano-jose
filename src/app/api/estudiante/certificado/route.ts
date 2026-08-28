@@ -196,6 +196,8 @@ export async function GET(request: Request) {
         numero_comprobante: string | null
         referencia_pago: string | null
         estado: string
+        solicita_envio: boolean
+        datos_envio: any
       }>
     >`
       SELECT
@@ -208,7 +210,9 @@ export async function GET(request: Request) {
         p.comprobante_url,
         p.numero_comprobante,
         p.referencia_pago,
-        p.estado::text AS estado
+        p.estado::text AS estado,
+        p.solicita_envio,
+        p.datos_envio
       FROM pedidos p
       JOIN detalles_pedido d ON d.pedido_id = p.id
       WHERE p.usuario_id = ${auth.user.id}
@@ -253,6 +257,8 @@ export async function GET(request: Request) {
         numeroComprobante: p.numero_comprobante,
         referenciaPago: p.referencia_pago,
         estado: p.estado,
+        solicitaEnvio: !!p.solicita_envio,
+        datosEnvio: p.datos_envio,
       }
     })
 

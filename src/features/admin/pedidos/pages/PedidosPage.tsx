@@ -48,6 +48,7 @@ import { AxiosPedido } from '../http/axiosPedido'
 import TablePaginationComponent from '@/utils/components/others/TablePaginationComponent'
 import { DebouncedInput } from '@/utils/components/others/DebouncedInput'
 import CustomAlertDialog from '@/components/CustomAlertDialog'
+import GestionarEnvioFisicoModal from '../components/GestionarEnvioFisicoModal'
 
 type StatusType = {
   [key: string]: ThemeColor
@@ -87,7 +88,8 @@ return cursosLista.map(c => ({
   }, [cursosLista])
 
   const { mutateAsync: deletePedido, isPending: isDeleting } = useDeletePedido()
-  const [deleteInfo, setDeleteInfo] = useState<{ open: boolean, id: string | null }>({ open: false, id: null })
+  const [deleteInfo, setDeleteInfo] = useState<{ open: boolean; id: string | null }>({ open: false, id: null })
+  const [envioInfo, setEnvioInfo] = useState<{ open: boolean; pedido: Pedido | null }>({ open: false, pedido: null })
   const [isExporting, setIsExporting] = useState(false)
 
   const handleExportarExcel = async () => {
@@ -200,6 +202,13 @@ return cursosLista.map(c => ({
                 <i className='tabler-eye text-[20px] text-primary' />
               </IconButton>
             </Tooltip>
+            {row.original.datos_envio && (
+              <Tooltip title='Gestionar certificado físico'>
+                <IconButton onClick={() => setEnvioInfo({ open: true, pedido: row.original })} size='small'>
+                  <i className='tabler-truck-delivery text-[20px] text-info' />
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title='Editar'>
               <IconButton onClick={() => router.push(`/admin/pedidos/editar/${row.original.id}`)} size='small'>
                 <i className='tabler-edit text-[20px] text-textSecondary' />
@@ -515,6 +524,12 @@ return cursosLista.map(c => ({
         onClose={() => setDeleteInfo({ open: false, id: null })}
         loading={isDeleting}
         color="error"
+      />
+
+      <GestionarEnvioFisicoModal
+        open={envioInfo.open}
+        handleClose={() => setEnvioInfo({ open: false, pedido: null })}
+        pedido={envioInfo.pedido}
       />
     </Card>
   )

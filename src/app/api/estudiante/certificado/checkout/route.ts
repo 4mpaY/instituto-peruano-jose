@@ -149,6 +149,7 @@ export async function POST(request: Request) {
 
     if (solicitaEnvio) {
       const costoEnvio = preciosRow?.precio_envio_fisico != null ? Number(preciosRow.precio_envio_fisico) : 0
+
       precio += costoEnvio
     }
 

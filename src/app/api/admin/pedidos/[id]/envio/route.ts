@@ -11,6 +11,11 @@ const updateEnvioSchema = z.object({
   numero_seguimiento: z.string().min(1, 'El número de seguimiento es requerido'),
   numero_recojo: z.string().optional().nullable(),
   error_telefono: z.string().optional().nullable(),
+  departamento: z.string().optional(),
+  provincia: z.string().optional(),
+  distrito: z.string().optional(),
+  direccion: z.string().optional(),
+  referencia: z.string().optional(),
 })
 
 /**

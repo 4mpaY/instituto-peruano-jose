@@ -90,6 +90,7 @@ model Curso {
   precio_certificado_ipg Decimal?        @db.Decimal(10, 2)
   precio_certificado_cip Decimal?        @db.Decimal(10, 2)
   precio_envio_fisico    Decimal?        @db.Decimal(10, 2)
+  detalle_envio_fisico   String?
   certificado_ipg_espera_valor  Int?     @default(0)
   certificado_ipg_espera_unidad String?  @default("DIAS")
   certificado_cip_entregas      Json?    @default("[]")

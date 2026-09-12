@@ -58,8 +58,9 @@ export interface TramiteCertificadoCursoInfo {
   moneda?: string
   precio_certificado?: number | null
   precio_certificado_ipg?: number | null
-  precio_certificado_cip?: number | null
-  precio_envio_fisico?: number | null
+  precio_certificado_cip: string | number | null
+  precio_envio_fisico: string | number | null
+  detalle_envio_fisico?: string | null
   certificado_ipg_espera_valor?: number | null
   certificado_ipg_espera_unidad?: string | null
   certificado_cip_entregas?: CipEntregaRango[] | null
@@ -245,6 +246,27 @@ export default function TramiteCertificadoFlow({
         : null,
     confirmDatos: !confirmDatos ? 'Debes confirmar que los datos son correctos' : null,
   }
+
+  const envioText = useMemo(() => {
+    if (!curso.detalle_envio_fisico) {
+      return 'Envío estimado: 5 a 7 días hábiles después de la emisión. En el siguiente paso eliges cómo recibirlo.'
+    }
+
+    const d = new Date(curso.detalle_envio_fisico)
+
+    if (isNaN(d.getTime())) {
+      return curso.detalle_envio_fisico // Fallback for old free text
+    }
+
+    const diffTime = Math.ceil((d.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    const dateStr = d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+    if (diffTime > 0) {
+      return `Envío estimado en ${diffTime} días (Aprox. el ${dateStr}). En el siguiente paso eliges cómo recibirlo.`
+    }
+    
+    return `Envío inmediato (Aprox. el ${dateStr}). En el siguiente paso eliges cómo recibirlo.`
+  }, [curso.detalle_envio_fisico])
 
   const canContinueDatos = Object.values(erroresDatos).every(e => e == null)
 
@@ -805,14 +827,14 @@ return
                   }
                   label={
                     <Box sx={{ ml: 1 }}>
-                      <Typography fontWeight={700}>También quiero mi certificado físico <Typography component="span" variant="caption" color="text.secondary">(opcional)</Typography></Typography>
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        Envío estimado: 5 a 7 días hábiles después de la emisión. En el siguiente paso eliges cómo recibirlo.
+                      <Typography variant="body2" fontWeight={600} color="text.secondary">También quiero mi certificado físico <Typography component="span" variant="caption" color="text.disabled">(opcional)</Typography></Typography>
+                      <Typography variant="caption" color="text.disabled" display="block" sx={{ fontSize: '0.65rem', lineHeight: 1.2, mt: 0.5 }}>
+                        {envioText}
                       </Typography>
                     </Box>
                   }
                 />
-                <Typography variant="h6" fontWeight={800} sx={{ pr: 1, pl: { xs: 5, sm: 0 }, alignSelf: { xs: 'flex-start', sm: 'center' } }}>
+                <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ pr: 1, pl: { xs: 5, sm: 0 }, alignSelf: { xs: 'flex-start', sm: 'center' }, whiteSpace: 'nowrap' }}>
                   + {formatMoney(Number(curso.precio_envio_fisico), moneda)}
                 </Typography>
               </Box>
@@ -878,6 +900,14 @@ return
                 </Grid>
               </Grid>
               
+              {datosEnvio.metodo === 'SHALOM' && (
+                <Box sx={{ mb: 2, p: 1.5, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                  <Typography variant="body2">
+                    Busca tu agencia aquí: <a href="https://shalom.com.pe/agencias" target="_blank" rel="noreferrer" style={{ fontWeight: 600, color: 'inherit' }}>https://shalom.com.pe/agencias</a>
+                  </Typography>
+                </Box>
+              )}
+              
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
                   <TextField
@@ -914,22 +944,25 @@ return
                     fullWidth
                     size="small"
                     required
-                    label="Dirección completa"
-                    placeholder="Av. / Jr. / Calle, número, urbanización"
+                    label={datosEnvio.metodo === 'SHALOM' ? 'Dirección o nombre de la agencia' : 'Dirección completa'}
+                    placeholder={datosEnvio.metodo === 'SHALOM' ? '' : 'Av. / Jr. / Calle, número, urbanización'}
                     value={datosEnvio.direccion}
                     onChange={e => setDatosEnvio(d => ({ ...d, direccion: e.target.value }))}
                   />
                 </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Referencia"
-                    placeholder="Ej. Frente al parque central"
-                    value={datosEnvio.referencia}
-                    onChange={e => setDatosEnvio(d => ({ ...d, referencia: e.target.value }))}
-                  />
-                </Grid>
+                {datosEnvio.metodo !== 'SHALOM' && (
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      required
+                      label="Referencia"
+                      placeholder="Ej. Frente al parque central"
+                      value={datosEnvio.referencia}
+                      onChange={e => setDatosEnvio(d => ({ ...d, referencia: e.target.value }))}
+                    />
+                  </Grid>
+                )}
               </Grid>
             </Box>
           </>
@@ -1354,6 +1387,24 @@ return true
                 }
 
                 setStep('certificacion')
+              } else if (step === 'envio' && solicitaEnvio) {
+                const de = datosEnvio
+
+                if (
+                  !de.departamento.trim() ||
+                  !de.provincia.trim() ||
+                  !de.distrito.trim() ||
+                  !de.direccion.trim() ||
+                  (de.metodo === 'OLVA' && !de.referencia.trim())
+                ) {
+                  enqueueSnackbar('Completa todos los campos obligatorios de envío', { variant: 'warning' })
+
+                  return
+                }
+
+                const currentIdx = STEPS.findIndex(s => s.id === step)
+
+                setStep(STEPS[currentIdx + 1].id)
               } else {
                 const currentIdx = STEPS.findIndex(s => s.id === step)
 

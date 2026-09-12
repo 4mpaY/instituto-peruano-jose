@@ -116,8 +116,10 @@ return cursosLista.map(c => ({
           Total: `${p.moneda} ${Number(p.total).toFixed(2)}`,
           Cupón: p.cupon?.codigo ?? '',
           'Método de pago / Banco': manualName || metodoPagoBase,
-          'Cód. Operación': p.numero_comprobante || p.referencia_pago || '',
-          'Imagen de Comprobante': p.comprobante_url ? `${window.location.origin}${p.comprobante_url}` : '',
+          'Código Operación': p.numero_comprobante || p.referencia_pago || '',
+          'Imagen de Comprobante': p.comprobante_url 
+            ? p.comprobante_url.split(',').map((url: string) => `${window.location.origin}${url}`).join(', ') 
+            : '',
           Estado: p.estado,
           Fecha: p.creado_en ? new Date(p.creado_en).toLocaleDateString('es-PE') : ''
         }

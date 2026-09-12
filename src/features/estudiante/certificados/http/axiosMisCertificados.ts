@@ -32,6 +32,16 @@ export class AxiosMisCertificados extends AxiosInternalHttpClient {
     }
   }
 
+  async getTramitables(): Promise<any[]> {
+    try {
+      const payload = await this.iGet<any>('/tramitables')
+
+      return payload?.tramitables || []
+    } catch (err: any) {
+      throw err?.response?.data ?? err
+    }
+  }
+
   async downloadPdf(id: string): Promise<Blob> {
     try {
       const res = await this.client.get(`${getBaseURL()}/api/estudiante/certificado/${id}/pdf`, {

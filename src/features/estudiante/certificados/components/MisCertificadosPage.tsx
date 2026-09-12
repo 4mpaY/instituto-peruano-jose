@@ -9,7 +9,6 @@ import {
 } from '@mui/material'
 import { useSnackbar } from 'notistack'
 import { useQuery } from '@tanstack/react-query'
-import axios from 'axios'
 
 import CustomTextField from '@core/components/mui/TextField'
 import { AxiosMisCertificados } from '../http/axiosMisCertificados'
@@ -206,9 +205,10 @@ function SkeletonCard() {
 
 interface MisCertificadosPageProps {
   initialCertificados: MiCertificado[]
+  initialTramitables?: any[]
 }
 
-export default function MisCertificadosPage({ initialCertificados }: MisCertificadosPageProps) {
+export default function MisCertificadosPage({ initialCertificados, initialTramitables = [] }: MisCertificadosPageProps) {
   const { data: session } = useSession()
   const [search, setSearch] = useState('')
 
@@ -221,18 +221,11 @@ export default function MisCertificadosPage({ initialCertificados }: MisCertific
       return client.getAll()
     },
     initialData: initialCertificados,
-    staleTime: 60_000
+    staleTime: 60_000,
+    refetchOnWindowFocus: false
   })
 
-  const { data: tramitables = [] } = useQuery({
-    queryKey: ['certificados-tramitables'],
-    queryFn: async () => {
-      const res = await axios.get('/api/estudiante/certificados/tramitables')
-
-      return res.data?.result?.tramitables ?? []
-    },
-    staleTime: 30_000,
-  })
+  const tramitables = initialTramitables
 
   const filtered = certificados.filter(c =>
     c.curso.titulo.toLowerCase().includes(search.toLowerCase()) ||

@@ -6,14 +6,9 @@ import { handleApiError } from '@/utils/libs/validation'
 import prisma from '@/utils/libs/prisma'
 import { calcularElegibilidad } from '@/app/api/_shared/certificados/ensureCertificado'
 import {
-  getInscripcionCertificadoHabilitacion,
-  resolveCertificadoPagoEstado,
-} from '@/app/api/_shared/certificados/getInscripcionCertificadoHabilitacion'
-import {
   resolvePrecioCertificadoCip,
   resolvePrecioCertificadoIpg,
 } from '@/utils/functions/certificadoPrecios'
-import type { CipEntregaRango } from '@/utils/functions/certificadoDisponibilidad'
 
 /**
  * GET /api/estudiante/certificados/tramitables
@@ -73,24 +68,15 @@ export async function GET(request: Request) {
 
       if (!elegibilidad.puedeTramitar) continue
 
-      const hab = await getInscripcionCertificadoHabilitacion(auth.user.id, curso.id)
 
-      const cipEntregas = (Array.isArray(curso.certificado_cip_entregas)
-        ? curso.certificado_cip_entregas
-        : []) as CipEntregaRango[]
+      const tieneCertificadosGenerados = await prisma.certificado.count({
+        where: {
+          usuario_id: auth.user.id,
+          curso_id: curso.id,
+        }
+      })
 
-      const esperaIpg = Number(curso.certificado_ipg_espera_valor ?? 0) > 0
-
-      const requiereHabilitacion =
-        precioIpg != null || precioCip != null || esperaIpg || cipEntregas.length > 0
-
-      const { pagoPendiente, ipgHabilitado, cipHabilitado } = resolveCertificadoPagoEstado(
-        hab,
-        precioCert,
-        { requiereHabilitacion }
-      )
-
-      if (!pagoPendiente && (ipgHabilitado || cipHabilitado)) continue
+      if (tieneCertificadosGenerados > 0) continue
 
       tramitables.push({
         cursoId: curso.id,
@@ -106,7 +92,7 @@ export async function GET(request: Request) {
           precio_certificado_cip: precioCip,
           certificado_ipg_espera_valor: curso.certificado_ipg_espera_valor ?? 0,
           certificado_ipg_espera_unidad: curso.certificado_ipg_espera_unidad ?? 'DIAS',
-          certificado_cip_entregas: cipEntregas,
+          certificado_cip_entregas: Array.isArray(curso.certificado_cip_entregas) ? curso.certificado_cip_entregas : [],
         },
       })
     }

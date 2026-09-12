@@ -124,16 +124,38 @@ export function MiPedidoDetallePage() {
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems='flex-start'>
                 {pedido.comprobante_url && (
                   <Box>
-                    <Typography variant='h6' gutterBottom>Comprobante de Pago</Typography>
-                    <Box
-                      component='img'
-                      src={pedido.comprobante_url}
-                      alt='Comprobante'
-                      sx={{ maxWidth: 280, maxHeight: 320, borderRadius: 2, border: '1px solid', borderColor: 'divider', cursor: 'pointer' }}
-                      onClick={() => window.open(pedido.comprobante_url, '_blank')}
-                    />
+                    <Typography variant='h6' gutterBottom>Comprobante(s) de Pago</Typography>
+                    <Stack direction='row' flexWrap='wrap' gap={2}>
+                      {pedido.comprobante_url.split(',').map((url: string, idx: number) => (
+                        <Box key={idx} sx={{ position: 'relative', width: 120, height: 120, borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+                          {url.toLowerCase().endsWith('.pdf') ? (
+                            <Box
+                              onClick={() => window.open(url, '_blank')}
+                              sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover', cursor: 'pointer' }}
+                            >
+                              <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 700 }}>PDF</Typography>
+                            </Box>
+                          ) : (
+                            <Box
+                              component='img'
+                              src={url}
+                              alt={`Comprobante ${idx + 1}`}
+                              onClick={() => window.open(url, '_blank')}
+                              sx={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                cursor: 'pointer',
+                                transition: 'transform 0.2s',
+                                '&:hover': { transform: 'scale(1.05)' }
+                              }}
+                            />
+                          )}
+                        </Box>
+                      ))}
+                    </Stack>
                     {pedido.comprobante_subido_en && (
-                      <Typography variant='caption' color='text.secondary' display='block' sx={{ mt: 0.5 }}>
+                      <Typography variant='caption' color='text.secondary' display='block' sx={{ mt: 1 }}>
                         Subido: <HydratedDate date={pedido.comprobante_subido_en} format='locale' />
                       </Typography>
                     )}

@@ -15,12 +15,19 @@ export default async function MisCertificadosPageRoute() {
   const client = new AxiosMisCertificados({ getAuthToken: () => token })
 
   let certificados: any[] = []
+  let tramitables: any[] = []
 
   try {
-    certificados = await client.getAll()
+    const [certsRes, tramitablesRes] = await Promise.all([
+      client.getAll(),
+      client.getTramitables()
+    ])
+
+    certificados = certsRes
+    tramitables = tramitablesRes
   } catch (error) {
-    console.error('Error fetching certificates:', error)
+    console.error('Error fetching certificates/tramitables:', error)
   }
 
-  return <MisCertificadosPage initialCertificados={certificados} />
+  return <MisCertificadosPage initialCertificados={certificados} initialTramitables={tramitables} />
 }

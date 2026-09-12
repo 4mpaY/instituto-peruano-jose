@@ -75,6 +75,10 @@ export function TabCertificacion({ curso, onSuccess }: TabCertificacionProps) {
     (curso as any).precio_envio_fisico ?? ''
   )
 
+  const [detalleEnvioFisico, setDetalleEnvioFisico] = useState<string>(
+    (curso as any).detalle_envio_fisico || ''
+  )
+
   const [entregas, setEntregas] = useState<CipEntregaRango[]>(() => asEntregas(curso.certificado_cip_entregas))
   const [nuevo, setNuevo] = useState(emptyRango())
   const [editId, setEditId] = useState<string | null>(null)
@@ -192,6 +196,7 @@ return
         id: curso.id,
         data: {
           precio_envio_fisico: envio,
+          detalle_envio_fisico: detalleEnvioFisico,
         } as any,
       })
       enqueueSnackbar('Costo de envío físico guardado', { variant: 'success' })
@@ -229,13 +234,23 @@ return
                 inputProps={{ min: 0, step: '0.01' }}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid item xs={12} sm={12} md={8}>
+              <CustomTextField
+                fullWidth
+                type="date"
+                label="Fecha estimada de envío físico (Opcional)"
+                InputLabelProps={{ shrink: true }}
+                value={detalleEnvioFisico}
+                onChange={e => setDetalleEnvioFisico(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12}>
               <Button
                 variant="contained"
                 onClick={handleSaveEnvioFisico}
                 disabled={editMutation.isPending}
               >
-                Guardar costo de envío
+                Guardar costo y detalle de envío
               </Button>
             </Grid>
           </Grid>

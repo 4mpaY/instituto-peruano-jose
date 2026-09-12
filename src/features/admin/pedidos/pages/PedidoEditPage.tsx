@@ -18,6 +18,7 @@ import CustomTextField from '@core/components/mui/TextField'
 import HydratedDate from '@/utils/components/HydratedDate'
 import { usePedido, useUpdatePedido } from '../hooks/usePedidos'
 import type { Pedido } from '../entity/Pedido'
+import GestionarEnvioFisicoModal from '../components/GestionarEnvioFisicoModal'
 
 const ESTADOS = [
   { value: 'PENDIENTE', label: 'Pendiente', color: 'warning' },
@@ -56,6 +57,7 @@ export function PedidoEditPage() {
 
   const [voucherPreview, setVoucherPreview] = useState<string | null>(null)
   const [uploadingVoucher, setUploadingVoucher] = useState(false)
+  const [isEnvioModalOpen, setIsEnvioModalOpen] = useState(false)
 
   const { control, handleSubmit, reset, getValues } = useForm({
     defaultValues: {
@@ -501,11 +503,21 @@ return
             {pedido?.datos_envio && (
               <Card>
                 <CardContent>
-                  <Stack direction='row' alignItems='center' spacing={1.5} sx={{ mb: 2 }}>
-                    <Box sx={{ width: 36, height: 36, borderRadius: 1.5, bgcolor: 'primary.lighterOpacity', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <i className='tabler-truck' style={{ fontSize: 18, color: 'primary.main' }} />
-                    </Box>
-                    <Typography variant='subtitle2' fontWeight={700}>Datos de Envío Físico</Typography>
+                  <Stack direction='row' alignItems='center' justifyContent='space-between' sx={{ mb: 2 }}>
+                    <Stack direction='row' alignItems='center' spacing={1.5}>
+                      <Box sx={{ width: 36, height: 36, borderRadius: 1.5, bgcolor: 'primary.lighterOpacity', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <i className='tabler-truck' style={{ fontSize: 18, color: 'primary.main' }} />
+                      </Box>
+                      <Typography variant='subtitle2' fontWeight={700}>Datos de Envío Físico</Typography>
+                    </Stack>
+                    <Button 
+                      size="small" 
+                      variant="outlined" 
+                      startIcon={<i className="tabler-edit" />}
+                      onClick={() => setIsEnvioModalOpen(true)}
+                    >
+                      Editar envío
+                    </Button>
                   </Stack>
 
                   <Grid container spacing={2}>
@@ -782,8 +794,15 @@ return
             </Stack>
           </Paper>
         </Grid>
-
       </Grid>
+      
+      {isEnvioModalOpen && data?.data && (
+        <GestionarEnvioFisicoModal
+          open={isEnvioModalOpen}
+          handleClose={() => setIsEnvioModalOpen(false)}
+          pedido={data.data as Pedido}
+        />
+      )}
     </Box>
   )
 }

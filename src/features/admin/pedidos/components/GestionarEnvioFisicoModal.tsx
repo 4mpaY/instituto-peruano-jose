@@ -26,6 +26,11 @@ const updateEnvioSchema = z.object({
   numero_seguimiento: z.string().min(1, 'El número de seguimiento es requerido'),
   numero_recojo: z.string().optional().nullable(),
   error_telefono: z.string().optional().nullable(),
+  departamento: z.string().optional(),
+  provincia: z.string().optional(),
+  distrito: z.string().optional(),
+  direccion: z.string().optional(),
+  referencia: z.string().optional(),
 })
 
 type UpdateEnvioForm = z.infer<typeof updateEnvioSchema>
@@ -47,7 +52,12 @@ export default function GestionarEnvioFisicoModal({ open, handleClose, pedido }:
       empresa_transportista: 'Olva Courier',
       numero_seguimiento: '',
       numero_recojo: '',
-      error_telefono: ''
+      error_telefono: '',
+      departamento: '',
+      provincia: '',
+      distrito: '',
+      direccion: '',
+      referencia: ''
     }
   })
 
@@ -62,7 +72,12 @@ export default function GestionarEnvioFisicoModal({ open, handleClose, pedido }:
         empresa_transportista: data.empresa_transportista || (data.metodo === 'SHALOM' ? 'Shalom' : 'Olva Courier'),
         numero_seguimiento: data.numero_seguimiento || '',
         numero_recojo: data.numero_recojo || '',
-        error_telefono: data.error_telefono || ''
+        error_telefono: data.error_telefono || '',
+        departamento: data.departamento || '',
+        provincia: data.provincia || '',
+        distrito: data.distrito || '',
+        direccion: data.direccion || '',
+        referencia: data.referencia || ''
       })
     }
   }, [pedido, reset])
@@ -193,6 +208,28 @@ return response.data
               />
             </Grid>
           )}
+
+          <Grid item xs={12}>
+            <Typography variant='subtitle2' fontWeight={700} sx={{ mt: 1, mb: -1 }}>
+              Datos de dirección del estudiante
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <Controller name='departamento' control={control} render={({ field }) => <CustomTextField {...field} fullWidth label='Departamento' />} />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Controller name='provincia' control={control} render={({ field }) => <CustomTextField {...field} fullWidth label='Provincia' />} />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Controller name='distrito' control={control} render={({ field }) => <CustomTextField {...field} fullWidth label='Distrito' />} />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Controller name='direccion' control={control} render={({ field }) => <CustomTextField {...field} fullWidth label='Dirección / Agencia' />} />
+          </Grid>
+          <Grid item xs={12}>
+            <Controller name='referencia' control={control} render={({ field }) => <CustomTextField {...field} fullWidth label='Referencia' />} />
+          </Grid>
         </Grid>
 
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 6 }}>

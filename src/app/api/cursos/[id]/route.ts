@@ -189,10 +189,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const precioIpgUpdate = data.precio_certificado_ipg
     const precioCipUpdate = data.precio_certificado_cip
     const precioEnvioUpdate = data.precio_envio_fisico
+    const detalleEnvioUpdate = data.detalle_envio_fisico
 
     delete updateData.precio_certificado_ipg
     delete updateData.precio_certificado_cip
     delete updateData.precio_envio_fisico
+    delete updateData.detalle_envio_fisico
 
     // Si se actualiza el título, regenerar slug
     if (data.titulo && data.titulo !== curso.titulo) {
@@ -271,6 +273,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       }
     }
 
+    if (detalleEnvioUpdate !== undefined) {
+      if (detalleEnvioUpdate === null) {
+        await prisma.$executeRaw`UPDATE cursos SET detalle_envio_fisico = NULL WHERE id = ${id}`
+      } else {
+        await prisma.$executeRaw`UPDATE cursos SET detalle_envio_fisico = ${String(detalleEnvioUpdate)} WHERE id = ${id}`
+      }
+    }
+
     let precioIpgOut: number | null =
       (cursoActualizado as any).precio_certificado_ipg != null
         ? Number((cursoActualizado as any).precio_certificado_ipg)
@@ -285,15 +295,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         ? Number((cursoActualizado as any).precio_envio_fisico)
         : null
 
+    let detalleEnvioOut: string | null =
+      (cursoActualizado as any).detalle_envio_fisico != null
+        ? String((cursoActualizado as any).detalle_envio_fisico)
+        : null
+
     try {
       const [row] = await prisma.$queryRaw<
-        Array<{ precio_certificado_ipg: unknown; precio_certificado_cip: unknown; precio_envio_fisico: unknown }>
-      >`SELECT precio_certificado_ipg, precio_certificado_cip, precio_envio_fisico FROM cursos WHERE id = ${id}`
+        Array<{ precio_certificado_ipg: unknown; precio_certificado_cip: unknown; precio_envio_fisico: unknown; detalle_envio_fisico: unknown }>
+      >`SELECT precio_certificado_ipg, precio_certificado_cip, precio_envio_fisico, detalle_envio_fisico FROM cursos WHERE id = ${id}`
 
       if (row) {
         precioIpgOut = row.precio_certificado_ipg != null ? Number(row.precio_certificado_ipg) : null
         precioCipOut = row.precio_certificado_cip != null ? Number(row.precio_certificado_cip) : null
         precioEnvioOut = row.precio_envio_fisico != null ? Number(row.precio_envio_fisico) : null
+        detalleEnvioOut = row.detalle_envio_fisico != null ? String(row.detalle_envio_fisico) : null
       }
     } catch {
       // ignore
@@ -305,6 +321,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         precio_certificado_ipg: precioIpgOut,
         precio_certificado_cip: precioCipOut,
         precio_envio_fisico: precioEnvioOut,
+        detalle_envio_fisico: detalleEnvioOut,
       },
     })
   } catch (error) {

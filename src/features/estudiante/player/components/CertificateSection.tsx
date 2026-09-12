@@ -502,6 +502,152 @@ const ScoreRing = ({ value, min, label }: { value: number; min: number; label: s
     )
 }
 
+    // ── Wrapper visual ──────────────────────────────────────────────
+    interface WrapperProps {
+        historialSolicitudes: any[];
+    children: React.ReactNode;
+    certificadoListoParaMostrar: boolean;
+    solicitudesPendientes: any[];
+    pagoPendiente: boolean;
+    showTramite: boolean;
+    hayEsperaActiva: boolean;
+    elegibilidad: any;
+    plantillasEnEspera: any[];
+}
+
+const Wrapper = ({ children, historialSolicitudes, certificadoListoParaMostrar, solicitudesPendientes, pagoPendiente, showTramite, hayEsperaActiva, elegibilidad, plantillasEnEspera }: WrapperProps) => {
+        const hasSolicitudEnviada = solicitudesPendientes.length > 0 && !certificadoListoParaMostrar
+        const hasPago = pagoPendiente && !certificadoListoParaMostrar && !showTramite && !hasSolicitudEnviada
+        const enEspera = hayEsperaActiva && !certificadoListoParaMostrar
+        const enTramite = showTramite
+
+        const borderColor = certificadoListoParaMostrar
+            ? 'success.light'
+            : hasSolicitudEnviada
+                ? 'success.light'
+                : enEspera || hasPago || enTramite
+                    ? '#f59e0b'
+                    : elegibilidad?.isEligible
+                        ? 'primary.light'
+                        : 'divider'
+
+        const headerBg = certificadoListoParaMostrar || hasSolicitudEnviada
+            ? 'rgba(22,163,74,0.06)'
+            : enEspera || hasPago || enTramite
+                ? 'rgba(245,158,11,0.06)'
+                : elegibilidad?.isEligible
+                    ? 'rgba(2,94,68,0.06)'
+                    : 'rgba(0,0,0,0.02)'
+
+        const iconBg = certificadoListoParaMostrar || hasSolicitudEnviada
+            ? 'rgba(22,163,74,0.12)'
+            : enEspera || hasPago || enTramite
+                ? 'rgba(245,158,11,0.12)'
+                : 'rgba(2,94,68,0.1)'
+
+        const iconColor = certificadoListoParaMostrar || hasSolicitudEnviada
+            ? '#16a34a'
+            : enEspera || hasPago || enTramite
+                ? '#d97706'
+                : '#025E44'
+
+        const subtitle = certificadoListoParaMostrar
+            ? 'Certificado de finalización obtenido'
+            : enTramite
+                ? 'Completa el trámite de tu certificado'
+                : solicitudesPendientes.length > 0
+                    ? 'Solicitud enviada — pendiente de validación'
+                    : enEspera
+                        ? (plantillasEnEspera[0]?.disponibleDesde
+                            ? 'En proceso de emisión'
+                            : (plantillasEnEspera[0]?.mensajeEspera || 'Tu certificado está en proceso de emisión'))
+                        : hasPago
+                            ? 'Requiere pago para obtenerlo'
+                            : elegibilidad?.isEligible
+                                ? '¡Puedes obtener tu certificado!'
+                                : 'Completa el curso para obtenerlo'
+
+        return (
+            <Box
+                sx={{
+                    mt: 3,
+                    borderRadius: '16px',
+                    border: '1.5px solid',
+                    borderColor,
+                    overflow: 'hidden',
+                }}
+            >
+                {/* Header band */}
+                <Box sx={{
+                    px: 3, py: 1.5,
+                    display: 'flex', alignItems: 'center', gap: 1.5,
+                    bgcolor: headerBg,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider'
+                }}>
+                    <Box sx={{
+                        width: 36, height: 36, borderRadius: '10px', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        bgcolor: iconBg
+                    }}>
+                        <i className={enEspera ? 'tabler-clock' : hasSolicitudEnviada ? 'tabler-send' : 'tabler-certificate'} style={{ fontSize: '1.25rem', color: iconColor }} />
+                    </Box>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                            Tu Certificado
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            {subtitle}
+                        </Typography>
+                    </Box>
+                    {certificadoListoParaMostrar && (
+                        <Chip
+                            size="small"
+                            icon={<i className="tabler-circle-check-filled" style={{ fontSize: '0.85rem' }} />}
+                            label="Obtenido"
+                            color="success"
+                            sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem' }}
+                        />
+                    )}
+                    {hasSolicitudEnviada && !certificadoListoParaMostrar && (
+                        <Chip
+                            size="small"
+                            icon={<i className="tabler-send" style={{ fontSize: '0.85rem' }} />}
+                            label="Enviado"
+                            color="success"
+                            sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem', flexShrink: 0 }}
+                        />
+                    )}
+                    {enEspera && (
+                        <Chip
+                            size="small"
+                            icon={<i className="tabler-clock" style={{ fontSize: '0.85rem' }} />}
+                            label="En espera"
+                            color="warning"
+                            sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem', flexShrink: 0 }}
+                        />
+                    )}
+                    {hasPago && !enEspera && !hasSolicitudEnviada && (
+                        <Chip
+                            size="small"
+                            icon={<i className="tabler-lock" style={{ fontSize: '0.85rem' }} />}
+                            label="Pago requerido"
+                            color="warning"
+                            sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem' }}
+                        />
+                    )}
+                </Box>
+
+                {/* Body */}
+                <Box sx={{ p: 3 }}>
+                    {children}
+                    <EnviosFisicosList envios={historialSolicitudes.filter(s => s.solicitaEnvio)} />
+                </Box>
+            </Box>
+        )
+    }
+
+
 const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsCompleted, phoneNumberProfesor }: CertificateSectionProps) => {
     const [loading, setLoading] = useState(true)
     const [generating, setGenerating] = useState(false)
@@ -817,139 +963,6 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
         />
     )
 
-    // ── Wrapper visual ──────────────────────────────────────────────
-    const Wrapper = ({ children }: { children: React.ReactNode }) => {
-        const hasSolicitudEnviada = solicitudesPendientes.length > 0 && !certificadoListoParaMostrar
-        const hasPago = pagoPendiente && !certificadoListoParaMostrar && !showTramite && !hasSolicitudEnviada
-        const enEspera = hayEsperaActiva && !certificadoListoParaMostrar
-        const enTramite = showTramite
-
-        const borderColor = certificadoListoParaMostrar
-            ? 'success.light'
-            : hasSolicitudEnviada
-                ? 'success.light'
-                : enEspera || hasPago || enTramite
-                    ? '#f59e0b'
-                    : elegibilidad?.isEligible
-                        ? 'primary.light'
-                        : 'divider'
-
-        const headerBg = certificadoListoParaMostrar || hasSolicitudEnviada
-            ? 'rgba(22,163,74,0.06)'
-            : enEspera || hasPago || enTramite
-                ? 'rgba(245,158,11,0.06)'
-                : elegibilidad?.isEligible
-                    ? 'rgba(2,94,68,0.06)'
-                    : 'rgba(0,0,0,0.02)'
-
-        const iconBg = certificadoListoParaMostrar || hasSolicitudEnviada
-            ? 'rgba(22,163,74,0.12)'
-            : enEspera || hasPago || enTramite
-                ? 'rgba(245,158,11,0.12)'
-                : 'rgba(2,94,68,0.1)'
-
-        const iconColor = certificadoListoParaMostrar || hasSolicitudEnviada
-            ? '#16a34a'
-            : enEspera || hasPago || enTramite
-                ? '#d97706'
-                : '#025E44'
-
-        const subtitle = certificadoListoParaMostrar
-            ? 'Certificado de finalización obtenido'
-            : enTramite
-                ? 'Completa el trámite de tu certificado'
-                : solicitudesPendientes.length > 0
-                    ? 'Solicitud enviada — pendiente de validación'
-                    : enEspera
-                        ? (plantillasEnEspera[0]?.disponibleDesde
-                            ? 'En proceso de emisión'
-                            : (plantillasEnEspera[0]?.mensajeEspera || 'Tu certificado está en proceso de emisión'))
-                        : hasPago
-                            ? 'Requiere pago para obtenerlo'
-                            : elegibilidad?.isEligible
-                                ? '¡Puedes obtener tu certificado!'
-                                : 'Completa el curso para obtenerlo'
-
-        return (
-            <Box
-                sx={{
-                    mt: 3,
-                    borderRadius: '16px',
-                    border: '1.5px solid',
-                    borderColor,
-                    overflow: 'hidden',
-                }}
-            >
-                {/* Header band */}
-                <Box sx={{
-                    px: 3, py: 1.5,
-                    display: 'flex', alignItems: 'center', gap: 1.5,
-                    bgcolor: headerBg,
-                    borderBottom: '1px solid',
-                    borderColor: 'divider'
-                }}>
-                    <Box sx={{
-                        width: 36, height: 36, borderRadius: '10px', flexShrink: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        bgcolor: iconBg
-                    }}>
-                        <i className={enEspera ? 'tabler-clock' : hasSolicitudEnviada ? 'tabler-send' : 'tabler-certificate'} style={{ fontSize: '1.25rem', color: iconColor }} />
-                    </Box>
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-                            Tu Certificado
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                            {subtitle}
-                        </Typography>
-                    </Box>
-                    {certificadoListoParaMostrar && (
-                        <Chip
-                            size="small"
-                            icon={<i className="tabler-circle-check-filled" style={{ fontSize: '0.85rem' }} />}
-                            label="Obtenido"
-                            color="success"
-                            sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem' }}
-                        />
-                    )}
-                    {hasSolicitudEnviada && !certificadoListoParaMostrar && (
-                        <Chip
-                            size="small"
-                            icon={<i className="tabler-send" style={{ fontSize: '0.85rem' }} />}
-                            label="Enviado"
-                            color="success"
-                            sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem', flexShrink: 0 }}
-                        />
-                    )}
-                    {enEspera && (
-                        <Chip
-                            size="small"
-                            icon={<i className="tabler-clock" style={{ fontSize: '0.85rem' }} />}
-                            label="En espera"
-                            color="warning"
-                            sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem', flexShrink: 0 }}
-                        />
-                    )}
-                    {hasPago && !enEspera && !hasSolicitudEnviada && (
-                        <Chip
-                            size="small"
-                            icon={<i className="tabler-lock" style={{ fontSize: '0.85rem' }} />}
-                            label="Pago requerido"
-                            color="warning"
-                            sx={{ ml: 'auto', fontWeight: 700, fontSize: '0.72rem' }}
-                        />
-                    )}
-                </Box>
-
-                {/* Body */}
-                <Box sx={{ p: 3 }}>
-                    {children}
-                    <EnviosFisicosList envios={historialSolicitudes.filter(s => s.solicitaEnvio)} />
-                </Box>
-            </Box>
-        )
-    }
-
     // ── Loading ─────────────────────────────────────────────────────
     // Si ya hay solicitud en caché, no tapar la pantalla de espera
     if (loading && solicitudesPendientes.length === 0) {
@@ -1040,7 +1053,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     // Prioridad: solicitud ya enviada (evita volver al formulario tras el pago)
     if (solicitudesPendientes.length > 0 && !certificadoListoParaMostrar) {
         return (
-            <Wrapper>
+            <Wrapper historialSolicitudes={historialSolicitudes} certificadoListoParaMostrar={certificadoListoParaMostrar} solicitudesPendientes={solicitudesPendientes} pagoPendiente={pagoPendiente} showTramite={showTramite} hayEsperaActiva={hayEsperaActiva} elegibilidad={elegibilidad} plantillasEnEspera={plantillasEnEspera}>
                 <Box sx={{ textAlign: 'center', py: 1 }}>
                     <Box sx={{
                         width: 72, height: 72, borderRadius: '50%', mx: 'auto', mb: 2,
@@ -1124,7 +1137,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
 
     if (showTramite && cursoCertificacion) {
         return (
-            <Wrapper>
+            <Wrapper historialSolicitudes={historialSolicitudes} certificadoListoParaMostrar={certificadoListoParaMostrar} solicitudesPendientes={solicitudesPendientes} pagoPendiente={pagoPendiente} showTramite={showTramite} hayEsperaActiva={hayEsperaActiva} elegibilidad={elegibilidad} plantillasEnEspera={plantillasEnEspera}>
                 <TramiteCertificadoFlow
                     curso={cursoCertificacion}
                     tiposDisponibles={tiposDisponiblesTramite}
@@ -1170,7 +1183,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     // ── Certificado pendiente: tramitar aquí (no WhatsApp) ───────────
     if (mostrarTramiteCta) {
         return (
-            <Wrapper>
+            <Wrapper historialSolicitudes={historialSolicitudes} certificadoListoParaMostrar={certificadoListoParaMostrar} solicitudesPendientes={solicitudesPendientes} pagoPendiente={pagoPendiente} showTramite={showTramite} hayEsperaActiva={hayEsperaActiva} elegibilidad={elegibilidad} plantillasEnEspera={plantillasEnEspera}>
                 <Box sx={{ textAlign: 'center', py: 1 }}>
                     <Box sx={{
                         width: 72, height: 72, borderRadius: '50%', mx: 'auto', mb: 2,
@@ -1205,7 +1218,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     // ── Tiene precios pero faltan evaluaciones para tramitar ─────────
     if (pagoPendiente && !certificadoListoParaMostrar && !hayEsperaActiva && preciosCurso && !evaluacionesAprobadas) {
         return (
-            <Wrapper>
+            <Wrapper historialSolicitudes={historialSolicitudes} certificadoListoParaMostrar={certificadoListoParaMostrar} solicitudesPendientes={solicitudesPendientes} pagoPendiente={pagoPendiente} showTramite={showTramite} hayEsperaActiva={hayEsperaActiva} elegibilidad={elegibilidad} plantillasEnEspera={plantillasEnEspera}>
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 3 }}>
                     <Box sx={{
                         width: 72, height: 72, borderRadius: '18px', flexShrink: 0,
@@ -1236,7 +1249,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
             : null
 
         return (
-            <Wrapper>
+            <Wrapper historialSolicitudes={historialSolicitudes} certificadoListoParaMostrar={certificadoListoParaMostrar} solicitudesPendientes={solicitudesPendientes} pagoPendiente={pagoPendiente} showTramite={showTramite} hayEsperaActiva={hayEsperaActiva} elegibilidad={elegibilidad} plantillasEnEspera={plantillasEnEspera}>
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 3 }}>
                     <Box sx={{
                         width: 72, height: 72, borderRadius: '18px', flexShrink: 0,
@@ -1295,7 +1308,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     if (hayEsperaActiva && plantillasHabilitadas.length === 0) {
         return (
             <>
-                <Wrapper>
+                <Wrapper historialSolicitudes={historialSolicitudes} certificadoListoParaMostrar={certificadoListoParaMostrar} solicitudesPendientes={solicitudesPendientes} pagoPendiente={pagoPendiente} showTramite={showTramite} hayEsperaActiva={hayEsperaActiva} elegibilidad={elegibilidad} plantillasEnEspera={plantillasEnEspera}>
                     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 3 }}>
                         <Box sx={{
                             width: 72, height: 72, borderRadius: '18px', flexShrink: 0,
@@ -1388,7 +1401,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
 
         return (
             <>
-                <Wrapper>
+                <Wrapper historialSolicitudes={historialSolicitudes} certificadoListoParaMostrar={certificadoListoParaMostrar} solicitudesPendientes={solicitudesPendientes} pagoPendiente={pagoPendiente} showTramite={showTramite} hayEsperaActiva={hayEsperaActiva} elegibilidad={elegibilidad} plantillasEnEspera={plantillasEnEspera}>
                     {obtenidas.map((p, idx) => {
                         const esCip = p.id === 'colegio_ingenieros'
                         const accentDark = esCip ? '#b91c1c' : '#025E44'
@@ -1500,7 +1513,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
     // Si no hay datos de elegibilidad, mostrar estado neutro
     if (!el) {
         return (
-            <Wrapper>
+            <Wrapper historialSolicitudes={historialSolicitudes} certificadoListoParaMostrar={certificadoListoParaMostrar} solicitudesPendientes={solicitudesPendientes} pagoPendiente={pagoPendiente} showTramite={showTramite} hayEsperaActiva={hayEsperaActiva} elegibilidad={elegibilidad} plantillasEnEspera={plantillasEnEspera}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <i className="tabler-certificate" style={{ fontSize: '1.5rem', color: '#94a3b8' }} />
                     <Typography variant="body2" color="text.secondary">
@@ -1517,7 +1530,7 @@ const CertificateSection = ({ cursoId, completarAutomatico, onAllLessonsComplete
 
     return (
         <>
-            <Wrapper>
+            <Wrapper historialSolicitudes={historialSolicitudes} certificadoListoParaMostrar={certificadoListoParaMostrar} solicitudesPendientes={solicitudesPendientes} pagoPendiente={pagoPendiente} showTramite={showTramite} hayEsperaActiva={hayEsperaActiva} elegibilidad={elegibilidad} plantillasEnEspera={plantillasEnEspera}>
                 {el.isEligible ? (
 
                     /* Elegible */

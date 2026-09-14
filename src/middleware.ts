@@ -79,7 +79,7 @@ export default withAuth(
   },
   {
     // Cuando authorized devuelve false, withAuth redirige aquí con ?callbackUrl= automático
-    pages: { signIn: '/' },
+    pages: { signIn: '/login' },
     callbacks: {
       authorized: ({ token, req }) => {
         const path = req.nextUrl.pathname

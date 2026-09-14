@@ -11,22 +11,26 @@ interface SendMailOptions {
   }[]
 }
 
-const transporter = createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: Number(process.env.SMTP_PORT) || 465,
-  secure: Number(process.env.SMTP_PORT) === 465, // true para 465, false para otros puertos (como 587)
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-})
+const createSmtpTransporter = () => {
+  const port = Number(process.env.SMTP_PORT) || 465
+
+  return createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port,
+    secure: port === 465,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    }
+  })
+}
 
 /**
  * Función centralizada para enviar correos electrónicos usando Nodemailer.
  */
 export const sendMail = async ({ to, subject, html, attachments }: SendMailOptions) => {
   try {
-    if (!process.env.SMTP_USER) {
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
       console.warn(
         '⚠️ [Mailer] Las credenciales SMTP_USER / SMTP_PASS no están configuradas en .env. Omitiendo envío de correo real.'
       )
@@ -44,7 +48,7 @@ export const sendMail = async ({ to, subject, html, attachments }: SendMailOptio
 
     console.log(`📡 [Mailer] Intentando enviar correo a: ${to} (Remitente: ${mailOptions.from})`)
 
-    const info = await transporter.sendMail(mailOptions)
+    const info = await createSmtpTransporter().sendMail(mailOptions)
 
     console.log(`✅ [Mailer] Correo enviado a ${to}: ${info.messageId}`)
 

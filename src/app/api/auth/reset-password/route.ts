@@ -10,7 +10,10 @@ import { handleApiError } from '@/utils/libs/validation'
  */
 export async function POST(request: Request) {
   try {
-    const { correo, codigo, nuevaContrasena } = await request.json()
+    const body = await request.json()
+    const correo = typeof body.correo === 'string' ? body.correo.trim().toLowerCase() : ''
+    const codigo = typeof body.codigo === 'string' ? body.codigo.trim() : ''
+    const nuevaContrasena = typeof body.nuevaContrasena === 'string' ? body.nuevaContrasena : ''
 
     if (!correo || !codigo || !nuevaContrasena) {
       return ApiResponse.error(request, 'Datos incompletos', 400)
@@ -41,7 +44,7 @@ export async function POST(request: Request) {
     // 3. Actualizar la contraseña del usuario
     await prisma.$transaction([
       prisma.usuario.update({
-        where: { correo },
+        where: { correo: resetRequest.correo },
         data: { contrasena: hashedPassword }
       }),
       prisma.passwordReset.update({
@@ -50,7 +53,7 @@ export async function POST(request: Request) {
       })
     ])
 
-    console.log(`[Reset-Password] Contraseña actualizada para ${correo}`)
+    console.log(`[Reset-Password] Contraseña actualizada para ${resetRequest.correo}`)
 
     return ApiResponse.success(request, { message: 'Contraseña restablecida con éxito' })
   } catch (error) {

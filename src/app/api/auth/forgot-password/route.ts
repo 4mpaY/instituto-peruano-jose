@@ -12,7 +12,8 @@ import { getOTPTemplate } from '@/utils/libs/email-templates'
  */
 export async function POST(request: Request) {
   try {
-    const { correo } = await request.json()
+    const body = await request.json()
+    const correo = typeof body.correo === 'string' ? body.correo.trim().toLowerCase() : ''
 
     if (!correo) {
       return ApiResponse.error(request, 'El correo es obligatorio', 400)
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
 
     await prisma.passwordReset.create({
       data: {
-        correo,
+        correo: usuario.correo,
         codigo,
         expira_en
       }
@@ -63,15 +64,21 @@ export async function POST(request: Request) {
     })
 
     const mailSent = await sendMail({
-      to: correo,
+      to: usuario.correo,
       subject: `Código de recuperación: ${codigo} - ${platformName}`,
       html: emailHtml
     })
 
     if (mailSent) {
-      console.log(`[Forgot-Password] ✅ OTP enviado con éxito a ${correo}`)
+      console.log(`[Forgot-Password] ✅ OTP enviado con éxito a ${usuario.correo}`)
     } else {
-      console.error(`[Forgot-Password] ❌ No se pudo enviar el correo a ${correo}. Revisa los logs del Mailer.`)
+      console.error(`[Forgot-Password] ❌ No se pudo enviar el correo a ${usuario.correo}. Revisa los logs del Mailer.`)
+
+      await prisma.passwordReset.deleteMany({
+        where: { correo: usuario.correo, codigo }
+      })
+
+      return ApiResponse.error(request, 'No se pudo enviar el código de recuperación. Intenta nuevamente más tarde.', 503)
     }
 
     return ApiResponse.success(request, { message: 'Si el correo está registrado, recibirás un código de recuperación.' })

@@ -8,9 +8,7 @@ export function handleSessionExpired() {
 
   handled = true
 
-  const callbackUrl = window.location.pathname + window.location.search
-
   signOut({ redirect: false }).finally(() => {
-    window.location.href = `/login?sessionExpired=1&callbackUrl=${encodeURIComponent(callbackUrl)}`
+    window.location.replace('/')
   })
 }

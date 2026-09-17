@@ -17,7 +17,7 @@ export default async function PerfilPage() {
   const session = await getAuthSession()
 
   if (!session?.user?.email) {
-    redirect('/login')
+    redirect('/')
   }
 
   const token = session.user?.accessToken ?? null
@@ -35,7 +35,7 @@ export default async function PerfilPage() {
   }
 
   if (!user) {
-    redirect('/login')
+    redirect('/')
   }
 
   return (

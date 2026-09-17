@@ -10,7 +10,7 @@ export const metadata = {
 export default async function Page() {
   const session = await getAuthSession()
 
-  if (!session) redirect('/login')
+  if (!session) redirect('/')
 
   return <MetodosPagoPage />
 }

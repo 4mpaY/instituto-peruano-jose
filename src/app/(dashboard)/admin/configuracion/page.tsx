@@ -16,7 +16,7 @@ export default async function Page() {
   const session = await getAuthSession()
 
   if (!session) {
-    redirect('/login')
+    redirect('/')
   }
 
   let initialData: any[] = []

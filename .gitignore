@@ -48,3 +48,6 @@ src/assets/iconify-icons/generated-icons.css
 !/public/uploads/
 !/public/uploads/**/
 !/public/uploads/**/.gitkeep
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat

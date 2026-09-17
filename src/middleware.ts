@@ -36,6 +36,10 @@ export default withAuth(
     const token = req.nextauth.token
     const path = req.nextUrl.pathname
 
+    if (!token && !isPublic(path)) {
+      return NextResponse.redirect(new URL('/', req.url), { status: 302 })
+    }
+
     // Si tiene token y está intentando acceder a login/register
     if (token && (path.startsWith('/login') || path.startsWith('/register'))) {
       const rol = token.rol as Rol
@@ -78,17 +82,10 @@ export default withAuth(
     return NextResponse.next()
   },
   {
-    // Cuando authorized devuelve false, withAuth redirige aquí con ?callbackUrl= automático
     pages: { signIn: '/login' },
     callbacks: {
-      authorized: ({ token, req }) => {
-        const path = req.nextUrl.pathname
-
-        if (isPublic(path)) return true
-
-        // Rutas protegidas requieren token
-        return !!token
-      }
+      // El middleware verifica el token y redirige las sesiones ausentes al inicio.
+      authorized: () => true
     }
   }
 )

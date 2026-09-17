@@ -18,7 +18,7 @@ export default async function Page() {
   const session = await getAuthSession()
 
   if (!session) {
-    redirect('/login')
+    redirect('/')
   }
 
   const token = session.user?.accessToken ?? null

@@ -214,7 +214,7 @@ const AuthModal = ({ open, mode, callbackUrl, onClose, onSwitchMode }: AuthModal
       }
 
       // Pasar al modo reset-password y prellenar el correo
-      resetForm.setValue('correo', data.correo)
+      resetForm.reset({ correo: data.correo, codigo: '', nuevaContrasena: '', confirmarNuevaContrasena: '' })
       setError('')
       setRegisterSuccess(false)
       setForgotSuccess(false)
@@ -669,10 +669,15 @@ const AuthModal = ({ open, mode, callbackUrl, onClose, onSwitchMode }: AuthModal
             </Stack>
           ) : (
             <form key="reset-password-form" onSubmit={resetForm.handleSubmit(onResetSubmit)}>
+              <input type="hidden" {...resetForm.register('correo')} />
               <Stack spacing={3}>
                 <Alert severity="info">
-                  Hemos enviado un código de 6 dígitos a tu correo. Por favor, ingrésalo a continuación.
+                  Si el correo {resetForm.getValues('correo')} está registrado, recibirás un código de 6 dígitos.
+                  Revisa también la carpeta de spam. El código vence en 15 minutos.
                 </Alert>
+                {resetForm.formState.errors.correo && (
+                  <Alert severity="error">Vuelve a ingresar tu correo para solicitar un código.</Alert>
+                )}
 
                 <Controller
                   name="codigo"
@@ -684,6 +689,8 @@ const AuthModal = ({ open, mode, callbackUrl, onClose, onSwitchMode }: AuthModal
                       autoFocus
                       label="Código de verificación (OTP)"
                       placeholder="123456"
+                      autoComplete="one-time-code"
+                      inputProps={{ inputMode: 'numeric', maxLength: 6 }}
                       error={!!resetForm.formState.errors.codigo}
                       helperText={resetForm.formState.errors.codigo?.message}
                       disabled={isLoading}
@@ -702,7 +709,7 @@ const AuthModal = ({ open, mode, callbackUrl, onClose, onSwitchMode }: AuthModal
                       placeholder="············"
                       type={isPasswordShown ? 'text' : 'password'}
                       error={!!resetForm.formState.errors.nuevaContrasena}
-                      helperText={resetForm.formState.errors.nuevaContrasena?.message}
+                      helperText={resetForm.formState.errors.nuevaContrasena?.message || 'Usa al menos 8 caracteres, una mayúscula, una minúscula y un número.'}
                       disabled={isLoading}
                       InputProps={{
                         endAdornment: (
@@ -755,6 +762,19 @@ const AuthModal = ({ open, mode, callbackUrl, onClose, onSwitchMode }: AuthModal
 
                 <Button fullWidth variant="contained" type="submit" size="large" disabled={isLoading} sx={{ py: 1.5, borderRadius: '12px', fontWeight: 700 }}>
                   {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Restablecer contraseña'}
+                </Button>
+
+                <Button
+                  type="button"
+                  disabled={isLoading}
+                  onClick={() => {
+                    const correo = resetForm.getValues('correo')
+
+                    handleSwitch('forgot-password')
+                    forgotForm.setValue('correo', correo)
+                  }}
+                >
+                  Corregir correo o solicitar otro código
                 </Button>
 
                 <Box sx={{ textAlign: 'center' }}>
